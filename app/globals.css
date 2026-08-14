@@ -1,26 +1,166 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Design tokens — DESIGN.md §6
+   Light is the base definition. Dark is redefined twice, once for the system
+   preference and once for the explicit toggle, so that a user who picks "light"
+   on a dark-mode OS still gets light. No colour has its only definition inside
+   a media query.
+   --------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fbfbf9;
+  --surface: #ffffff;
+  --surface-2: #f3f3f0;
+  --foreground: #1a1a19;
+  --muted: #6f6f68;
+  --border: #e5e5df;
+  --accent: #216e39;
+  --accent-fg: #ffffff;
+  --ring: #30a14e;
+  --danger: #c0392b;
+
+  /* Contribution ramp */
+  --hm-0: #ebedf0;
+  --hm-1: #9be9a8;
+  --hm-2: #40c463;
+  --hm-3: #30a14e;
+  --hm-4: #216e39;
+
+  /* Habit accents */
+  --habit-green: #2f9e44;
+  --habit-blue: #1971c2;
+  --habit-violet: #6741d9;
+  --habit-amber: #e8590c;
+  --habit-rose: #d6336c;
+  --habit-teal: #0c8599;
+
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c2128;
+    --foreground: #e6edf3;
+    --muted: #8b949e;
+    --border: #2a313a;
+    --accent: #2ea043;
+    --accent-fg: #04140a;
+    --ring: #39d353;
+    --danger: #f85149;
+
+    --hm-0: #161b22;
+    --hm-1: #0e4429;
+    --hm-2: #006d32;
+    --hm-3: #26a641;
+    --hm-4: #39d353;
+
+    --habit-green: #4ade80;
+    --habit-blue: #60a5fa;
+    --habit-violet: #a78bfa;
+    --habit-amber: #fbbf24;
+    --habit-rose: #fb7185;
+    --habit-teal: #2dd4bf;
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: #0d1117;
+  --surface: #161b22;
+  --surface-2: #1c2128;
+  --foreground: #e6edf3;
+  --muted: #8b949e;
+  --border: #2a313a;
+  --accent: #2ea043;
+  --accent-fg: #04140a;
+  --ring: #39d353;
+  --danger: #f85149;
+
+  --hm-0: #161b22;
+  --hm-1: #0e4429;
+  --hm-2: #006d32;
+  --hm-3: #26a641;
+  --hm-4: #39d353;
+
+  --habit-green: #4ade80;
+  --habit-blue: #60a5fa;
+  --habit-violet: #a78bfa;
+  --habit-amber: #fbbf24;
+  --habit-rose: #fb7185;
+  --habit-teal: #2dd4bf;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-ring: var(--ring);
+  --color-danger: var(--danger);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-card: 16px;
+  --radius-control: 8px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* --------------------------------------------------------------------------- */
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  /* Stop the standalone PWA from rubber-banding like a web page. */
+  overscroll-behavior-y: none;
+}
+
+/* One visible focus treatment everywhere. Never `outline: none` on its own. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@utility pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@utility mb-safe {
+  margin-bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
+/* Tick confirmation — DESIGN.md §6.3 */
+@keyframes hapi-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-pop {
+  animation: hapi-pop 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
