@@ -151,6 +151,12 @@ export default function SettingsPage() {
             ref={fileInput}
             type="file"
             accept="application/json,.json"
+            // Named and removed from the tab order: `sr-only` hides it visually
+            // but leaves it focusable, so a keyboard user was landing on an
+            // invisible, unlabelled file input. The visible button beside it is
+            // the real control — this is the mechanism behind it.
+            aria-label="Choose a backup file to import"
+            tabIndex={-1}
             className="sr-only"
             onChange={(event) => {
               const file = event.target.files?.[0];

@@ -37,7 +37,7 @@ export function QuoteCard() {
             {quote.author}
           </cite>
           {quote.source && (
-            <p className="mt-0.5 truncate text-[11px] text-muted/80">{quote.source}</p>
+            <p className="mt-0.5 truncate text-[11px] text-muted">{quote.source}</p>
           )}
         </div>
 

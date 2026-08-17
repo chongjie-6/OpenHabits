@@ -74,7 +74,7 @@ export default function QuotesPage() {
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search text, author or source"
         aria-label="Search quotes"
-        className="h-11 w-full rounded-control border border-border bg-surface px-3 text-[14px] placeholder:text-muted/70"
+        className="h-11 w-full rounded-control border border-border bg-surface px-3 text-[14px] placeholder:text-muted"
       />
 
       <div className="flex flex-wrap gap-1.5">
@@ -186,11 +186,11 @@ function QuoteRow({
             {quote.author}
           </cite>
           {quote.source && (
-            <span className="block text-[11px] text-muted/80">{quote.source}</span>
+            <span className="block text-[11px] text-muted">{quote.source}</span>
           )}
         </p>
         {showing && (
-          <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted/80">
+          <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted">
             {relativeDay(today, showing)}
           </span>
         )}

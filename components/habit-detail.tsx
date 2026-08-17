@@ -243,7 +243,7 @@ function Stat({ label, value, unit }: { label: string; value: number; unit: stri
         {value}
       </p>
       <p className="mt-1 text-[10px] uppercase tracking-[0.06em] text-muted">{label}</p>
-      <p className="text-[10px] text-muted/70">{unit}</p>
+      <p className="text-[10px] text-muted">{unit}</p>
     </div>
   );
 }

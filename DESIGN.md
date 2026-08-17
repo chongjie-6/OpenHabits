@@ -572,9 +572,20 @@ Two design decisions turned out to be load-bearing and are pinned by tests: the 
 | — of which framework baseline | — | ~152KB (3 shared chunks) |
 | — of which application code | < 50KB | ~40KB |
 | First-load JS, `/quotes` (gzip) | < 200KB | 189.5KB |
-| LCP on mid-tier Android, 4G | < 1.8s | not yet measured |
-| INP for a habit tick | < 50ms | not yet measured |
-| Heatmap render, 371 cells | < 8ms | not yet measured |
+| LCP on mid-tier Android, 4G | < 1.8s | **2.8s** — over; see below |
+| INP for a habit tick | < 50ms | still unmeasured — needs a device |
+| Heatmap pipeline, 371 days × 5 habits | < 8ms | **2.16ms** ✅ |
+| — same at 20 habits | — | 4.17ms |
+
+Measured in the phase-7 audit (§11) with Lighthouse 13.4.1, mobile emulation, simulated Slow 4G and 4× CPU throttling, against `next start`. Scores: **performance 95–96, accessibility 100, best practices 100, SEO 100** across `/`, `/week`, `/stats`, `/settings`, `/quotes`. CLS is 0–0.004 and TBT 40–50ms everywhere — both comfortably good.
+
+The heatmap figure covers the `buildHistory` → `computeStreaks` pipeline, pinned by `lib/history.bench.test.ts`. It scales sub-linearly (4× the habits costs 2.4× the time), so the O(n²) regression the budget exists to catch would be caught. Paint cost is not included and still needs a real device.
+
+> **LCP is over budget for a structural reason, not a fixable one.** The LCP element is the quote `<blockquote>`, and §7.1 forbids rendering it on the server — a static prerender would pin every visitor to the build day's quote. So LCP cannot fire until the JS has loaded and hydrated: unthrottled the breakdown is 7ms TTFB and 144ms element render delay, and the 2.8s figure is that pipeline under Lighthouse's deliberately pessimistic mobile simulation.
+>
+> Three ways out, and the first is probably right. **(a) Move the budget** — 1.8s was set before anything was measured, and it silently assumed a server-rendered hero the design had already ruled out. **(b) Shrink the critical path** — 152KB of the 192KB is the React + App Router baseline, so this means leaving the App Router, exactly as noted above. **(c) Put text in the placeholder** so something contentful paints sooner. (c) is metric-gaming: it would improve the number without the user seeing their quote any earlier, and it is recorded here to be rejected, not adopted.
+
+**Known measurement gap.** Every Lighthouse run above was against an *empty* IndexedDB, because the CLI cannot seed it. The heatmap rendered zero cells and no habit row was ever ticked. The benchmark covers the computation at a year of data, but the DOM cost of ~371 SVG cells and the INP of a real tick are both unmeasured, and are the two things a device test exists to find.
 
 > **The 100KB budget in the original draft was wrong**, and worth recording rather than quietly restating. It was set without checking the floor: React 19 plus the Next 16 App Router client runtime is ~152KB gzipped before a line of application code, and 7 of the 8 chunks on `/` are shared across every route. Application code is the part actually under our control, so that is what now carries a budget; the total gets a ceiling that leaves room to notice regressions.
 >
@@ -595,11 +606,25 @@ The tick budget is still the one that matters. It's met by keeping the mutation 
 | **4 — PWA** | Manifest, generated icons, service worker, headers, install hint | ✅ |
 | **5 — Polish** | Week screen, export/import, Settings, motion, empty states | ✅ |
 | **6 — Depth** | Habit detail, quote collection, corpus expansion | ✅ 58 tests green |
-| **7 — Field** | Lighthouse, a11y audit, install test on real iOS/Android | ⬜ |
+| **7 — Field** | Lighthouse, a11y audit, install test on real iOS/Android | 🟡 partial |
 
 Phase 5's Week screen and Settings came forward because deleting a habit and backing up data are not polish — a tracker you cannot correct or export is not one you would trust with a year.
 
-Everything before phase 7 is verified only by `tsc`, `eslint`, `vitest` and a build. Nothing here has been measured on a real phone, and the LCP/INP budgets in §10 remain unmeasured.
+**Phase 7, done and not done.**
+
+Done in the audit: Lighthouse across all five routes, a systematic contrast audit of every token pairing, the heatmap benchmark in §10, and PWA installability verified (manifest complete with 192/512/maskable icons and shortcuts, `sw.js` serving `install`/`activate`/`fetch` under `no-store` and its own CSP).
+
+Three defects found and fixed:
+
+1. **Contrast.** Every `text-muted/80` and `text-muted/70` in the codebase failed WCAG AA for normal text — 2.64:1 at worst, against a 4.5:1 requirement, in *both* themes. Lighthouse caught only the one instance that happened to be on the Today page; the other six came out of computing the ratios for all token pairings directly, and all seven are gone. `--muted` at full opacity passes everywhere with little headroom, which is now recorded in `globals.css` so it does not regress.
+2. **An unlabelled file input.** The backup importer's `sr-only` `<input type="file">` had no accessible name and was still in the tab order, so a keyboard user landed on an invisible, unnamed control. Named, and taken out of the tab order — the visible button beside it is the real affordance.
+3. **A console error on every page load.** The §13 sync client posted to `/api/sync` unconditionally and took a 503, which the browser logs regardless of how the JS handles it. Gated behind `NEXT_PUBLIC_SYNC_ENABLED` so the request path compiles out entirely when sync is off. This also removes what would have been a 401 on every load for every signed-out visitor once auth lands.
+
+Accessibility, best practices and SEO are 100 on every route after those fixes.
+
+**Still not done, and it needs hardware.** No real iOS or Android device has run this. Every measurement above used an empty IndexedDB — the CLI cannot seed it — so the heatmap rendered no cells and no habit was ever ticked. The two budgets that matter most for G1 and G2, INP on a tick and the paint cost of a full grid, remain unmeasured. A dead-simple version of this test is worth more than more tooling: install to a home screen, add five habits, backfill a month, tick something, and watch.
+
+One investigated non-finding, recorded so it is not chased twice: Lighthouse reports 13KB of "legacy JavaScript" (polyfills for `Array.prototype.at`, `Object.hasOwn` and five siblings). They live in Next's own framework chunk, not application code. Raising the tsconfig `target` and adding a modern `browserslist` changed the bundle by 0.5KB — within noise — because `noEmit: true` means TypeScript's `target` never touches the shipped output at all. Both changes were reverted; the browserslist would have narrowed browser support for nothing.
 
 ---
 

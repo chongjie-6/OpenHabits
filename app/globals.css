@@ -6,6 +6,14 @@
    preference and once for the explicit toggle, so that a user who picks "light"
    on a dark-mode OS still gets light. No colour has its only definition inside
    a media query.
+
+   --muted is the lightest text colour that passes WCAG AA (4.5:1) for normal
+   text, and it does so with no headroom: 4.55:1 at its worst pairing, on
+   --surface-2 in light mode. Never apply an opacity modifier to it. Every
+   `text-muted/80` and `text-muted/70` in the codebase failed AA in both themes
+   (2.64–4.35:1) and was removed in the §11 phase-7 audit. If something needs to
+   recede further than --muted, it needs a smaller role on the page, not a
+   thinner colour.
    --------------------------------------------------------------------------- */
 
 :root {

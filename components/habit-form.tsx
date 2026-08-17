@@ -92,7 +92,7 @@ export function HabitForm({
           placeholder="Read 20 pages"
           aria-label="Habit name"
           maxLength={60}
-          className="h-11 min-w-0 flex-1 rounded-control border border-border bg-background px-3 text-[15px] placeholder:text-muted/70"
+          className="h-11 min-w-0 flex-1 rounded-control border border-border bg-background px-3 text-[15px] placeholder:text-muted"
         />
       </div>
 
