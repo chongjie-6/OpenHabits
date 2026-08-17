@@ -13,7 +13,7 @@ import {
   updateSettings,
   useHapi,
 } from "@/lib/store";
-import type { ExportBundle, Habit, Settings } from "@/lib/types";
+import type { AnyExportBundle, Habit, Settings } from "@/lib/types";
 
 export default function SettingsPage() {
   const { hydrated, habits, settings } = useHapi();
@@ -37,7 +37,8 @@ export default function SettingsPage() {
 
   async function upload(file: File) {
     try {
-      const bundle = JSON.parse(await file.text()) as ExportBundle;
+      // v1 and v2 files are both accepted; `importBundle` normalises the older one.
+      const bundle = JSON.parse(await file.text()) as AnyExportBundle;
       importBundle(bundle, "merge");
       setNotice(
         `Merged ${bundle.habits.length} habits and ${bundle.entries.length} entries.`,

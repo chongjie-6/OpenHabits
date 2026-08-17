@@ -13,6 +13,8 @@ function habit(id: string, cadence: Cadence, extra: Partial<Habit> = {}): Habit 
     order: 0,
     createdAt: "2026-08-01",
     archivedAt: null,
+    updatedAt: 1,
+    deletedAt: null,
     ...extra,
   };
 }

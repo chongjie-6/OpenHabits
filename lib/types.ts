@@ -34,7 +34,27 @@ export type Cadence =
   /** n times per week, on any days the user likes. */
   | { kind: "weekly"; times: number };
 
-export type Habit = {
+/**
+ * Sync metadata carried by every record that syncs. See DESIGN.md §13.
+ *
+ * Note the deliberate unit split. `createdAt`/`archivedAt` are civil dates
+ * because they answer domain questions ("was this habit scheduled on the 4th?")
+ * and must not shift under a timezone. `updatedAt`/`deletedAt` are epoch ms
+ * because they answer a merge question ("which edit came last?") and a day's
+ * resolution would make every same-day edit a tie.
+ */
+export type Synced = {
+  /** Epoch ms of the last local edit. Last-write-wins merge key. */
+  updatedAt: number;
+  /**
+   * Epoch ms of deletion, or null if live. Deleted records are kept as
+   * tombstones rather than removed, because on a replicated store a missing
+   * row is indistinguishable from a row the peer has not seen yet.
+   */
+  deletedAt: number | null;
+};
+
+export type Habit = Synced & {
   id: string;
   name: string;
   emoji: string;
@@ -48,12 +68,22 @@ export type Habit = {
   archivedAt: DayKey | null;
 };
 
+/**
+ * A habit's state on one day.
+ *
+ * Entries carry no tombstone, and that is a decision rather than an omission.
+ * An entry is never individually deleted: "not done" is `count: 0`, which is a
+ * value the LWW rule can merge like any other. The only bulk removal is a habit
+ * deletion, and the habit's own tombstone already tells every peer to drop that
+ * habit's entries — so a second tombstone per entry would carry no information
+ * while multiplying the rows we sync by the length of the user's history.
+ */
 export type Entry = {
   habitId: string;
   date: DayKey;
   /** 0 … target, and beyond — overachieving is allowed. */
   count: number;
-  /** Epoch ms. Last-write-wins merge key, used by import and by future sync. */
+  /** Epoch ms. Last-write-wins merge key, used by import and by sync. */
   updatedAt: number;
 };
 
@@ -96,15 +126,71 @@ export const DEFAULT_SETTINGS: Settings = {
   favourites: [],
 };
 
+/**
+ * Settings sync as a single last-write-wins blob rather than per field.
+ *
+ * Per-field merging would be more precise and is not worth it: the fields are
+ * changed one at a time by one person, so a conflict means the same user edited
+ * two devices between syncs, and the losing edit is a toggle they can flip back.
+ * `theme` riding along is the one wart — a device-local look becomes a global
+ * one — and is accepted because the alternative is splitting the type in two.
+ */
+export type SyncedSettings = {
+  value: Settings;
+  /** Epoch ms of the last settings change. */
+  updatedAt: number;
+};
+
 /** Compound primary key for an entry. */
 export function entryKey(habitId: string, date: DayKey): string {
   return `${habitId}:${date}`;
 }
 
+/**
+ * Backup file format.
+ *
+ * v1 predates sync and so predates `updatedAt`/`deletedAt` on habits. Old files
+ * stay readable: `normaliseHabit` fills the missing metadata in. Bumping the
+ * version rather than silently widening v1 keeps a v2 file from being handed to
+ * an old build that would drop the new fields on the next write.
+ */
 export type ExportBundle = {
-  version: 1;
+  version: 2;
   exportedAt: string;
   habits: Habit[];
   entries: Entry[];
   settings: Settings;
 };
+
+/** A v1 habit: everything except the sync metadata. */
+type LegacyHabit = Omit<Habit, keyof Synced> & Partial<Synced>;
+
+export type AnyExportBundle =
+  | ExportBundle
+  | {
+      version: 1;
+      exportedAt: string;
+      habits: LegacyHabit[];
+      entries: Entry[];
+      settings: Settings;
+    };
+
+/**
+ * Fill in sync metadata a v1 backup could not have carried.
+ *
+ * `updatedAt` falls back to the creation day rather than "now", so importing an
+ * old backup cannot make its stale habits outrank edits already on the server.
+ */
+export function normaliseHabit(habit: LegacyHabit): Habit {
+  if (habit.updatedAt !== undefined) {
+    return { ...habit, updatedAt: habit.updatedAt, deletedAt: habit.deletedAt ?? null };
+  }
+
+  // An unparseable createdAt falls back to 0, the stamp that loses every merge.
+  const created = Date.parse(`${habit.createdAt}T00:00:00Z`);
+  return {
+    ...habit,
+    updatedAt: Number.isNaN(created) ? 0 : created,
+    deletedAt: habit.deletedAt ?? null,
+  };
+}

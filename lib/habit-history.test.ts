@@ -13,6 +13,8 @@ function habit(cadence: Cadence, extra: Partial<Habit> = {}): Habit {
     order: 0,
     createdAt: "2026-08-10",
     archivedAt: null,
+    updatedAt: 1,
+    deletedAt: null,
     ...extra,
   };
 }

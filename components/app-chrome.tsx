@@ -4,13 +4,17 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useHydrate } from "@/lib/store";
+import { useSync } from "@/lib/sync/client";
 
 /**
- * Reads IndexedDB into the store and registers the service worker. Mounted
- * once, in the root layout.
+ * Reads IndexedDB into the store, starts sync, and registers the service worker.
+ * Mounted once, in the root layout.
  */
 export function Hydrator() {
   useHydrate();
+  // Waits for hydration internally, and is inert when the user is not signed in
+  // or the deployment has no database.
+  useSync();
 
   useEffect(() => {
     // Skipped in development: a caching worker turns every HMR update into a

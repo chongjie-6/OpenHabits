@@ -2,9 +2,10 @@
 
 A local-first PWA that pairs a **daily quote from someone worth quoting** with a **habit tracker** whose history renders as a GitHub-style contribution grid.
 
-- **Status:** phases 0–6 built and passing; §11 has what remains
+- **Status:** phases 0–6 built and passing; §11 has what remains. Sync (§13) is built below the auth seam and does not run until a provider is wired in.
 - **Stack:** Next.js 16.3.1 (App Router), React 19.2, Tailwind CSS v4, TypeScript 5, Vitest
-- **Last updated:** 2026-08-14
+- **Sync stack:** Postgres + Drizzle, one endpoint, PGlite for tests (§13)
+- **Last updated:** 2026-08-17
 
 > Sections marked **Revised during build** record where implementation contradicted the plan. They are kept rather than overwritten — the reasoning that turned out to be wrong is usually the reasoning most worth having on the record.
 
@@ -22,7 +23,7 @@ A local-first PWA that pairs a **daily quote from someone worth quoting** with a
 
 ### Non-goals (v1)
 
-- Accounts, login, or cross-device sync (see §12 for the v2 path that the schema already accommodates)
+- Accounts, login, or cross-device sync (see §12 for the v2 path that the schema already accommodates) — **the sync half of this has since been built; see §13. Accounts have not: §13.6 is a seam, not an implementation.**
 - Social features — sharing, friends, leaderboards
 - Quantified goals beyond a simple per-day count (no durations, no timers)
 - Native app store distribution
@@ -135,6 +136,8 @@ type Habit = {
   order: number;           // manual sort position
   createdAt: DayKey;
   archivedAt: DayKey | null;
+  updatedAt: number;       // epoch ms — added by §13; LWW merge key
+  deletedAt: number | null;// epoch ms — tombstone, see §13.4
 };
 
 type Entry = {
@@ -162,7 +165,9 @@ type Settings = {
 
 **Entry key is `${habitId}:${date}`** — a compound primary key. This makes "did I do X on day D" an O(1) point lookup and makes an idempotent toggle trivially safe to replay.
 
-**Absence is meaningful.** No `Entry` row means "not logged", which is distinct from `count: 0` ("explicitly un-ticked"). Only the compound key exists; there are no tombstones in v1.
+**Absence is meaningful.** No `Entry` row means "not logged", which is distinct from `count: 0` ("explicitly un-ticked"). Only the compound key exists.
+
+> **Revised by §13.** "There are no tombstones" held only while the data lived on one device. Once it replicates, a missing row and a row the peer has not seen yet are the same observation, so `Habit` gained `deletedAt` and deleting writes a tombstone. Entries still have none, and for a reason worth reading: see §13.4.
 
 ### 3.1 Derived data (never stored)
 
@@ -505,7 +510,7 @@ components/
   install-hint.tsx
 
 lib/
-  types.ts                domain types + DEFAULT_SETTINGS
+  types.ts                domain types + DEFAULT_SETTINGS + Synced metadata
   store.ts                in-memory cache + useSyncExternalStore + mutations
   db.ts                   IndexedDB, migrations, requestPersistence
   dates.ts                DayKey maths, week bounds, dayStartHour, formatting
@@ -516,8 +521,23 @@ lib/
   theme.ts                pre-paint script + localStorage mirror
   use-today.ts            the clock as external state
   use-media-query.ts
-  *.test.ts               58 tests over the pure logic
+  *.test.ts               tests over the pure logic
 
+  sync/                   §13 — replication between copies of the local store
+    protocol.ts           wire types, the two clocks, LWW + tiebreaker
+    merge.ts              pure merge and push selection
+    validate.ts           hand-written payload validation for a public endpoint
+    client.ts             single-flight runner + useSync triggers
+
+  server/                 the only server-side code in the app
+    schema.ts             Drizzle/Postgres tables
+    db.ts                 lazily built, globally cached connection
+    auth.ts               the identity seam — see §13.6
+    sync-store.ts         push/pull inside one locked transaction
+
+app/api/sync/route.ts     the only endpoint
+
+drizzle/                  generated, reviewed, committed migrations
 data/quotes.ts            168 attributed quotes
 scripts/generate-icons.mjs
 public/sw.js
@@ -607,3 +627,80 @@ Everything before phase 7 is verified only by `tsc`, `eslint`, `vitest` and a bu
 5. **Is the forgiven final day too generous?** The current streak does not break until a missed day is a *past* day. It reads correctly at 9am and slightly flattering at 11pm. An alternative is to forgive only until some hour of the evening.
 7. **Archiving takes effect immediately**, so a habit archived after being ticked today leaves an entry that is kept but no longer counted. The alternative — archiving from tomorrow — keeps today's grid intact but makes the button feel unresponsive. Worth revisiting if anyone notices.
 8. **Should Today link to a habit's detail screen?** Currently not: the row is the tick target, and a second affordance inside it would put a 44px link inside a 56px button. Detail is reachable from Stats and Settings instead.
+
+---
+
+## 13. Sync
+
+The v2 path §12 promised, built. It answers the two risks v1 could only mitigate: storage eviction (iOS clears data after 7 days of non-use) and the absence of cross-device continuity.
+
+### 13.1 What it does not change
+
+IndexedDB is still the source of truth. Sync is **replication between copies of the local store**, not a move to server-authoritative data, and the shape of §7.1 is untouched: every route still prerenders to static HTML, every mutation still lands in memory synchronously and on disk fire-and-forget, and no screen awaits a network call. With `DATABASE_URL` unset the endpoint answers 503, the client treats sync as off, and the app is the app from v1.
+
+There is exactly one endpoint — `POST /api/sync` — and it is the only dynamic route in the build. No `GET /habits`, no per-record writes, no server rendering of user data.
+
+### 13.2 Two clocks
+
+The one decision everything else follows from.
+
+Every synced record carries `updatedAt`, epoch ms from the device that made the edit. It decides merges: later write wins.
+
+It cannot also be the pull cursor. Device clocks disagree, sometimes by hours. A phone five minutes slow writes an entry stamped 10:00; the laptop has already pulled through 10:03; a cursor built from `updatedAt` steps straight over that entry and loses the day permanently — no error, no retry, no way to notice.
+
+So the server stamps every row with `seq`, from one Postgres sequence. `seq` moves the cursor, `updatedAt` decides conflicts, and the two are never compared. Keeping the jobs in separate fields is the whole trick.
+
+**The sequence is not a usable cursor on its own.** Values are handed out when a statement runs; rows become visible when the transaction commits. Two concurrent syncs can commit in the opposite order to their assignment, and a client pulling through the gap saves the higher seq and steps over the lower one forever. Each sync therefore takes `pg_advisory_xact_lock` on the account, making commit order match assignment order. The contention is one person's two or three devices.
+
+### 13.3 Conflict resolution
+
+Last-write-wins per record, with a tiebreaker that is not optional.
+
+"Incoming wins ties" is broken, quietly: two devices writing the same record in the same millisecond each see the *other* value as incoming, so each takes the other's. They swap rather than converge, and stay disagreed with no error anywhere. Ties are therefore broken on the record's **content** — both peers compare the same two records with the same rule and reach the same answer. Which value wins is arbitrary; that both pick the same one is the point.
+
+The rule lives once, in `lib/sync/protocol.ts`, and the server uses the same function the client does. It is deliberately *not* expressed as SQL in the upsert: the tiebreaker would then exist in two languages, and convergence would depend on the two staying exactly in step. Instead the server reads, decides in TypeScript, and writes — safe because of the per-account lock, and bounded because the rows read are bounded by the size of the push.
+
+Granularity is per record, not per field. Two devices editing the same habit's name and colour between syncs will lose one of the two edits. Field-level merging would fix that and is not worth its weight: this is one person's habit tracker, and the losing edit is a rename they can redo.
+
+### 13.4 Deletion needs tombstones
+
+On a replicated store, a missing row and a row the peer has not seen yet are the same observation. A hard delete is therefore re-learned from the server on the next pull, and the habit comes back with its history.
+
+So `Habit` gained `deletedAt`. Deleting writes a tombstone; the habit leaves every screen immediately, but the row survives to tell other devices. Entries carry no tombstone — an entry is never individually deleted ("not done" is `count: 0`, which merges like any other value), and a habit's tombstone already tells every peer to drop that habit's entries. A tombstone per entry would carry no extra information while multiplying synced rows by the length of the user's history.
+
+Two consequences worth stating plainly. **Reset everything** now propagates: on a synced account a local-only wipe would be undone by the next pull, so the button writes tombstones for every habit. And **backups omit tombstones** — a backup is what the user has, not a log of what they discarded.
+
+### 13.5 Resumability
+
+Both directions are capped at 500 records per request. A first sync of a multi-year account does not fit in one response and is not asked to: the server truncates, reports `more: true`, and leaves the cursor short so the next round trip continues. Sync is always resumable and never has to succeed in one shot.
+
+The cursor reported under truncation is the lowest point at which *every* collection is complete, not the highest seq seen. Habits and entries are capped separately; if habits were cut off at seq 900 while entries ran to 4000, reporting 4000 would step over every habit in between.
+
+The push watermark is the newest stamp **actually sent**, never `Date.now()` — using the clock would skip any edit made while the request was in flight.
+
+### 13.6 Identity is a seam, not an implementation
+
+Sync needs one thing from auth: a stable account id to scope rows by. Everything else about signing in — providers, magic links, the account screen — is separate work with its own decisions, and the sync layer does not wait for it.
+
+`lib/server/auth.ts` defines the contract and nothing more. **It fails closed:** with no provider wired up, `resolveUser` returns null and the endpoint answers 401. A permissive default would pool every visitor's habits into one row set, and the first symptom would be a stranger's data on someone's phone. A `HAPI_DEV_USER_ID` override exists for local development and is ignored when `NODE_ENV=production` — two conditions, because the failure worth preventing is that variable surviving into a real deployment.
+
+Until a provider is wired in, **sync does not run for anyone.** Everything below the seam is complete and tested; nothing above it exists yet.
+
+The client states which account its data belongs to on every request, and the server refuses a mismatch with 409 before writing anything. Discovering the identity from the *response* would be too late — a device where someone else has since signed in would already have uploaded the previous person's habits.
+
+### 13.7 What is tested
+
+`lib/server/sync-store.test.ts` runs against real Postgres in-process (PGlite, Postgres compiled to WebAssembly), applying the committed migrations verbatim. That matters more here than elsewhere: the delicate parts are all SQL-level — a sequence assigned inside `ON CONFLICT DO UPDATE`, a row-value `IN`, a composite foreign key, an advisory lock — and a test double would check none of them.
+
+Covered: convergence, stale-write rejection, tombstone propagation and cascade, resurrection attempts by a lagging peer, orphan entries, account isolation under colliding client-generated ids, mismatch refusal, idempotent replay, and a 600-entry history pulled across multiple trips with no gaps or repeats.
+
+`lib/sync/merge.test.ts` covers the merge rules as pure functions, including the tie-symmetry case that caught the `>=` bug during the build. `lib/sync/validate.test.ts` covers the endpoint's input validation.
+
+### 13.8 Open questions
+
+1. **Settings sync as one blob, including `theme`.** A device-local look becomes a global one. Splitting device-local fields from account fields is the fix; the cost is dividing one type in two and threading both through the store. Left until someone complains.
+2. **No conflict is ever shown to the user.** A lost edit is silent by design — surfacing "your rename was overwritten" for a habit tracker seems worse than the loss. Revisit if it turns out to bite.
+3. **Tombstones accumulate forever.** Harmless at this scale (one row per deleted habit), but there is no purge. A tombstone older than any plausible offline device could be collected; nothing does it yet.
+4. **The advisory lock serialises an account's syncs.** Correct, and fine for a handful of devices. If sync ever runs from many clients at once the lock becomes the bottleneck, and the cursor needs a commit-ordered design instead.
+5. **`experimental.useOffline`** (§8.3) is now relevant and unused. The sync client hand-rolls its own online/visibility triggers; `useOffline()` from `next/offline` would give connectivity-aware retry for free.
+6. **The client polls every five minutes when foregrounded.** Event triggers (visibility, online) carry the real load. If sync ever needs to feel live, this is where a push channel would go.

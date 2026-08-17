@@ -1,0 +1,134 @@
+import { describe, expect, it } from "vitest";
+import { parseSyncPush } from "./validate";
+
+const HABIT = {
+  id: "h1",
+  name: "Read",
+  emoji: "📖",
+  color: "green",
+  cadence: { kind: "daily" },
+  target: 1,
+  order: 0,
+  createdAt: "2026-08-01",
+  archivedAt: null,
+  updatedAt: 1000,
+  deletedAt: null,
+};
+
+const ENTRY = { habitId: "h1", date: "2026-08-01", count: 1, updatedAt: 1000 };
+
+const SETTINGS = {
+  value: { theme: "dark", weekStartsOn: 1, dayStartHour: 4, favourites: ["q1"] },
+  updatedAt: 1000,
+};
+
+function push(over: Record<string, unknown> = {}) {
+  return parseSyncPush({
+    since: 0,
+    accountId: null,
+    habits: [],
+    entries: [],
+    settings: null,
+    ...over,
+  });
+}
+
+describe("parseSyncPush", () => {
+  it("accepts a well-formed payload", () => {
+    const result = push({ habits: [HABIT], entries: [ENTRY], settings: SETTINGS });
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects a body that is not an object", () => {
+    for (const body of [null, 42, "x", [], undefined]) {
+      expect(parseSyncPush(body).ok).toBe(false);
+    }
+  });
+
+  it("rejects a negative or fractional cursor", () => {
+    expect(push({ since: -1 }).ok).toBe(false);
+    expect(push({ since: 1.5 }).ok).toBe(false);
+  });
+
+  it("requires accountId to be present, as a string or an explicit null", () => {
+    expect(push({ accountId: "user_1" }).ok).toBe(true);
+    expect(push({ accountId: null }).ok).toBe(true);
+    // Absent is not the same as null: a client that forgot the field would
+    // otherwise be treated as one that has never synced, and be handed a pass on
+    // the account check it exists to fail.
+    expect(parseSyncPush({ since: 0, habits: [], entries: [], settings: null }).ok).toBe(false);
+    expect(push({ accountId: "" }).ok).toBe(false);
+    expect(push({ accountId: 7 }).ok).toBe(false);
+  });
+
+  it("rejects a colour outside the palette", () => {
+    expect(push({ habits: [{ ...HABIT, color: "puce" }] }).ok).toBe(false);
+  });
+
+  it("rejects a date that does not exist", () => {
+    // Date would roll this to March 2nd rather than reject it.
+    expect(push({ habits: [{ ...HABIT, createdAt: "2026-02-30" }] }).ok).toBe(false);
+    expect(push({ entries: [{ ...ENTRY, date: "2026-13-01" }] }).ok).toBe(false);
+  });
+
+  it("rejects a date that is merely the right shape", () => {
+    expect(push({ entries: [{ ...ENTRY, date: "01/08/2026" }] }).ok).toBe(false);
+    expect(push({ entries: [{ ...ENTRY, date: "2026-08-01T00:00:00Z" }] }).ok).toBe(false);
+  });
+
+  it("accepts a leap day in a leap year and rejects it otherwise", () => {
+    expect(push({ entries: [{ ...ENTRY, date: "2028-02-29" }] }).ok).toBe(true);
+    expect(push({ entries: [{ ...ENTRY, date: "2027-02-29" }] }).ok).toBe(false);
+  });
+
+  it("rejects an over-long name rather than storing what other devices must render", () => {
+    expect(push({ habits: [{ ...HABIT, name: "x".repeat(121) }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, name: "x".repeat(120) }] }).ok).toBe(true);
+  });
+
+  it("rejects a target below one", () => {
+    expect(push({ habits: [{ ...HABIT, target: 0 }] }).ok).toBe(false);
+  });
+
+  it("validates each cadence variant", () => {
+    expect(push({ habits: [{ ...HABIT, cadence: { kind: "weekly", times: 3 } }] }).ok).toBe(true);
+    expect(push({ habits: [{ ...HABIT, cadence: { kind: "weekly", times: 0 } }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [1, 3] } }] }).ok).toBe(true);
+    expect(push({ habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [7] } }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, cadence: { kind: "monthly" } }] }).ok).toBe(false);
+  });
+
+  it("normalises weekdays so two devices fingerprint the same cadence alike", () => {
+    const result = push({ habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [3, 1, 3] } }] });
+    expect(result.ok && result.value.habits[0].cadence).toEqual({ kind: "weekdays", days: [1, 3] });
+  });
+
+  it("strips properties it was not expecting", () => {
+    const result = push({ habits: [{ ...HABIT, isAdmin: true }] });
+    expect(result.ok && "isAdmin" in result.value.habits[0]).toBe(false);
+  });
+
+  it("rejects a batch larger than one request may carry", () => {
+    const entries = Array.from({ length: 501 }, (_, i) => ({ ...ENTRY, count: i }));
+    expect(push({ entries }).ok).toBe(false);
+  });
+
+  it("names the offending index, since a push is chunked", () => {
+    const result = push({ entries: [ENTRY, { ...ENTRY, count: -1 }] });
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.message).toContain("entries[1]");
+  });
+
+  it("accepts null settings and rejects a malformed one", () => {
+    expect(push({ settings: null }).ok).toBe(true);
+    expect(push({ settings: { value: SETTINGS.value } }).ok).toBe(false);
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, theme: "neon" } } }).ok).toBe(false);
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, dayStartHour: 9 } } }).ok).toBe(false);
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, weekStartsOn: 2 } } }).ok).toBe(false);
+  });
+
+  it("accepts a tombstone", () => {
+    expect(push({ habits: [{ ...HABIT, deletedAt: 2000 }] }).ok).toBe(true);
+    expect(push({ habits: [{ ...HABIT, deletedAt: -5 }] }).ok).toBe(false);
+  });
+});

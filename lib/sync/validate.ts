@@ -1,0 +1,242 @@
+/**
+ * Payload validation for the sync endpoint.
+ *
+ * `/api/sync` accepts a body from any client, so nothing here trusts its input.
+ * Beyond rejecting malformed data, the caps matter for a specific reason: these
+ * records go back out to the user's *other* devices, so a field that is accepted
+ * here is a field every one of their devices will render. Bounding the sizes at
+ * the boundary keeps one bad request from becoming a payload that breaks the
+ * user's phone every time it syncs.
+ *
+ * Hand-written rather than schema-library-driven, matching the choice made for
+ * `lib/db.ts`: the surface is small and fixed, and this is the layer where a
+ * supply chain dependency is least welcome.
+ */
+
+import {
+  HABIT_COLORS,
+  type Cadence,
+  type Entry,
+  type Habit,
+  type HabitColorKey,
+  type Settings,
+} from "../types";
+import { MAX_ROWS_PER_REQUEST, type SyncPush } from "./protocol";
+
+/** Generous enough that no real habit hits it, small enough to be harmless. */
+const MAX_NAME = 120;
+const MAX_EMOJI = 16;
+const MAX_ID = 64;
+const MAX_TARGET = 1000;
+const MAX_COUNT = 100_000;
+const MAX_FAVOURITES = 5000;
+const MAX_ORDER = 100_000;
+
+export type ParseResult<T> = { ok: true; value: T } | { ok: false; message: string };
+
+function fail(message: string): { ok: false; message: string } {
+  return { ok: false, message };
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isId(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= MAX_ID;
+}
+
+/** A non-negative integer within the safe-integer range — every stamp and count. */
+function isCount(value: unknown, max: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;
+}
+
+function isStamp(value: unknown): value is number {
+  return isCount(value, Number.MAX_SAFE_INTEGER);
+}
+
+/**
+ * A civil date, checked for real existence rather than just shape.
+ *
+ * The round-trip comparison is what rejects '2026-02-30': `Date` would silently
+ * roll it forward to March 2nd, and a date that shifts under parsing is exactly
+ * the class of bug §3 exists to prevent.
+ */
+function isDayKey(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function parseCadence(value: unknown): ParseResult<Cadence> {
+  if (!isObject(value)) return fail("cadence must be an object");
+
+  switch (value.kind) {
+    case "daily":
+      return { ok: true, value: { kind: "daily" } };
+
+    case "weekdays": {
+      if (!Array.isArray(value.days)) return fail("cadence.days must be an array");
+      if (value.days.length > 7) return fail("cadence.days has more than seven days");
+      if (!value.days.every((d) => isCount(d, 6))) return fail("cadence.days must be 0–6");
+      // Deduplicated and sorted so the fingerprint in `protocol.ts` is stable
+      // across devices that happened to store the same days in another order.
+      const days = [...new Set(value.days as number[])].sort((a, b) => a - b);
+      return { ok: true, value: { kind: "weekdays", days } };
+    }
+
+    case "weekly": {
+      if (!isCount(value.times, 7) || value.times < 1) return fail("cadence.times must be 1–7");
+      return { ok: true, value: { kind: "weekly", times: value.times } };
+    }
+
+    default:
+      return fail(`unknown cadence kind: ${String(value.kind)}`);
+  }
+}
+
+function parseHabit(value: unknown): ParseResult<Habit> {
+  if (!isObject(value)) return fail("habit must be an object");
+  if (!isId(value.id)) return fail("habit.id must be a non-empty string");
+  if (typeof value.name !== "string" || value.name.length > MAX_NAME) {
+    return fail(`habit.name must be a string of at most ${MAX_NAME} characters`);
+  }
+  if (typeof value.emoji !== "string" || value.emoji.length > MAX_EMOJI) {
+    return fail("habit.emoji must be a short string");
+  }
+  if (!HABIT_COLORS.includes(value.color as HabitColorKey)) {
+    return fail(`habit.color must be one of: ${HABIT_COLORS.join(", ")}`);
+  }
+  if (!isCount(value.target, MAX_TARGET) || value.target < 1) {
+    return fail(`habit.target must be 1–${MAX_TARGET}`);
+  }
+  if (!isCount(value.order, MAX_ORDER)) return fail("habit.order must be a non-negative integer");
+  if (!isDayKey(value.createdAt)) return fail("habit.createdAt must be a YYYY-MM-DD date");
+  if (value.archivedAt !== null && !isDayKey(value.archivedAt)) {
+    return fail("habit.archivedAt must be a YYYY-MM-DD date or null");
+  }
+  if (!isStamp(value.updatedAt)) return fail("habit.updatedAt must be epoch ms");
+  if (value.deletedAt !== null && !isStamp(value.deletedAt)) {
+    return fail("habit.deletedAt must be epoch ms or null");
+  }
+
+  const cadence = parseCadence(value.cadence);
+  if (!cadence.ok) return cadence;
+
+  return {
+    ok: true,
+    // Rebuilt field by field rather than spread, so an unexpected property in the
+    // body cannot ride along into the database and back out to other devices.
+    value: {
+      id: value.id,
+      name: value.name,
+      emoji: value.emoji,
+      color: value.color as HabitColorKey,
+      cadence: cadence.value,
+      target: value.target,
+      order: value.order,
+      createdAt: value.createdAt,
+      archivedAt: value.archivedAt as string | null,
+      updatedAt: value.updatedAt,
+      deletedAt: value.deletedAt as number | null,
+    },
+  };
+}
+
+function parseEntry(value: unknown): ParseResult<Entry> {
+  if (!isObject(value)) return fail("entry must be an object");
+  if (!isId(value.habitId)) return fail("entry.habitId must be a non-empty string");
+  if (!isDayKey(value.date)) return fail("entry.date must be a YYYY-MM-DD date");
+  if (!isCount(value.count, MAX_COUNT)) return fail("entry.count must be a non-negative integer");
+  if (!isStamp(value.updatedAt)) return fail("entry.updatedAt must be epoch ms");
+
+  return {
+    ok: true,
+    value: {
+      habitId: value.habitId,
+      date: value.date,
+      count: value.count,
+      updatedAt: value.updatedAt,
+    },
+  };
+}
+
+function parseSettings(value: unknown): ParseResult<Settings> {
+  if (!isObject(value)) return fail("settings must be an object");
+  if (value.theme !== "system" && value.theme !== "light" && value.theme !== "dark") {
+    return fail("settings.theme must be system, light or dark");
+  }
+  if (value.weekStartsOn !== 0 && value.weekStartsOn !== 1) {
+    return fail("settings.weekStartsOn must be 0 or 1");
+  }
+  if (!isCount(value.dayStartHour, 6)) return fail("settings.dayStartHour must be 0–6");
+  if (!Array.isArray(value.favourites)) return fail("settings.favourites must be an array");
+  if (value.favourites.length > MAX_FAVOURITES) return fail("settings.favourites is too long");
+  if (!value.favourites.every(isId)) return fail("settings.favourites must be quote ids");
+
+  return {
+    ok: true,
+    value: {
+      theme: value.theme,
+      weekStartsOn: value.weekStartsOn,
+      dayStartHour: value.dayStartHour,
+      favourites: value.favourites as string[],
+    },
+  };
+}
+
+function parseList<T>(
+  value: unknown,
+  field: string,
+  parse: (item: unknown) => ParseResult<T>,
+): ParseResult<T[]> {
+  if (!Array.isArray(value)) return fail(`${field} must be an array`);
+  if (value.length > MAX_ROWS_PER_REQUEST) {
+    return fail(`${field} has more than ${MAX_ROWS_PER_REQUEST} records`);
+  }
+
+  const out: T[] = [];
+  for (let i = 0; i < value.length; i++) {
+    const parsed = parse(value[i]);
+    // The index is included because the client chunks its push: without it, a
+    // rejected batch gives no way to find the record at fault.
+    if (!parsed.ok) return fail(`${field}[${i}]: ${parsed.message}`);
+    out.push(parsed.value);
+  }
+  return { ok: true, value: out };
+}
+
+export function parseSyncPush(body: unknown): ParseResult<SyncPush> {
+  if (!isObject(body)) return fail("body must be a JSON object");
+  if (!isStamp(body.since)) return fail("since must be a non-negative integer");
+  if (body.accountId !== null && !isId(body.accountId)) {
+    return fail("accountId must be a non-empty string or null");
+  }
+
+  const habits = parseList(body.habits, "habits", parseHabit);
+  if (!habits.ok) return habits;
+
+  const entries = parseList(body.entries, "entries", parseEntry);
+  if (!entries.ok) return entries;
+
+  let settings: SyncPush["settings"] = null;
+  if (body.settings !== null && body.settings !== undefined) {
+    if (!isObject(body.settings)) return fail("settings must be an object or null");
+    if (!isStamp(body.settings.updatedAt)) return fail("settings.updatedAt must be epoch ms");
+
+    const value = parseSettings(body.settings.value);
+    if (!value.ok) return value;
+    settings = { value: value.value, updatedAt: body.settings.updatedAt };
+  }
+
+  return {
+    ok: true,
+    value: {
+      since: body.since,
+      accountId: body.accountId as string | null,
+      habits: habits.value,
+      entries: entries.value,
+      settings,
+    },
+  };
+}

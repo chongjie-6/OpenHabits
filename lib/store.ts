@@ -15,11 +15,14 @@
 import { useEffect, useSyncExternalStore } from "react";
 import * as db from "./db";
 import { todayKey } from "./dates";
+import type { LocalSnapshot, MergeResult } from "./sync/merge";
 import { applyTheme } from "./theme";
 import {
   DEFAULT_SETTINGS,
   entryKey,
   HABIT_COLORS,
+  normaliseHabit,
+  type AnyExportBundle,
   type Cadence,
   type DayKey,
   type Entry,
@@ -29,12 +32,28 @@ import {
   type Settings,
 } from "./types";
 
+/** What the sync layer is doing, for the benefit of the UI. */
+export type SyncStatus =
+  | { kind: "off" }
+  | { kind: "idle" }
+  | { kind: "syncing" }
+  | { kind: "error"; message: string };
+
 export type State = {
   /** False until IndexedDB has been read. Gate any data-dependent UI on this. */
   hydrated: boolean;
+  /** Live habits only. Deleted ones live in `tombstones` and never reach the UI. */
   habits: Habit[];
   entries: Map<string, Entry>;
   settings: Settings;
+  /**
+   * Deleted habits, retained so sync can propagate the deletion. Kept out of
+   * `habits` so no screen has to remember to filter them.
+   */
+  tombstones: Habit[];
+  settingsUpdatedAt: number;
+  sync: db.SyncMeta;
+  syncStatus: SyncStatus;
 };
 
 const EMPTY: State = {
@@ -42,6 +61,10 @@ const EMPTY: State = {
   habits: [],
   entries: new Map(),
   settings: DEFAULT_SETTINGS,
+  tombstones: [],
+  settingsUpdatedAt: 0,
+  sync: db.NO_SYNC,
+  syncStatus: { kind: "off" },
 };
 
 let state: State = EMPTY;
@@ -99,10 +122,14 @@ function hydrate(): Promise<void> {
         entries.set(entryKey(entry.habitId, entry.date), entry);
       }
       state = {
+        ...state,
         hydrated: true,
         habits: snapshot.habits,
         entries,
         settings: snapshot.settings,
+        tombstones: snapshot.tombstones,
+        settingsUpdatedAt: snapshot.settingsUpdatedAt,
+        sync: snapshot.sync,
       };
       // Reconcile the pre-paint localStorage guess with what was actually saved.
       applyTheme(snapshot.settings.theme);
@@ -196,6 +223,8 @@ export function addHabit(input: NewHabit): Habit {
     order,
     createdAt: today(),
     archivedAt: null,
+    updatedAt: Date.now(),
+    deletedAt: null,
   };
 
   state = { ...state, habits: [...state.habits, habit] };
@@ -209,7 +238,11 @@ export function addHabit(input: NewHabit): Habit {
 }
 
 export function updateHabit(id: string, patch: Partial<Omit<Habit, "id">>): void {
-  const habits = state.habits.map((h) => (h.id === id ? { ...h, ...patch } : h));
+  // `updatedAt` last, so a caller cannot accidentally pass a stamp that would
+  // make this edit lose to the version already on the server.
+  const habits = state.habits.map((h) =>
+    h.id === id ? { ...h, ...patch, updatedAt: Date.now() } : h,
+  );
   const updated = habits.find((h) => h.id === id);
   if (!updated) return;
 
@@ -218,15 +251,32 @@ export function updateHabit(id: string, patch: Partial<Omit<Habit, "id">>): void
   persist(() => db.putHabit(updated));
 }
 
+/**
+ * Delete a habit locally and leave a tombstone for the other devices.
+ *
+ * The habit leaves `habits` — so it is gone from every screen immediately, which
+ * is what the user asked for — and reappears in `tombstones`, which only sync
+ * reads. See `db.deleteHabitRecord` for why the row cannot simply be dropped.
+ */
 export function deleteHabit(id: string): void {
+  const habit = state.habits.find((h) => h.id === id);
+  if (!habit) return;
+
+  const tombstone: Habit = { ...habit, deletedAt: Date.now(), updatedAt: Date.now() };
+
   const entries = new Map(state.entries);
   for (const key of entries.keys()) {
     if (key.startsWith(`${id}:`)) entries.delete(key);
   }
 
-  state = { ...state, habits: state.habits.filter((h) => h.id !== id), entries };
+  state = {
+    ...state,
+    habits: state.habits.filter((h) => h.id !== id),
+    tombstones: [...state.tombstones, tombstone],
+    entries,
+  };
   emit();
-  persist(() => db.deleteHabitRecord(id));
+  persist(() => db.deleteHabitRecord(tombstone));
 }
 
 export function moveHabit(id: string, direction: -1 | 1): void {
@@ -245,9 +295,14 @@ export function moveHabit(id: string, direction: -1 | 1): void {
   if (target < 0 || target >= group.length) return;
 
   const [a, b] = [group[index], group[target]];
+  const now = Date.now();
   const habits = ordered
     .map((h) =>
-      h.id === a.id ? { ...h, order: b.order } : h.id === b.id ? { ...h, order: a.order } : h,
+      h.id === a.id
+        ? { ...h, order: b.order, updatedAt: now }
+        : h.id === b.id
+          ? { ...h, order: a.order, updatedAt: now }
+          : h,
     )
     .sort((x, y) => x.order - y.order);
 
@@ -258,10 +313,11 @@ export function moveHabit(id: string, direction: -1 | 1): void {
 
 export function updateSettings(patch: Partial<Settings>): void {
   const settings = { ...state.settings, ...patch };
-  state = { ...state, settings };
+  const settingsUpdatedAt = Date.now();
+  state = { ...state, settings, settingsUpdatedAt };
   if (patch.theme !== undefined) applyTheme(patch.theme);
   emit();
-  persist(() => db.putSettings(settings));
+  persist(() => db.putSettings(settings, settingsUpdatedAt));
 }
 
 export function toggleFavourite(quoteId: string): void {
@@ -275,9 +331,17 @@ export function toggleFavourite(quoteId: string): void {
 // Backup — the v1 answer to both "back up my streaks" and "move devices"
 // ---------------------------------------------------------------------------
 
+/**
+ * Tombstones are deliberately left out.
+ *
+ * A backup is what the user *has*, not a log of what they discarded, and a file
+ * they may open in a text editor should not list habits they deleted. Nothing is
+ * lost by the omission: a restored habit carries its original `updatedAt`, so if
+ * the account already holds a later tombstone for it, sync keeps it deleted.
+ */
 export function exportBundle(): ExportBundle {
   return {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     habits: state.habits,
     entries: [...state.entries.values()],
@@ -287,50 +351,215 @@ export function exportBundle(): ExportBundle {
 
 export type ImportMode = "merge" | "replace";
 
-export function importBundle(bundle: ExportBundle, mode: ImportMode): void {
-  if (bundle.version !== 1) {
-    throw new Error(`Unsupported backup version: ${bundle.version}`);
+export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
+  if (bundle.version !== 1 && bundle.version !== 2) {
+    throw new Error(`Unsupported backup version: ${(bundle as { version: number }).version}`);
   }
+
+  // v1 files predate sync and carry no `updatedAt`/`deletedAt`; `normaliseHabit`
+  // supplies both without letting an old record outrank a newer edit.
+  const incomingHabits = bundle.habits.map(normaliseHabit);
 
   let habits: Habit[];
   let entries: Map<string, Entry>;
 
   if (mode === "replace") {
-    habits = bundle.habits;
+    habits = incomingHabits;
     entries = new Map(bundle.entries.map((e) => [entryKey(e.habitId, e.date), e]));
   } else {
     const byId = new Map(state.habits.map((h) => [h.id, h]));
-    for (const habit of bundle.habits) if (!byId.has(habit.id)) byId.set(habit.id, habit);
+    for (const habit of incomingHabits) if (!byId.has(habit.id)) byId.set(habit.id, habit);
     habits = [...byId.values()];
 
     entries = new Map(state.entries);
     for (const incoming of bundle.entries) {
       const key = entryKey(incoming.habitId, incoming.date);
       const existing = entries.get(key);
-      // Last write wins, which is also the rule a future sync layer will use.
+      // Last write wins — the same rule `lib/sync/merge.ts` applies.
       if (!existing || incoming.updatedAt > existing.updatedAt) entries.set(key, incoming);
     }
   }
 
+  // Renumbering is a genuine local edit, so the habits it touches get a fresh
+  // stamp and will propagate. The ones it leaves alone keep the stamp they came
+  // with, which is what stops an old backup from outranking newer server data.
+  const now = Date.now();
   habits = habits
     .sort((a, b) => a.order - b.order)
-    .map((h, i) => ({ ...h, order: i }));
+    .map((h, i) => (h.order === i ? h : { ...h, order: i, updatedAt: now }));
 
-  const settings = mode === "replace" ? { ...DEFAULT_SETTINGS, ...bundle.settings } : state.settings;
+  const replacing = mode === "replace";
+  const settings = replacing ? { ...DEFAULT_SETTINGS, ...bundle.settings } : state.settings;
+  const settingsUpdatedAt = replacing ? now : state.settingsUpdatedAt;
 
-  state = { hydrated: true, habits, entries, settings };
+  state = {
+    ...state,
+    hydrated: true,
+    habits,
+    entries,
+    settings,
+    settingsUpdatedAt,
+    // A replace drops the tombstones this device was holding. They are only ever
+    // a message to peers, and any peer that has not had them yet will not get
+    // them — accepted, because the alternative is a restore that silently
+    // re-deletes habits the backup was meant to bring back.
+    tombstones: replacing ? [] : state.tombstones,
+  };
   emit();
 
   persist(async () => {
-    if (mode === "replace") await db.clearAll();
+    if (replacing) await db.clearAll();
     await db.putHabits(habits);
     await db.putEntries([...entries.values()]);
-    await db.putSettings(settings);
+    await db.putSettings(settings, settingsUpdatedAt);
+    if (replacing) await db.putSyncMeta(state.sync);
   });
 }
 
-export function resetEverything(): void {
-  state = { hydrated: true, habits: [], entries: new Map(), settings: DEFAULT_SETTINGS };
+// ---------------------------------------------------------------------------
+// Sync interface
+//
+// The dependency runs one way: `lib/sync/client.ts` imports from here, and this
+// file knows nothing about it. Sync is a consumer of the store, not a layer
+// underneath it — which is what keeps the app whole with sync switched off.
+// ---------------------------------------------------------------------------
+
+/** The store's contents in the shape `lib/sync/merge.ts` expects. */
+export function localSnapshot(): LocalSnapshot {
+  return {
+    // Recombined here: the merge rules need to see tombstones to apply them,
+    // even though no screen does.
+    habits: [...state.habits, ...state.tombstones],
+    entries: state.entries,
+    settings: { value: state.settings, updatedAt: state.settingsUpdatedAt },
+  };
+}
+
+export function syncMeta(): db.SyncMeta {
+  return state.sync;
+}
+
+export function setSyncStatus(syncStatus: SyncStatus): void {
+  if (state.syncStatus.kind === syncStatus.kind) {
+    // Status changes are frequent and mostly invisible; re-rendering the tree for
+    // an identical one is pure cost.
+    if (syncStatus.kind !== "error") return;
+    if ((state.syncStatus as { message: string }).message === syncStatus.message) return;
+  }
+  state = { ...state, syncStatus };
   emit();
-  persist(() => db.clearAll());
+}
+
+export function saveSyncMeta(meta: db.SyncMeta): void {
+  state = { ...state, sync: meta };
+  emit();
+  persist(() => db.putSyncMeta(meta));
+}
+
+/**
+ * Adopt a merged pull.
+ *
+ * The in-memory state is updated first and the disk write follows, matching the
+ * optimistic path used everywhere else (§7.2). The ordering is safe in the
+ * direction that matters: if the write fails, the next reload re-reads the *old*
+ * cursor and pulls the same payload again, which the merge is built to absorb.
+ * The reverse — a cursor on disk ahead of the data it describes — is the one
+ * outcome that loses records, and `db.applyMerge` writes both in one transaction
+ * so it cannot happen.
+ */
+export function applyPulled(merged: MergeResult, meta: db.SyncMeta): void {
+  const { snapshot } = merged;
+  const live = snapshot.habits.filter((h) => h.deletedAt === null);
+  const tombstones = snapshot.habits.filter((h) => h.deletedAt !== null);
+
+  const themeChanged =
+    merged.settingsChanged && snapshot.settings.value.theme !== state.settings.theme;
+
+  state = {
+    ...state,
+    habits: live,
+    tombstones,
+    entries: snapshot.entries,
+    settings: snapshot.settings.value,
+    settingsUpdatedAt: snapshot.settings.updatedAt,
+    sync: meta,
+  };
+  // The pre-paint script in `<head>` reads `localStorage`, so a theme that
+  // arrived from another device has to be mirrored there or it would not survive
+  // the next reload.
+  if (themeChanged) applyTheme(snapshot.settings.value.theme);
+  emit();
+
+  persist(() =>
+    db.applyMerge({
+      habits: merged.changedHabits,
+      entries: merged.changedEntries,
+      purgedHabitIds: merged.purgedHabitIds,
+      settings: merged.settingsChanged ? snapshot.settings : null,
+      sync: meta,
+    }),
+  );
+}
+
+/**
+ * Hand this device over to a different account.
+ *
+ * Signing in as someone else must not merge two people's habits, and it must not
+ * push the previous account's data up under the new identity. The local store is
+ * emptied and the cursor reset, so the new account's history arrives from the
+ * server as a first sync.
+ */
+export function adoptAccount(accountId: string | null): void {
+  const meta: db.SyncMeta = { ...db.NO_SYNC, accountId };
+
+  state = {
+    ...state,
+    habits: [],
+    tombstones: [],
+    entries: new Map(),
+    settings: DEFAULT_SETTINGS,
+    settingsUpdatedAt: 0,
+    sync: meta,
+  };
+  applyTheme(DEFAULT_SETTINGS.theme);
+  emit();
+
+  persist(async () => {
+    await db.clearAll();
+    await db.putSyncMeta(meta);
+  });
+}
+
+/**
+ * Delete everything on this device — and, if signed in, everywhere else.
+ *
+ * The habits become tombstones rather than vanishing. On a synced account a
+ * local-only wipe would be undone by the next pull, so the button would appear
+ * to work and then quietly put a year of data back; propagating the deletion is
+ * the only reading of "reset everything" that survives contact with sync.
+ */
+export function resetEverything(): void {
+  const now = Date.now();
+  const tombstones = [
+    ...state.tombstones,
+    ...state.habits.map((h) => ({ ...h, deletedAt: now, updatedAt: now })),
+  ];
+
+  state = {
+    ...state,
+    hydrated: true,
+    habits: [],
+    entries: new Map(),
+    settings: DEFAULT_SETTINGS,
+    settingsUpdatedAt: now,
+    tombstones,
+  };
+  emit();
+
+  persist(async () => {
+    await db.clearAll();
+    await db.putHabits(tombstones);
+    await db.putSettings(DEFAULT_SETTINGS, now);
+    await db.putSyncMeta(state.sync);
+  });
 }
