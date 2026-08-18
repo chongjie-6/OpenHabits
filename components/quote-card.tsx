@@ -79,7 +79,7 @@ function QuoteCardPlaceholder() {
   return (
     <div
       aria-hidden="true"
-      className="min-h-[164px] rounded-card border border-border bg-surface p-5"
+      className="min-h-41 rounded-card border border-border bg-surface p-5"
     >
       <div className="space-y-2.5">
         <div className="h-4 w-full rounded bg-surface-2" />

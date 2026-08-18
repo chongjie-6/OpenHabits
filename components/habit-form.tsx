@@ -163,7 +163,7 @@ export function HabitForm({
               max={7}
               value={times}
               onChange={(e) => setTimes(Number(e.target.value))}
-              className="flex-1 accent-[var(--accent)]"
+              className="flex-1 accent-accent"
             />
             <span className="w-28 shrink-0 text-right font-mono tabular-nums text-foreground">
               {times}× per week
@@ -181,7 +181,7 @@ export function HabitForm({
             value={target}
             onChange={(e) => setTarget(Number(e.target.value))}
             aria-label="Times per day"
-            className="flex-1 accent-[var(--accent)]"
+            className="flex-1 accent-accent"
           />
           <span className="w-20 shrink-0 text-right font-mono text-[13px] tabular-nums text-foreground">
             {target === 1 ? "just once" : `${target}×`}
