@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { InstallHint } from "@/components/install-hint";
+import { InstallCard } from "@/components/DownloadAppButton";
 import { habitColor } from "@/lib/colors";
 import { QUOTE_COUNT } from "@/lib/quotes";
 import {
@@ -57,7 +57,7 @@ export default function SettingsPage() {
     <section className="space-y-6">
       <h1 className="text-[15px] font-semibold tracking-tight">Settings</h1>
 
-      <InstallHint />
+      <InstallCard />
 
       <Group title="Appearance">
         <Choice<Settings["theme"]>

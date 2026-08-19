@@ -47,7 +47,7 @@ Data flow: React client components → `lib/store.ts` (in-memory cache + `useSyn
 - **Deletes write tombstones**, never remove rows. Tombstones live in `state.tombstones`, out of `state.habits`, so no screen has to remember to filter them. Entries deliberately have no tombstone.
 - **Dates are local civil `YYYY-MM-DD` strings (`DayKey`).** `lib/dates.ts` is the only module that should call `new Date()` to produce one; day maths is done in UTC-space to keep DST from shifting a boundary. It carries the largest share of the test suite.
 - **Derived data is never persisted** — `lib/history.ts` and `lib/streaks.ts` rebuild a full year well inside the frame budget, pinned by `tests/history.bench.test.ts`.
-- **Nothing user- or date-dependent may render on the server.** Routes are static, and the service worker caches that HTML — a server-computed date would pin every visitor to the build day's quote. Gate data-dependent subtrees on `store.hydrated`; read the clock through `useToday()`, not a `setState` in an effect.
+- **Nothing user- or date-dependent may render on the server.** Routes are static, and the service worker caches that HTML — a server-computed date would pin every visitor to the build day's quote. Gate data-dependent subtrees on `store.hydrated`; read the clock through `useToday()`, not a `setState` in an effect. For state that lives in the browser rather than the store — `display-mode`, `beforeinstallprompt` — the `useSyncExternalStore` **server snapshot deliberately reports the hidden case**, so the UI only ever appears after hydration and never disappears. Writing it the honest way round makes the SW cache an install banner for someone who already installed.
 - **The theme is the one exception**: a blocking inline script in `<head>` (`lib/theme.ts:THEME_SCRIPT`) reads `localStorage` pre-paint, so theme is mirrored there as well as into IndexedDB. Any code path that changes theme must call `applyTheme`.
 - **`--muted` passes WCAG AA with no headroom.** Never apply an opacity modifier to it (`text-muted/80` and friends were all removed in an audit). If something needs to recede further, give it a smaller role, not a thinner colour.
 
@@ -60,3 +60,5 @@ Migrations are generated, reviewed and committed — never `drizzle-kit push`, w
 ### Known gaps
 
 `lib/sync/client.ts` gates on `NEXT_PUBLIC_SYNC_ENABLED` as a placeholder for a real session check (§13.6). Open questions are listed in DESIGN.md §12 and §13.8 — check them before "fixing" something that was decided deliberately.
+
+DESIGN.md records reversals rather than overwriting them: §8.4 now intercepts `beforeinstallprompt` after originally refusing to. When a section reads as a reversal, the current behaviour is the one described second.

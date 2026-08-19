@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstallCard } from "@/components/DownloadAppButton";
 import { QuoteCard } from "@/components/QuoteCard";
 import { TodayList } from "@/components/TodayList";
 
@@ -15,6 +16,11 @@ export default function TodayPage() {
         </Link>
       </div>
       <TodayList />
+      {/* Renders nothing once the app is installed, so the tab's main job
+          — ticking habits — keeps the top of the screen. */}
+      <div className="mt-6 pb-4">
+        <InstallCard />
+      </div>
     </>
   );
 }

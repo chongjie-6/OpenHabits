@@ -468,7 +468,14 @@ Not needed in v1 — there are no server round-trips to fail. It becomes relevan
 
 ### 8.4 Install prompt
 
-Per the guide's recommendation, no `beforeinstallprompt` interception — it isn't supported on iOS Safari and produces a two-tier experience. Instead: browsers show their own prompt when the criteria are met, and iOS users get a dismissible one-time hint (Share → Add to Home Screen) shown only when `/iPad|iPhone|iPod/` matches and `matchMedia("(display-mode: standalone)")` is false.
+**Reversed.** The original decision, per the guide's recommendation, was no `beforeinstallprompt` interception: it isn't supported on iOS Safari, so a hand-rolled button produces a two-tier experience — a real button on Chromium and nothing on the platform that most needs the help. What shipped instead was a passive text hint (`InstallHint`).
+
+That reasoning holds only if the second tier is *nothing*. `components/DownloadAppButton.tsx` handles the split rather than avoiding it, so the app now does intercept:
+
+- **Chromium** — `beforeinstallprompt` is caught at module scope (it fires before React hydrates, and only once) and `preventDefault()`ed, so the browser's own bar does not compete with ours. The button replays it on click. The event is one-shot: once spent, the state falls back to the manual sheet.
+- **Everywhere else** — a `<dialog>` with the actual steps, keyed off the user agent, because "tap Share" is wrong advice in Chrome on iOS (the menu is under ⋯) and useless inside the Instagram or TikTok webview, which cannot install at all. That last case gets a **Copy link** button instead, which is the only thing that helps there.
+
+Install state is exposed through `useSyncExternalStore` over `matchMedia("(display-mode: standalone)")` plus iOS Safari's older `navigator.standalone`. **The server snapshot claims "already installed"**, so no install UI is in the prerendered HTML — it only ever appears, never disappears, which keeps §2's static-prerender rule intact. `InstallCard` (same module) is the Settings-screen presentation and is gated on the same state, so the card never wraps a button that rendered null.
 
 ### 8.5 Reminders — a known limitation
 
@@ -507,7 +514,7 @@ components/
   AddHabit.tsx            thin wrapper over HabitForm
   HabitDetail.tsx         per-habit grid, editing, archive, delete
   Heatmap.tsx             SVG, delegated events, both orientations, legend
-  install-hint.tsx
+  DownloadAppButton.tsx   install prompt, per-browser instructions sheet, InstallCard
 
 lib/
   types.ts                domain types + DEFAULT_SETTINGS + Synced metadata
