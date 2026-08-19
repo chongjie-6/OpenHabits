@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, entryKey, type Entry, type Habit } from "../types";
-import { collectPush, mergeIncoming, watermarkAfterPush, type LocalSnapshot } from "./merge";
+import { DEFAULT_SETTINGS, entryKey, type Entry, type Habit } from "@/lib/types";
+import { collectPush, mergeIncoming, watermarkAfterPush, type LocalSnapshot } from "@/lib/sync/merge";
 
 function habit(id: string, updatedAt: number, over: Partial<Habit> = {}): Habit {
   return {

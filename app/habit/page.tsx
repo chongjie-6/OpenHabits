@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { HabitDetail } from "@/components/habit-detail";
+import { HabitDetail } from "@/components/HabitDetail";
 
 /**
  * Deliberately `/habit?id=…` rather than `/habit/[id]`.

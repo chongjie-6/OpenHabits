@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { DayStat } from "./history";
-import { computeStreaks } from "./streaks";
+import type { DayStat } from "@/lib/history";
+import { computeStreaks } from "@/lib/streaks";
 
 /** Builds an ascending run of stats from a shorthand: 1 = complete, 0 = missed,
  *  'p' = partial, 'r' = rest day (nothing scheduled). */

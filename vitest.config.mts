@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["lib/**/*.test.ts"],
+    include: ["tests/**/*.test.ts"],
     // The sync integration test boots an in-process Postgres per case.
     testTimeout: 30_000,
   },

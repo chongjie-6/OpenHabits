@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Heatmap, HeatmapLegend } from "@/components/heatmap";
-import { describeCadence, HabitForm } from "@/components/habit-form";
+import { Heatmap, HeatmapLegend } from "@/components/Heatmap";
+import { describeCadence, HabitForm } from "@/components/HabitForm";
 import { habitColor } from "@/lib/colors";
 import { addDays, formatDayFull, startOfWeek } from "@/lib/dates";
 import { buildHabitHistory } from "@/lib/history";

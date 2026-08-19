@@ -13,10 +13,10 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { buildHistory, perHabitTotals } from "./history";
-import { computeStreaks } from "./streaks";
-import { addDays, todayKey } from "./dates";
-import { entryKey, type Entry, type Habit } from "./types";
+import { buildHistory, perHabitTotals } from "@/lib/history";
+import { computeStreaks } from "@/lib/streaks";
+import { addDays, todayKey } from "@/lib/dates";
+import { entryKey, type Entry, type Habit } from "@/lib/types";
 
 /** 52 weeks of grid, the widest the desktop layout shows. */
 const SPAN_DAYS = 371;

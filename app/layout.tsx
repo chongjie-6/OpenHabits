@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { BottomNav, Hydrator } from "@/components/app-chrome";
+import { BottomNav, Hydrator } from "@/components/AppChrome";
 import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 

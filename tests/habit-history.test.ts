@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildHabitHistory } from "./history";
-import { entryKey, type Cadence, type Entry, type Habit } from "./types";
+import { buildHabitHistory } from "@/lib/history";
+import { entryKey, type Cadence, type Entry, type Habit } from "@/lib/types";
 
 function habit(cadence: Cadence, extra: Partial<Habit> = {}): Habit {
   return {

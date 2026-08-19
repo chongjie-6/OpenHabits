@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HabitForm } from "@/components/habit-form";
+import { HabitForm } from "@/components/HabitForm";
 import { addHabit } from "@/lib/store";
 
 export function AddHabit() {

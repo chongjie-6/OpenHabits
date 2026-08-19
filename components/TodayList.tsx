@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { AddHabit } from "@/components/add-habit";
-import { HabitRow } from "@/components/habit-row";
+import { AddHabit } from "@/components/AddHabit";
+import { HabitRow } from "@/components/HabitRow";
 import { levelColor } from "@/lib/colors";
 import { addDays, formatDayLong } from "@/lib/dates";
 import { buildHistory, habitsForDay } from "@/lib/history";

@@ -17,12 +17,12 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { SyncPull, SyncPush } from "../sync/protocol";
-import { DEFAULT_SETTINGS, type Entry, type Habit } from "../types";
-import type { SyncUser } from "./auth";
-import type { Db } from "./db";
-import * as schema from "./schema";
-import { AccountMismatchError, runSync } from "./sync-store";
+import type { SyncPull, SyncPush } from "@/lib/sync/protocol";
+import { DEFAULT_SETTINGS, type Entry, type Habit } from "@/lib/types";
+import type { SyncUser } from "@/lib/server/auth";
+import type { Db } from "@/lib/server/db";
+import * as schema from "@/lib/server/schema";
+import { AccountMismatchError, runSync } from "@/lib/server/sync-store";
 
 const MIGRATIONS_DIR = fileURLToPath(new URL("../../drizzle", import.meta.url));
 

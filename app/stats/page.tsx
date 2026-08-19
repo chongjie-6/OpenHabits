@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { HabitRow } from "@/components/habit-row";
-import { Heatmap, HeatmapLegend } from "@/components/heatmap";
+import { HabitRow } from "@/components/HabitRow";
+import { Heatmap, HeatmapLegend } from "@/components/Heatmap";
 import { habitColor } from "@/lib/colors";
 import { addDays, formatDayFull, startOfWeek } from "@/lib/dates";
 import { buildHistory, habitsForDay, perHabitTotals } from "@/lib/history";

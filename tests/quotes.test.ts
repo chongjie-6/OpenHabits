@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { QUOTES } from "@/data/quotes";
-import { addDays } from "./dates";
-import { deckFor, quoteForDay, QUOTE_COUNT, upcomingSchedule } from "./quotes";
+import { addDays } from "@/lib/dates";
+import { deckFor, quoteForDay, QUOTE_COUNT, upcomingSchedule } from "@/lib/quotes";
 
 describe("the deck", () => {
   it("is deterministic — the same day always yields the same quote", () => {

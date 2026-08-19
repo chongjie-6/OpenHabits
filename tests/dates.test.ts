@@ -7,7 +7,7 @@ import {
   weekdayIndex,
   weekdayInitials,
   weekdayOf,
-} from "./dates";
+} from "@/lib/dates";
 
 /**
  * DESIGN.md §9 calls this the file most likely to harbour bugs. Everything here

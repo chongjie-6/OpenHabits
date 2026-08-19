@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { QuoteCard } from "@/components/quote-card";
-import { TodayList } from "@/components/today-list";
+import { QuoteCard } from "@/components/QuoteCard";
+import { TodayList } from "@/components/TodayList";
 
 export default function TodayPage() {
   return (

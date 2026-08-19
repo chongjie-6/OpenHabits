@@ -499,14 +499,14 @@ app/
   globals.css             tokens, ramps, @theme mapping, safe-area utilities
 
 components/
-  app-chrome.tsx          Hydrator + BottomNav
-  quote-card.tsx          client — see §7.1 for why
-  today-list.tsx
-  habit-row.tsx           the tick target
-  habit-form.tsx          shared by create and edit, plus describeCadence
-  add-habit.tsx           thin wrapper over HabitForm
-  habit-detail.tsx        per-habit grid, editing, archive, delete
-  heatmap.tsx             SVG, delegated events, both orientations, legend
+  AppChrome.tsx           Hydrator + BottomNav
+  QuoteCard.tsx           client — see §7.1 for why
+  TodayList.tsx
+  HabitRow.tsx            the tick target
+  HabitForm.tsx           shared by create and edit, plus describeCadence
+  AddHabit.tsx            thin wrapper over HabitForm
+  HabitDetail.tsx         per-habit grid, editing, archive, delete
+  Heatmap.tsx             SVG, delegated events, both orientations, legend
   install-hint.tsx
 
 lib/
@@ -579,7 +579,7 @@ Two design decisions turned out to be load-bearing and are pinned by tests: the 
 
 Measured in the phase-7 audit (§11) with Lighthouse 13.4.1, mobile emulation, simulated Slow 4G and 4× CPU throttling, against `next start`. Scores: **performance 95–96, accessibility 100, best practices 100, SEO 100** across `/`, `/week`, `/stats`, `/settings`, `/quotes`. CLS is 0–0.004 and TBT 40–50ms everywhere — both comfortably good.
 
-The heatmap figure covers the `buildHistory` → `computeStreaks` pipeline, pinned by `lib/history.bench.test.ts`. It scales sub-linearly (4× the habits costs 2.4× the time), so the O(n²) regression the budget exists to catch would be caught. Paint cost is not included and still needs a real device.
+The heatmap figure covers the `buildHistory` → `computeStreaks` pipeline, pinned by `tests/history.bench.test.ts`. It scales sub-linearly (4× the habits costs 2.4× the time), so the O(n²) regression the budget exists to catch would be caught. Paint cost is not included and still needs a real device.
 
 > **LCP is over budget for a structural reason, not a fixable one.** The LCP element is the quote `<blockquote>`, and §7.1 forbids rendering it on the server — a static prerender would pin every visitor to the build day's quote. So LCP cannot fire until the JS has loaded and hydrated: unthrottled the breakdown is 7ms TTFB and 144ms element render delay, and the 2.8s figure is that pipeline under Lighthouse's deliberately pessimistic mobile simulation.
 >
@@ -715,11 +715,11 @@ The client states which account its data belongs to on every request, and the se
 
 ### 13.7 What is tested
 
-`lib/server/sync-store.test.ts` runs against real Postgres in-process (PGlite, Postgres compiled to WebAssembly), applying the committed migrations verbatim. That matters more here than elsewhere: the delicate parts are all SQL-level — a sequence assigned inside `ON CONFLICT DO UPDATE`, a row-value `IN`, a composite foreign key, an advisory lock — and a test double would check none of them.
+`tests/server/sync-store.test.ts` runs against real Postgres in-process (PGlite, Postgres compiled to WebAssembly), applying the committed migrations verbatim. That matters more here than elsewhere: the delicate parts are all SQL-level — a sequence assigned inside `ON CONFLICT DO UPDATE`, a row-value `IN`, a composite foreign key, an advisory lock — and a test double would check none of them.
 
 Covered: convergence, stale-write rejection, tombstone propagation and cascade, resurrection attempts by a lagging peer, orphan entries, account isolation under colliding client-generated ids, mismatch refusal, idempotent replay, and a 600-entry history pulled across multiple trips with no gaps or repeats.
 
-`lib/sync/merge.test.ts` covers the merge rules as pure functions, including the tie-symmetry case that caught the `>=` bug during the build. `lib/sync/validate.test.ts` covers the endpoint's input validation.
+`tests/sync/merge.test.ts` covers the merge rules as pure functions, including the tie-symmetry case that caught the `>=` bug during the build. `tests/sync/validate.test.ts` covers the endpoint's input validation.
 
 ### 13.8 Open questions
 

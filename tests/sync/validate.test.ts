@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSyncPush } from "./validate";
+import { parseSyncPush } from "@/lib/sync/validate";
 
 const HABIT = {
   id: "h1",

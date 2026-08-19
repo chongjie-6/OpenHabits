@@ -11,9 +11,9 @@ npm run dev              # next dev
 npm run build            # next build
 npm start                # next start (use for Lighthouse / perf checks)
 npm run lint             # eslint (flat config, eslint-config-next core-web-vitals + typescript)
-npm test                 # vitest run — lib/**/*.test.ts only
+npm test                 # vitest run — tests/**/*.test.ts only
 npm run test:watch
-npx vitest run lib/sync/merge.test.ts            # single file
+npx vitest run tests/sync/merge.test.ts          # single file
 npx vitest run -t "takes the later write"        # single case by name
 npm run icons            # regenerate public/icon-*.png + app/apple-icon.png
 npm run db:generate      # drizzle-kit generate — write a migration
@@ -23,9 +23,13 @@ npm run db:studio
 
 There is no typecheck script; `npm run build` is the typecheck.
 
-Tests live beside the code in `lib/` and cover pure logic only — there are no component or E2E tests. `lib/server/sync-store.test.ts` boots a real Postgres in-process (PGlite, WASM) per case and applies the committed `drizzle/` migrations verbatim, hence the 30s `testTimeout`. Vitest aliases `server-only` to its empty module so `lib/server/*` is importable in tests.
+Tests all live under `tests/`, mirroring the `lib/` tree they cover (`lib/sync/merge.ts` → `tests/sync/merge.test.ts`), and reach their subjects through the `@/` alias rather than relative paths. They cover pure logic only — there are no component or E2E tests. `tests/server/sync-store.test.ts` boots a real Postgres in-process (PGlite, WASM) per case and applies the committed `drizzle/` migrations verbatim, hence the 30s `testTimeout`. Vitest aliases `server-only` to its empty module so `lib/server/*` is importable in tests.
 
 `DATABASE_URL` etc. are all optional — see `.env.example`. With none set, the app runs exactly as it did before sync existed.
+
+## Conventions
+
+- **Components are PascalCase — the file and the export.** `components/DownloadAppButton.tsx` exporting `DownloadAppButton`. All of `components/` follows this. A file exporting several components takes the name of its primary one, or of the group when they are peers (`AppChrome.tsx` → `Hydrator` + `BottomNav`). Modules under `lib/` stay kebab-case (`use-today.ts`).
 
 ## Architecture
 
@@ -42,7 +46,7 @@ Data flow: React client components → `lib/store.ts` (in-memory cache + `useSyn
 - **Last-write-wins ties break on content fingerprint**, not on "incoming wins" — otherwise two devices swap values forever instead of converging. The rule lives once, in `lib/sync/protocol.ts:wins`, and the server calls the same function the client does. Do not re-express it as SQL.
 - **Deletes write tombstones**, never remove rows. Tombstones live in `state.tombstones`, out of `state.habits`, so no screen has to remember to filter them. Entries deliberately have no tombstone.
 - **Dates are local civil `YYYY-MM-DD` strings (`DayKey`).** `lib/dates.ts` is the only module that should call `new Date()` to produce one; day maths is done in UTC-space to keep DST from shifting a boundary. It carries the largest share of the test suite.
-- **Derived data is never persisted** — `lib/history.ts` and `lib/streaks.ts` rebuild a full year well inside the frame budget, pinned by `lib/history.bench.test.ts`.
+- **Derived data is never persisted** — `lib/history.ts` and `lib/streaks.ts` rebuild a full year well inside the frame budget, pinned by `tests/history.bench.test.ts`.
 - **Nothing user- or date-dependent may render on the server.** Routes are static, and the service worker caches that HTML — a server-computed date would pin every visitor to the build day's quote. Gate data-dependent subtrees on `store.hydrated`; read the clock through `useToday()`, not a `setState` in an effect.
 - **The theme is the one exception**: a blocking inline script in `<head>` (`lib/theme.ts:THEME_SCRIPT`) reads `localStorage` pre-paint, so theme is mirrored there as well as into IndexedDB. Any code path that changes theme must call `applyTheme`.
 - **`--muted` passes WCAG AA with no headroom.** Never apply an opacity modifier to it (`text-muted/80` and friends were all removed in an audit). If something needs to recede further, give it a smaller role, not a thinner colour.
