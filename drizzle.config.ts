@@ -13,7 +13,10 @@ import { defineConfig } from "drizzle-kit";
  */
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./lib/server/schema.ts",
+  // Two files: this app's own tables, and the ones Better Auth owns. Separate
+  // modules, one migration history — see `lib/server/auth-schema.ts` for why the
+  // tables are kept apart in the first place.
+  schema: ["./lib/server/schema.ts", "./lib/server/auth-schema.ts"],
   out: "./drizzle",
   dbCredentials: {
     url: process.env.DATABASE_URL!,

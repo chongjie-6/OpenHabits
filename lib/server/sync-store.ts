@@ -29,7 +29,7 @@ import {
   type SyncPush,
 } from "../sync/protocol";
 import type { Entry, Habit, HabitColorKey } from "../types";
-import type { SyncUser } from "./auth";
+import type { SyncUser } from "./auth-types";
 import type { Db } from "./db";
 import { entries, habits, settings, users } from "./schema";
 

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSessionSync } from "@/lib/session";
 import { useHydrate } from "@/lib/store";
 import { useSync } from "@/lib/sync/client";
 
@@ -12,6 +13,10 @@ import { useSync } from "@/lib/sync/client";
  */
 export function Hydrator() {
   useHydrate();
+  // Reconciles the local "am I signed in" hint against the real session. Order
+  // relative to `useSync` does not matter: a hint a render out of date costs at
+  // most a delayed first sync, and the server decides either way.
+  useSessionSync();
   // Waits for hydration internally, and is inert when the user is not signed in
   // or the deployment has no database.
   useSync();

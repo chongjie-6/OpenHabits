@@ -48,17 +48,21 @@ Data flow: React client components → `lib/store.ts` (in-memory cache + `useSyn
 - **Dates are local civil `YYYY-MM-DD` strings (`DayKey`).** `lib/dates.ts` is the only module that should call `new Date()` to produce one; day maths is done in UTC-space to keep DST from shifting a boundary. It carries the largest share of the test suite.
 - **Derived data is never persisted** — `lib/history.ts` and `lib/streaks.ts` rebuild a full year well inside the frame budget, pinned by `tests/history.bench.test.ts`.
 - **Nothing user- or date-dependent may render on the server.** Routes are static, and the service worker caches that HTML — a server-computed date would pin every visitor to the build day's quote. Gate data-dependent subtrees on `store.hydrated`; read the clock through `useToday()`, not a `setState` in an effect. For state that lives in the browser rather than the store — `display-mode`, `beforeinstallprompt` — the `useSyncExternalStore` **server snapshot deliberately reports the hidden case**, so the UI only ever appears after hydration and never disappears. Writing it the honest way round makes the SW cache an install banner for someone who already installed.
+- **`NEXT_PUBLIC_SYNC_ENABLED` is gone.** "Should this client sync" is now "is someone signed in", answered per device from a localStorage hint in `lib/session.ts`. The hint has **no authority** — it only buys permission to make a request the server may still 401, and the 401 path clears it. Never gate anything security-relevant on it.
+- **`public/sw.js` must never cache `/api/`.** Its stale-while-revalidate rule covers every same-origin GET, and a cached session response tells a signed-out browser it is signed in — offline, where nothing corrects it. The early return for the API prefix is load-bearing.
 - **The theme is the one exception**: a blocking inline script in `<head>` (`lib/theme.ts:THEME_SCRIPT`) reads `localStorage` pre-paint, so theme is mirrored there as well as into IndexedDB. Any code path that changes theme must call `applyTheme`.
 - **`--muted` passes WCAG AA with no headroom.** Never apply an opacity modifier to it (`text-muted/80` and friends were all removed in an audit). If something needs to recede further, give it a smaller role, not a thinner colour.
 
 ### Server side
 
-`lib/server/` is the only server code. `auth.ts` is an unfilled seam: `resolveUser` returns null (401) unless `HAPI_DEV_USER_ID` is set in non-production, so **sync does not run for anyone until an identity provider is wired in** — fill in `resolveUser` and no other file changes. Every table is keyed by `(userId, …)`; `runSync` takes `pg_advisory_xact_lock` on the account so commit order matches `seq` assignment order.
+`lib/server/` is the only server code. `auth.ts` is the identity seam and **Better Auth fills it** (`better-auth.ts`, email + password, same Postgres); `resolveUser` is the only way in, so swapping providers rewrites one function. It fails closed — anything but a valid session is 401 — with a `HAPI_DEV_USER_ID` bypass that is ignored in production. Every table is keyed by `(userId, …)`; `runSync` takes `pg_advisory_xact_lock` on the account so commit order matches `seq` assignment order.
+
+**`auth-schema.ts` tables are separate from `schema.ts:users` on purpose.** `user` is the identity Better Auth owns; `users` is the account sync rows cascade from. Same id, no foreign key, linked by the upsert in `sync-store.ts`. Do not merge them — a dependency's migrations would gain authority over the table holding every habit. `SyncUser` lives alone in `auth-types.ts` so `sync-store.ts` can name its argument without importing an auth stack (this is what keeps the PGlite test runnable).
 
 Migrations are generated, reviewed and committed — never `drizzle-kit push`, which can resolve a rename by dropping the column, and these tables hold history that exists nowhere else.
 
 ### Known gaps
 
-`lib/sync/client.ts` gates on `NEXT_PUBLIC_SYNC_ENABLED` as a placeholder for a real session check (§13.6). Open questions are listed in DESIGN.md §12 and §13.8 — check them before "fixing" something that was decided deliberately.
+No password reset and no email verification — both need a mailer the app does not have. Signing in merges whatever is on the device into the account (§13.8 #8). Open questions are listed in DESIGN.md §12 and §13.8 — check them before "fixing" something that was decided deliberately.
 
 DESIGN.md records reversals rather than overwriting them: §8.4 now intercepts `beforeinstallprompt` after originally refusing to. When a section reads as a reversal, the current behaviour is the one described second.

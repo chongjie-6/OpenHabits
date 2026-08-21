@@ -2,10 +2,10 @@
 
 A local-first PWA that pairs a **daily quote from someone worth quoting** with a **habit tracker** whose history renders as a GitHub-style contribution grid.
 
-- **Status:** phases 0–6 built and passing; §11 has what remains. Sync (§13) is built below the auth seam and does not run until a provider is wired in.
+- **Status:** phases 0–6 built and passing; §11 has what remains. Sync (§13) runs: the auth seam is filled (§13.6) and an account is created from the Settings screen.
 - **Stack:** Next.js 16.3.1 (App Router), React 19.2, Tailwind CSS v4, TypeScript 5, Vitest
-- **Sync stack:** Postgres + Drizzle, one endpoint, PGlite for tests (§13)
-- **Last updated:** 2026-08-17
+- **Sync stack:** Postgres + Drizzle, Better Auth for identity, PGlite for tests (§13)
+- **Last updated:** 2026-08-21
 
 > Sections marked **Revised during build** record where implementation contradicted the plan. They are kept rather than overwritten — the reasoning that turned out to be wrong is usually the reasoning most worth having on the record.
 
@@ -23,7 +23,7 @@ A local-first PWA that pairs a **daily quote from someone worth quoting** with a
 
 ### Non-goals (v1)
 
-- Accounts, login, or cross-device sync (see §12 for the v2 path that the schema already accommodates) — **the sync half of this has since been built; see §13. Accounts have not: §13.6 is a seam, not an implementation.**
+- Accounts, login, or cross-device sync (see §12 for the v2 path that the schema already accommodates) — **both halves have since been built: sync in §13, and the accounts it hangs off in §13.6. Still optional in the sense that matters: signed out, the app is exactly the app described here.**
 - Social features — sharing, friends, leaderboards
 - Quantified goals beyond a simple per-day count (no durations, no timers)
 - Native app store distribution
@@ -543,6 +543,7 @@ lib/
   quotes.ts               deck algorithm, seam repair, upcoming schedule
   colors.ts               ramp lookups, neutral and per-habit
   theme.ts                pre-paint script + localStorage mirror
+  session.ts              the auth client + the local signed-in hint (§13.6)
   use-today.ts            the clock as external state
   use-media-query.ts
   *.test.ts               tests over the pure logic
@@ -557,9 +558,13 @@ lib/
     schema.ts             Drizzle/Postgres tables
     db.ts                 lazily built, globally cached connection
     auth.ts               the identity seam — see §13.6
+    auth-types.ts         SyncUser alone, so sync-store imports no auth
+    better-auth.ts        what fills the seam: config + lazy instance
+    auth-schema.ts        Better Auth's tables, kept apart from `users`
     sync-store.ts         push/pull inside one locked transaction
 
-app/api/sync/route.ts     the only endpoint
+app/api/sync/route.ts     replication — the only endpoint touching user data
+app/api/auth/[...all]/    sign-up, sign-in, sign-out, session
 
 drizzle/                  generated, reviewed, committed migrations
 data/quotes.ts            168 attributed quotes
@@ -727,15 +732,31 @@ The cursor reported under truncation is the lowest point at which *every* collec
 
 The push watermark is the newest stamp **actually sent**, never `Date.now()` — using the clock would skip any edit made while the request was in flight.
 
-### 13.6 Identity is a seam, not an implementation
+### 13.6 Identity: the seam, and what fills it
 
-Sync needs one thing from auth: a stable account id to scope rows by. Everything else about signing in — providers, magic links, the account screen — is separate work with its own decisions, and the sync layer does not wait for it.
+Sync needs one thing from auth: a stable account id to scope rows by. Everything else about signing in is separate work with its own decisions, and the sync layer was built without waiting for it.
 
-`lib/server/auth.ts` defines the contract and nothing more. **It fails closed:** with no provider wired up, `resolveUser` returns null and the endpoint answers 401. A permissive default would pool every visitor's habits into one row set, and the first symptom would be a stranger's data on someone's phone. A `HAPI_DEV_USER_ID` override exists for local development and is ignored when `NODE_ENV=production` — two conditions, because the failure worth preventing is that variable surviving into a real deployment.
+`lib/server/auth.ts` defines that contract and nothing more. **It fails closed:** anything other than a valid session returns null and the endpoint answers 401 — no cookie, an expired one, a database that cannot be reached. A permissive default would pool every visitor's habits into one row set, and the first symptom would be a stranger's data on someone's phone. A `HAPI_DEV_USER_ID` override exists for local development and is ignored when `NODE_ENV=production` — two conditions, because the failure worth preventing is that variable surviving into a real deployment.
 
-Until a provider is wired in, **sync does not run for anyone.** Everything below the seam is complete and tested; nothing above it exists yet.
+*This section originally ended here, recording that no provider was wired in and that sync therefore ran for nobody. It now does.* **Better Auth** fills the seam, configured in `lib/server/better-auth.ts` and reached only through `resolveUser`. Email and password, self-hosted on the same Postgres the habits live in: no third-party dependency for an app whose whole argument is that your data is yours, and no outbound mail required to create the first account. Swapping providers still means rewriting one function.
+
+**Its tables are separate from `users`, deliberately.** `auth-schema.ts:user` is the identity — Better Auth owns every column and adds more as plugins are enabled. `schema.ts:users` is the account that sync rows hang off, holding an id and an email because it exists to be the left half of every primary key. Merging them would give a dependency's migrations authority over the table `habits`, `entries` and `settings` all cascade from. The two are linked by `users.id === user.id`, established by the upsert in `sync-store.ts` on first sync — no foreign key, because the upsert already guarantees the row and a cross-owner constraint would fail migrations in whichever order they ran.
+
+**An unverified address is accepted.** Email here is a label on an account whose real key is an opaque id; nothing is sent to it and nothing is authorised by it. Turning on verification is a change to make alongside a mailer, not before one.
+
+#### The client half
+
+Three constraints from §7.1 and §8.2 shape this more than the provider choice does.
+
+**Nothing account-shaped may render on the server.** Every route prerenders and the service worker caches that HTML, so a session read during render would bake one visitor's state into the file served to the next. `AccountCard` is gated on a `useSyncExternalStore` whose server snapshot reports signed-out — the same shape as `display-mode` and `beforeinstallprompt` in §8.4, and for the same reason: the account UI may appear after hydration, never flash and vanish.
+
+**`NEXT_PUBLIC_SYNC_ENABLED` is gone.** It was a build-time placeholder for "should this client sync", and the real answer — is someone signed in — is per device, not per build. `lib/session.ts` keeps a localStorage hint that `lib/sync/client.ts` reads synchronously and offline, so a signed-out browser makes no requests at all and a signed-in one starts syncing without waiting for a round trip to tell it so. The hint carries **no authority**: anyone can set it by hand, and all it grants is permission to make a request the server then answers 401. A stale hint self-corrects, because the 401 path clears it.
+
+**The service worker must not cache `/api/`.** Its stale-while-revalidate rule covered every same-origin GET, which was harmless while `POST /api/sync` was the only endpoint and stopped being harmless the moment `/api/auth/*` existed: a cached session response tells a signed-out browser it is signed in, and keeps saying so offline where nothing can correct it. `public/sw.js` now returns early for the whole API prefix. An offline session check fails, which is the right answer — this app needs the network to prove who you are, never to show you a habit.
 
 The client states which account its data belongs to on every request, and the server refuses a mismatch with 409 before writing anything. Discovering the identity from the *response* would be too late — a device where someone else has since signed in would already have uploaded the previous person's habits.
+
+**Signing out wipes the device.** It routes through `adoptAccount(null)`, the same path as that 409: local store emptied, cursor reset. The habits are already replicated, and the alternative leaves one person's history readable to whoever picks up the phone next. Because that makes sign-out destructive for anything not yet pushed, it syncs first and asks a second time if that sync failed rather than deciding on the user's behalf.
 
 ### 13.7 What is tested
 
@@ -753,3 +774,6 @@ Covered: convergence, stale-write rejection, tombstone propagation and cascade, 
 4. **The advisory lock serialises an account's syncs.** Correct, and fine for a handful of devices. If sync ever runs from many clients at once the lock becomes the bottleneck, and the cursor needs a commit-ordered design instead.
 5. **`experimental.useOffline`** (§8.3) is now relevant and unused. The sync client hand-rolls its own online/visibility triggers; `useOffline()` from `next/offline` would give connectivity-aware retry for free.
 6. **The client polls every five minutes when foregrounded.** Event triggers (visibility, online) carry the real load. If sync ever needs to feel live, this is where a push channel would go.
+7. **There is no password reset, and no verification.** Both need a mailer, which the app does not have. Until one exists, a forgotten password means the habits on that device are reachable only through Export backup — which the sign-up form says out loud rather than discovering later.
+8. **Signing in merges whatever is already on the device into the account.** A first sync pulls, adopts the account, then pushes local habits up. Right for the common case — someone who used the app signed out and then made an account — and wrong for a borrowed phone, where it silently donates one person's habits to another's account. The 409 path covers a device *changing* accounts; it does not cover the first one.
+9. **Two tables that both sound like the user table.** `user` and `users`, one letter apart, owned by different parties for reasons §13.6 argues are good. The reasons do not make the names less confusing to read at 2am. A `schemaName: "auth"` namespace on Better Auth's side would separate them properly, at the cost of a `pgSchema` in the migrations.

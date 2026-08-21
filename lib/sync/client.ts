@@ -11,6 +11,7 @@
  */
 
 import { useEffect } from "react";
+import { markSignedOut, signedIn, useSignedIn } from "../session";
 import * as store from "../store";
 import { collectPush, mergeIncoming, watermarkAfterPush } from "./merge";
 import {
@@ -49,6 +50,14 @@ export function syncNow(): Promise<void> {
 }
 
 async function run(): Promise<void> {
+  if (!syncEnabled()) {
+    // Guarded here as well as in `useSync` so a direct `syncNow()` — a manual
+    // "sync now", a future keyboard shortcut — cannot post for a signed-out
+    // device just because it skipped the hook.
+    store.setSyncStatus({ kind: "off" });
+    return;
+  }
+
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     // Not an error. Offline is the expected state for a PWA, and the listeners in
     // `useSync` will call back the moment it changes.
@@ -150,6 +159,12 @@ async function handleError(response: Response): Promise<Outcome> {
   switch (response.status) {
     case 401:
       // Signed out, or never signed in. Sync is simply off; the app is unaffected.
+      //
+      // Clearing the hint is what makes `syncEnabled()` safe to trust: a session
+      // that expired while the tab was closed leaves a device believing it is
+      // signed in, and without this it would retry on every foreground and
+      // network-online event for as long as the app stayed open.
+      markSignedOut();
       return { kind: "stop", status: { kind: "off" } };
 
     case 409:
@@ -209,23 +224,23 @@ function warnOnClockSkew(serverNow: number): void {
 const POLL_MS = 5 * 60 * 1000;
 
 /**
- * Whether this build should attempt to sync at all.
+ * Whether this device should attempt to sync at all.
  *
- * Without this gate the client posts to `/api/sync` on every page load and gets
- * a 503 (no database) or a 401 (not signed in) — and the browser logs a console
- * error for the failed request no matter how gracefully the JS handles it. A
- * deployment with sync switched off would show an error to every visitor on every
- * load, and phase 7 caught exactly that.
+ * Now a real signal rather than a build flag: "should I sync" is "is someone
+ * signed in", and §13.6's seam being filled is what made that answerable. The
+ * old `NEXT_PUBLIC_SYNC_ENABLED` gate existed because without it the client
+ * posted on every page load and took a 401 or a 503 — and the browser logs a
+ * failed request no matter how gracefully the JS handles it, so a deployment
+ * with sync off showed an error to every visitor.
  *
- * `NEXT_PUBLIC_` is inlined at build time, so when this is unset the whole
- * request path is statically unreachable rather than merely unused.
- *
- * This is a placeholder for the real signal, which is a session: once §13.6's
- * auth seam is filled in, "should I sync" becomes "is someone signed in", the
- * client learns that locally, and this flag goes away.
+ * `signedIn()` solves the same problem better: it is per-device rather than
+ * per-build, so one deployment serves signed-in and signed-out visitors and only
+ * the former make requests. It reads a local flag, so it costs no round trip and
+ * works offline. And it is only a hint — the server still decides, and a device
+ * that lies to itself here gets a 401 and is switched off by `handleError`.
  */
 function syncEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_SYNC_ENABLED === "1";
+  return signedIn();
 }
 
 /**
@@ -238,9 +253,13 @@ function syncEnabled(): boolean {
  */
 export function useSync(): void {
   const { hydrated } = store.useHapi();
+  // Subscribed to rather than merely read, so signing in starts sync on the spot
+  // instead of at the next foreground — and so signing out in another tab tears
+  // the listeners down in this one.
+  const enabled = useSignedIn();
 
   useEffect(() => {
-    if (!syncEnabled()) return;
+    if (!enabled) return;
     // Syncing before hydration would push an empty snapshot as though the device
     // had no habits, and read the cursor as 0 when a real one is on disk.
     if (!hydrated) return;
@@ -261,5 +280,5 @@ export function useSync(): void {
       window.removeEventListener("online", onOnline);
       window.clearInterval(timer);
     };
-  }, [hydrated]);
+  }, [hydrated, enabled]);
 }

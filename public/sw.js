@@ -38,6 +38,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  // Never cache the API, and never answer for it from cache. `/api/sync` is a
+  // POST and was already excluded by the method check above, but `/api/auth/*`
+  // has GET endpoints — a session check among them. Served stale, that tells a
+  // signed-out browser it is still signed in, and keeps telling it so offline
+  // where nothing can correct the record. Falling through to the network means
+  // an offline session check fails, which is the right answer: this app does not
+  // need the network to show a habit, only to prove who you are.
+  if (url.pathname.startsWith("/api/")) return;
+
   // Navigations: network first, so a deploy is picked up immediately, with the
   // cached shell as the offline fallback.
   if (request.mode === "navigate") {

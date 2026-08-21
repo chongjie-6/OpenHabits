@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { AccountCard } from "@/components/AccountCard";
 import { InstallCard } from "@/components/DownloadAppButton";
 import { habitColor } from "@/lib/colors";
 import { QUOTE_COUNT } from "@/lib/quotes";
@@ -58,6 +59,8 @@ export default function SettingsPage() {
       <h1 className="text-[15px] font-semibold tracking-tight">Settings</h1>
 
       <InstallCard />
+
+      <AccountCard />
 
       <Group title="Appearance">
         <Choice<Settings["theme"]>
@@ -140,9 +143,11 @@ export default function SettingsPage() {
 
       <Group title="Your data">
         <p className="text-[13px] leading-relaxed text-muted">
-          Everything lives on this device. Nothing is uploaded, and there is no
-          account. That also means a browser clearing its storage takes your
-          history with it — export a backup now and then.
+          Everything lives on this device first, and works with no account at
+          all. Signing in above adds a copy on the server so your other devices
+          can catch up — it does not move anything off this one. Either way a
+          browser clearing its storage takes its copy with it, so export a backup
+          now and then.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button onClick={download}>Export backup</Button>

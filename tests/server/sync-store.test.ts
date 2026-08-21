@@ -19,7 +19,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { SyncPull, SyncPush } from "@/lib/sync/protocol";
 import { DEFAULT_SETTINGS, type Entry, type Habit } from "@/lib/types";
-import type { SyncUser } from "@/lib/server/auth";
+import type { SyncUser } from "@/lib/server/auth-types";
 import type { Db } from "@/lib/server/db";
 import * as schema from "@/lib/server/schema";
 import { AccountMismatchError, runSync } from "@/lib/server/sync-store";

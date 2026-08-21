@@ -1,60 +1,67 @@
 import "server-only";
 
 /**
- * Identity for the sync endpoint — the seam, not the implementation.
+ * Identity for the sync endpoint. See DESIGN.md §13.6.
  *
  * Sync needs exactly one thing from auth: a stable account id to scope rows by.
- * Everything else about signing in — providers, magic links, password resets,
- * the account screen — is a separate piece of work with its own decisions, and
- * the sync layer does not have to wait for it. So this module defines the
- * contract and nothing more: fill in `resolveUser` when the provider is chosen
- * and no other file has to change.
+ * This module is the seam that was left unfilled for it, and Better Auth is what
+ * now fills it — `better-auth.ts` holds the configuration, and this file stays
+ * the only thing the rest of the server imports. Swapping providers means
+ * rewriting `resolveUser` and nothing else.
  *
- * ## It fails closed
+ * ## It still fails closed
  *
- * With no provider wired up and no dev override, `resolveUser` returns null and
- * the endpoint answers 401. That is the correct default: the alternative — a
- * shared or guessable account id — would silently pool every visitor's habits
- * into one row set, and the first symptom would be a stranger's data appearing
- * on someone's phone. An unconfigured sync endpoint should be useless, not
- * permissive.
+ * Anything other than a valid session returns null and the endpoint answers 401:
+ * no cookie, an expired one, a forged one, a database that cannot be reached.
+ * The alternative — a shared or guessable account id — would silently pool every
+ * visitor's habits into one row set, and the first symptom would be a stranger's
+ * data appearing on someone's phone.
  *
- * ## Wiring a real provider
+ * ## The id is load-bearing
  *
- * Whatever the choice, the shape of the work is the same:
- *
- *   const session = await getSession();            // provider's server helper
- *   if (!session?.user?.email) return null;
- *   return { id: session.user.id, email: session.user.email };
- *
- * The `id` must be stable for the life of the account. It becomes half of every
- * primary key in `schema.ts`, so a provider that recycles or reassigns ids would
- * hand one user another's history.
+ * `id` becomes half of every primary key in `schema.ts`, so it must be stable
+ * for the life of the account. Better Auth's user ids are opaque and never
+ * reassigned, and `sync-store.ts` upserts `users` from what this returns — which
+ * is why `auth-schema.ts:user` and `schema.ts:users` are separate tables holding
+ * the same id rather than one table with two owners.
  */
 
-export type SyncUser = {
-  /** Stable, opaque account id. Half of every primary key. */
-  id: string;
-  email: string;
-};
+import type { SyncUser } from "./auth-types";
+import { getAuth } from "./better-auth";
+
+export type { SyncUser };
 
 /**
  * Resolve the account this request syncs to, or null to refuse it.
  *
- * `request` is threaded through — unused by the dev override, but a real
- * provider reads cookies or an Authorization header off it, and a signature that
- * has to change later is a signature that touches the route again.
+ * Reads the session cookie off `request` — no `next/headers`, no request-scoped
+ * globals — so this is callable from anywhere with a Request in hand and stays
+ * trivially testable.
  */
 export async function resolveUser(request: Request): Promise<SyncUser | null> {
   const override = devUser();
   if (override) return override;
 
-  void request;
-  return null;
+  try {
+    const session = await getAuth().api.getSession({ headers: request.headers });
+    if (!session?.user?.email) return null;
+
+    return { id: session.user.id, email: session.user.email };
+  } catch (cause) {
+    // A database that cannot be reached is not an authenticated request. Logged
+    // rather than thrown: the caller's job is to answer 401, and a 500 here
+    // would tell the client to keep retrying against a broken dependency.
+    console.error("hapi: session lookup failed", cause);
+    return null;
+  }
 }
 
 /**
  * A fixed single-user identity for local development, from the environment.
+ *
+ * Now that a real provider is wired in this is a bypass, not a stand-in: set it
+ * and every request is that account, whoever is actually signed in. Leave it
+ * unset unless you are deliberately working on sync without touching sign-in.
  *
  * Guarded on `NODE_ENV` as well as on the variable being present, because the
  * failure this prevents is not a mistake in dev — it is the variable surviving
