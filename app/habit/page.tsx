@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { HabitDetail } from "@/components/HabitDetail";
+
+export const metadata: Metadata = {
+  title: "Habit",
+  description:
+    "One habit's own year — its heatmap, current and longest streak, cadence, and archive controls.",
+  robots: { index: false, follow: false },
+};
 
 /**
  * Deliberately `/habit?id=…` rather than `/habit/[id]`.

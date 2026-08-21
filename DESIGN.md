@@ -486,6 +486,19 @@ Install state is exposed through `useSyncExternalStore` over `matchMedia("(displ
 
 **Shipped:** neither, and the Settings screen says so in plain words. The Today tab already surfaces what is outstanding the moment the app opens, which is option 1 without pretending it is a reminder. A "Daily reminder at 8:00" toggle that silently doesn't fire would be the worst available outcome.
 
+### 8.6 Page metadata
+
+The root layout owns the shared half: `title.template` (`"%s · hapi"`), the description, `applicationName`, `appleWebApp`, `formatDetection`, and an `openGraph`/`twitter` pair. Each route then adds its own `title` and `description`.
+
+Two constraints shape where that per-route metadata lives.
+
+1. **`title.template` applies to child segments, never to the segment that declares it.** So the root `title.default` *is* the Today title; `app/page.tsx` exports no metadata of its own.
+2. **`metadata` is only read from Server Components**, and `/week`, `/stats`, `/settings` and `/quotes` are all client components — they own screen-local state (selected week, expanded habit, search text). Rather than split each screen into a server shell plus a client body, each gets a `layout.tsx` that exports the metadata and returns `children` unchanged. It adds a segment and no markup.
+
+`/habit` is `robots: { index: false, follow: false }`: the habit comes from `?id=`, so the bare URL a crawler would index renders nothing.
+
+**No `metadataBase`, and no OG image.** There is no canonical origin for the app yet, and every URL-based metadata field — `alternates.canonical`, `openGraph.images` — needs one, resolving against `localhost` and warning at build time without it. The OG cards carry title, description and `siteName` only, which is honest and warning-free. Setting `metadataBase` is the first thing to do when a domain exists.
+
 ---
 
 ## 9. File structure
@@ -499,10 +512,14 @@ app/
   manifest.ts             MetadataRoute.Manifest
   apple-icon.png          generated
   week/page.tsx
+  week/layout.tsx         route Metadata only — see §8.6
   stats/page.tsx
-  habit/page.tsx          Suspense wrapper — see the note in §2.2
+  stats/layout.tsx        route Metadata only
+  habit/page.tsx          Suspense wrapper + Metadata — see the note in §2.2
   quotes/page.tsx
+  quotes/layout.tsx       route Metadata only
   settings/page.tsx
+  settings/layout.tsx     route Metadata only
   globals.css             tokens, ramps, @theme mapping, safe-area utilities
 
 components/

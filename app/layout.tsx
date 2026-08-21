@@ -14,11 +14,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const DESCRIPTION =
+  "A daily quote, and a habit tracker that shows you the year you had. Local-first, offline, no account.";
+
 export const metadata: Metadata = {
-  title: "hapi",
-  description: "A daily quote, and a habit tracker that shows you the year you had.",
+  title: { default: "hapi — daily quotes & habits", template: "%s · hapi" },
+  description: DESCRIPTION,
   applicationName: "hapi",
   appleWebApp: { capable: true, title: "hapi", statusBarStyle: "default" },
+  formatDetection: { telephone: false, date: false, address: false },
+  openGraph: {
+    type: "website",
+    siteName: "hapi",
+    title: "hapi — daily quotes & habits",
+    description: DESCRIPTION,
+  },
+  twitter: { card: "summary", title: "hapi", description: DESCRIPTION },
 };
 
 export const viewport: Viewport = {
