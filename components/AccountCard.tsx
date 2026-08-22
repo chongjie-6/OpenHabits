@@ -66,6 +66,8 @@ function SignedOut() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The address waiting on a click, or null. Both routes into §13.10 set it. */
+  const [awaiting, setAwaiting] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -87,7 +89,25 @@ function SignedOut() {
     setBusy(false);
 
     if (result.error) {
+      // Signing in before the link is clicked is a 403, and the server has
+      // already sent a fresh mail on its way out (`sendOnSignIn`) — so this is
+      // not a failure to report, it is the wait, entered from the other side.
+      if (result.error.code === "EMAIL_NOT_VERIFIED") {
+        setAwaiting(credentials.email);
+        setPassword("");
+        return;
+      }
       setError(result.error.message ?? "That did not work. Try again.");
+      return;
+    }
+
+    // A sign-up under mandatory verification creates no session — Better Auth
+    // returns a null token — so there is nothing to sync yet and the hint must
+    // stay unset, or `lib/sync/client.ts` spends the wait collecting 401s. With
+    // no mailer configured the token is real and this is the old path.
+    if (!result.data?.token) {
+      setAwaiting(credentials.email);
+      setPassword("");
       return;
     }
 
@@ -96,6 +116,18 @@ function SignedOut() {
     // notice, so the first sync starts on this tick instead of the next fetch.
     markSignedIn();
     void syncNow();
+  }
+
+  if (awaiting !== null) {
+    return (
+      <AwaitingVerification
+        email={awaiting}
+        onDone={() => {
+          setMode("sign-in");
+          setAwaiting(null);
+        }}
+      />
+    );
   }
 
   return (
@@ -125,9 +157,10 @@ function SignedOut() {
 
         {mode === "sign-up" && (
           <p className="text-[11px] leading-relaxed text-muted">
-            At least 10 characters. There is no password reset yet — if you lose
-            it your habits are still on this device, and Export backup below is
-            how you move them.
+            At least 10 characters. We send a link to confirm the address before
+            the account can be used, so use one you can open. There is no
+            password reset yet — if you lose it your habits are still on this
+            device, and Export backup below is how you move them.
           </p>
         )}
 
@@ -157,6 +190,91 @@ function SignedOut() {
           </button>
         </div>
       </form>
+    </>
+  );
+}
+
+/**
+ * The gap between signing up and clicking the link (§13.10).
+ *
+ * It is a state of the *form*, not of the app: no session exists yet, nothing
+ * has synced, and the habits on this device are untouched — which is what the
+ * copy has to get across, because "check your email" on a screen that just
+ * swallowed your account reads as data loss otherwise.
+ *
+ * The resend endpoint answers the same way for an address that is unknown, or
+ * already verified, as for one that is waiting — deliberately, so it cannot be
+ * used to test whether an account exists. There is therefore nothing to branch
+ * on here and nothing to report but "sent".
+ */
+function AwaitingVerification({
+  email,
+  onDone,
+}: {
+  email: string;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function resend() {
+    setBusy(true);
+    setError(null);
+    // `callbackURL` is where the link lands once the address is confirmed. The
+    // click signs that browser in, so home is the right place to arrive.
+    const result = await authClient.sendVerificationEmail({
+      email,
+      callbackURL: "/",
+    });
+    setBusy(false);
+    if (result.error) {
+      setError(result.error.message ?? "Could not send it. Try again shortly.");
+      return;
+    }
+    setSent(true);
+  }
+
+  return (
+    <>
+      <p className="text-[13px] leading-relaxed">
+        Check <span className="font-medium">{email}</span> for a link to confirm
+        the address. Signing in needs it.
+      </p>
+      <p className="mt-1 text-[12px] leading-relaxed text-muted">
+        Nothing has left this device, and nothing will until you sign in — your
+        habits are where they were. The link works on any device, and opening it
+        signs that one in.
+      </p>
+
+      {error && (
+        <p role="alert" className="mt-2 text-[12px] text-danger">
+          {error}
+        </p>
+      )}
+      {sent && !error && (
+        <p role="status" className="mt-2 text-[12px] text-muted">
+          Sent again. It can take a minute — check spam.
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void resend()}
+          className="h-10 rounded-control border border-border px-3 text-[13px] font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
+        >
+          {busy ? "Sending…" : "Resend email"}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="h-10 rounded-control px-2 text-[13px] text-muted underline underline-offset-4 hover:text-foreground"
+        >
+          I have confirmed it — sign in
+        </button>
+      </div>
     </>
   );
 }

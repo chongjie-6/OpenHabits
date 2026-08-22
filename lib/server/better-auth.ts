@@ -31,6 +31,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getDb } from "./db";
 import * as authSchema from "./auth-schema";
+import { mailerConfigured, sendVerificationEmail } from "../email";
 
 const globalForAuth = globalThis as unknown as {
   // `ReturnType<typeof build>` rather than `ReturnType<typeof betterAuth>`:
@@ -40,7 +41,55 @@ const globalForAuth = globalThis as unknown as {
 };
 
 function build() {
+  /**
+   * Verification is mandatory — *when a mailer exists to make it possible*.
+   *
+   * The rule from §13.1 that every variable is optional outranks this one: with
+   * no `RESEND_API_KEY` there is no link to click, so requiring the click would
+   * turn every sign-up into an account nobody can ever reach, local development
+   * included. So the requirement follows the mailer. Read once here rather than
+   * per request, which is fine — the instance is memoised for the life of the
+   * process anyway, and a key added without a restart was never going to take
+   * effect either.
+   */
+  const verificationRequired = mailerConfigured();
+
   return betterAuth({
+    /**
+     * A verification mail goes out on sign-up, and again on every sign-in
+     * attempt by an unverified account — which is what makes "resend" work
+     * without a second endpoint, and covers the mail that went to spam.
+     *
+     * `autoSignInAfterVerification` because the click is the second factor
+     * already: whoever opened that link holds the mailbox. Making them then type
+     * the password again on a device that just proved ownership buys nothing.
+     * Note the consequence — the session lands on whichever device opened the
+     * mail, which is not necessarily the one that signed up.
+     *
+     * The send is awaited, and a failure now **fails the sign-up** rather than
+     * being swallowed (a reversal of §13.9 — see §13.10). Awaited because a
+     * serverless invocation can be frozen the moment it returns, and a floating
+     * send is a send that may never leave. Fatal because verification is
+     * required: an account whose only mail never arrived is an account its owner
+     * cannot sign in to, and Better Auth runs sign-up in a transaction, so
+     * throwing rolls the whole thing back and leaves the address free to retry.
+     * With no mailer configured nothing is required and the old behaviour
+     * stands: log it, keep the account.
+     */
+    emailVerification: {
+      sendVerificationEmail: async ({ user, url }) => {
+        try {
+          await sendVerificationEmail({ to: user.email, url });
+        } catch (error) {
+          console.error("[hapi] verification email failed", error);
+          if (verificationRequired) throw error;
+        }
+      },
+      sendOnSignUp: true,
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+    },
+
     appName: "hapi",
 
     /**
@@ -77,16 +126,19 @@ function build() {
 
     /**
      * Email and password, because it is the only method that works with no
-     * third-party account and no outbound email — and an unverified address is
-     * accepted deliberately. `email` is not an identity claim here; it is a
-     * label on an account whose real key is an opaque id. Nothing is sent to it
-     * and nothing is authorised by it. Turn on `requireEmailVerification` at the
-     * same time as wiring a mailer, not before, or the first sign-up locks
-     * itself out.
+     * third-party account. The address is verified before the first session
+     * exists, so `resolveUser` needs no check of its own: a session is proof
+     * the mail was opened.
+     *
+     * `requireEmailVerification` is conditional for the reason above, and that
+     * is the honest way round — it is a promise the app can only keep when it
+     * can send mail. Recovering from a typo'd address is still manual (§13.10):
+     * there is no password reset, and the habits stay on the device either way.
      */
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 10,
+      requireEmailVerification: verificationRequired,
     },
   });
 }

@@ -544,6 +544,8 @@ lib/
   colors.ts               ramp lookups, neutral and per-habit
   theme.ts                pre-paint script + localStorage mirror
   session.ts              the auth client + the local signed-in hint (§13.6)
+  email.ts                Resend transport, lazily built client (§13.9)
+  verification-email.ts   the verification mail: tables, inline styles, no images
   use-today.ts            the clock as external state
   use-media-query.ts
   *.test.ts               tests over the pure logic
@@ -777,3 +779,116 @@ Covered: convergence, stale-write rejection, tombstone propagation and cascade, 
 7. **There is no password reset, and no verification.** Both need a mailer, which the app does not have. Until one exists, a forgotten password means the habits on that device are reachable only through Export backup — which the sign-up form says out loud rather than discovering later.
 8. **Signing in merges whatever is already on the device into the account.** A first sync pulls, adopts the account, then pushes local habits up. Right for the common case — someone who used the app signed out and then made an account — and wrong for a borrowed phone, where it silently donates one person's habits to another's account. The 409 path covers a device *changing* accounts; it does not cover the first one.
 9. **Two tables that both sound like the user table.** `user` and `users`, one letter apart, owned by different parties for reasons §13.6 argues are good. The reasons do not make the names less confusing to read at 2am. A `schemaName: "auth"` namespace on Better Auth's side would separate them properly, at the cost of a `pgSchema` in the migrations.
+
+---
+
+### 13.9 Outbound mail
+
+A reversal of §13.8 #7 and of the last paragraph of §13.6, both of which assumed
+no mailer. There is one now — Resend, behind `RESEND_API_KEY` — and a
+verification mail goes out on sign-up.
+
+**Verifying is still not required to sign in.** The reasoning in §13.6 has not
+changed: email is a label on an account whose real key is an opaque id, nothing
+is authorised by it, and requiring verification would let a typo'd address lock
+someone out of habits that exist on one device and nowhere else.
+`requireEmailVerification` stays unset until password reset exists to recover
+from exactly that. What the mail buys today is a confirmed address to send a
+reset to later, and a signal to the user that the account is real.
+
+**The key is optional, like every other variable.** `new Resend(undefined)`
+throws, so the client is built lazily and memoised on `globalThis` — the same
+shape as `lib/server/db.ts` and for the same reason. Constructing at module
+scope would make a missing key fatal at import for `better-auth.ts`, which is to
+say fatal for the whole auth stack, on a project whose first rule (§13.1) is
+that it runs with nothing set.
+
+**A send that fails does not fail the sign-up.** `sendVerificationEmail` awaits
+the request — a floating promise inside a serverless invocation may never leave
+the machine — and Better Auth's callback then catches and logs. An outage at the
+mail provider costs a mail, not an account.
+
+**The template is a separate, pure module.** `lib/verification-email.ts` takes a
+URL and returns `{subject, html, text}`; `lib/email.ts` is transport and knows no
+markup. That split is what makes the mail testable at all, and the tests pin the
+things that are invisible until a real inbox shows them: the URL escaped into
+the `href`, the plain-text alternative present, no `<img>` anywhere.
+
+**It is written like a 2003 web page on purpose.** Nested tables, every
+declaration inline, hex values copied by hand from `globals.css` because
+`var(--accent)` does not survive Gmail. The hero — hapi's contribution grid, one
+square lit — is drawn in `<td>` cells rather than an image, so it renders with
+remote images blocked, which is the default in Outlook and common in Gmail. A
+verification mail whose only branding is a broken-image icon reads as phishing.
+Consequence worth knowing: the palette is duplicated, and a change to §6.2 has to
+be carried across by hand. There is no way to share it that survives the trip.
+
+**Still missing: a dark variant.** The mail declares `color-scheme: light only`,
+which stops Apple Mail and Outlook.com force-inverting a palette that was never
+designed for it. Gmail's dark mode tints regardless. A real dark version needs
+class hooks in a `<style>` block, which Gmail keeps for `<head>` media queries
+even though it strips much else — worth doing, not done.
+
+---
+
+### 13.10 Verification becomes mandatory
+
+A reversal of §13.9's second paragraph and of §13.6's "an unverified address is
+accepted". Both are left standing above because the reasoning in them was sound
+for the app as it was; what changed is the trade being made.
+`requireEmailVerification` is now on, and no session exists until the link in the
+mail is clicked.
+
+**What the old position bought, and why it is no longer worth it.** The argument
+against was that a typo'd address would lock someone out of habits that exist on
+one device and nowhere else. That is still true and still the cost — but it was
+being paid to protect a *sync account*, and the habits are never at risk: they
+live in IndexedDB, they are untouched by any of this, and Export backup moves
+them. Against that, an unverified address on an account is an address nobody has
+proven they own, which makes it useless as the thing a password reset is sent to
+and makes "signed in as you@example.com" a claim the app cannot support. Nothing
+was authorised by email before; something will be, and an account estate half of
+which was never confirmed is not a thing to start a reset flow on top of.
+
+**It follows the mailer, not a flag.** `mailerConfigured()` decides:
+`RESEND_API_KEY` present, verification required; absent, sign-up behaves exactly
+as it did in §13.9's world. §13.1 — the app runs with nothing set — outranks this
+section, and requiring a click that no mail can deliver would make every
+deployment without a Resend key a deployment where accounts cannot be created at
+all, local development first among them. It is read once per process, which is
+the same granularity as `secret` and `baseURL` and no worse.
+
+**A failed send now fails the sign-up**, reversing §13.9's last-but-two
+paragraph. Swallowing the error was right when the mail was a courtesy; it is
+wrong when the mail is the only way in, because the result is an account that
+cannot be verified, cannot be signed in to, and holds the address hostage against
+a retry. Better Auth runs sign-up inside a transaction, so throwing rolls the
+user row back and the address is free again. With no mailer configured nothing is
+required and the error is logged and swallowed as before.
+
+**`autoSignInAfterVerification`.** Clicking the link creates the session. Asking
+for the password again on a browser that just proved it holds the mailbox adds a
+step and no security. The consequence worth naming: the session lands on
+whichever device opened the mail, which is often the phone rather than the laptop
+that signed up. The laptop then signs in normally, and §13.8 #8 merges its local
+habits at that point — later than before, but the merge is not lost.
+
+**`sendOnSignIn` is the resend path.** An unverified sign-in attempt returns 403
+and sends a fresh link on the way out, so the common recovery — the first mail
+went to spam — needs no thought from the user. `AccountCard` also offers an
+explicit Resend, which hits `/send-verification-email`; that endpoint answers
+identically for unknown, already-verified and waiting addresses, and pads its own
+timing to match, so it cannot be used to enumerate accounts. There is nothing to
+branch on in the UI and nothing to report but "sent".
+
+**The client had to learn one new state.** A sign-up under mandatory verification
+returns `token: null` and sets no cookie, so `AccountCard` must *not* call
+`markSignedIn()` — a hint set here would buy nothing but a run of 401s from
+`lib/sync/client.ts` for as long as the mail sits unread. Both entry points into
+the wait — a sign-up that made no session, and a sign-in refused with
+`EMAIL_NOT_VERIFIED` — land in the same panel, which says what has happened to
+the habits on this device, because "check your email" on a screen that just
+appeared to swallow an account reads as data loss.
+
+**Still no password reset**, so §13.8 #7 is only half closed. A confirmed address
+is the prerequisite for one, which is most of what this section is for.
