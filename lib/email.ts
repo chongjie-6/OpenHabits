@@ -1,45 +1,30 @@
-/**
- * Outbound mail. The transport, and only the transport — every template lives
- * in its own module (`verification-email.ts`) and returns strings.
- *
- * ## Why the client is lazy
- *
- * `new Resend(undefined)` throws. Constructing at module scope would therefore
- * make importing this file fatal on a machine with no `RESEND_API_KEY`, and
- * `lib/server/better-auth.ts` imports it — so a missing key would take down the
- * whole auth stack at build time, on a project whose first rule is that every
- * environment variable is optional (§13.1). Same lazy-and-memoised shape as
- * `lib/server/db.ts` and for the same reason.
- *
- * ## Why sends are awaited
- *
- * They were not, originally, and that hid two bugs. A rejected send disappeared
- * into an unhandled promise, and on a serverless invocation the function could
- * return — and be frozen — before the HTTP request to Resend had gone out at
- * all. Callers decide what a failure means; this module's job is to report one.
- */
-
-import { Resend } from "resend";
 import { verificationEmail } from "./verification-email";
-
-const FROM = "hapi <support@hapi.com>";
-
-const globalForMail = globalThis as unknown as { hapiResend?: Resend };
+import nodemailer from "nodemailer";
 
 /** Whether mail is configured at all. Lets callers answer honestly rather than throw. */
 export function mailerConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY);
+  return Boolean(process.env.SMTP_USER) && Boolean(process.env.SMTP_PASSWORD);
 }
 
-function client(): Resend {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) {
+function client(): nodemailer.Transporter {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASSWORD;
+
+  if (!user || !pass) {
     throw new Error(
-      "RESEND_API_KEY is not set. Outbound mail is unavailable; see .env.example.",
+      "SMTP configuration is incomplete. Outbound mail is unavailable; see .env.example.",
     );
   }
-  globalForMail.hapiResend ??= new Resend(key);
-  return globalForMail.hapiResend;
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user,
+      pass,
+    },
+  });
+
+  return transporter;
 }
 
 async function sendEmail({
@@ -53,18 +38,15 @@ async function sendEmail({
   html: string;
   text: string;
 }): Promise<void> {
-  const { error } = await client().emails.send({
-    from: FROM,
-    to,
-    subject,
-    html,
-    text,
-  });
+  let info: nodemailer.SentMessageInfo;
+  try {
+    info = await client().sendMail({ to, subject, html, text });
+  } catch (cause) {
+    throw new Error(`${subject}: send failed`, { cause });
+  }
 
-  // Resend reports failures in the body rather than by rejecting, so an
-  // unchecked call succeeds no matter what happened.
-  if (error) {
-    throw new Error(`${subject}: ${error.name} — ${error.message}`);
+  if (info.rejected?.length) {
+    throw new Error(`${subject}: rejected by the server for ${to}`);
   }
 }
 

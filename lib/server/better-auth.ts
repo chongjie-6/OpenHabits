@@ -45,12 +45,12 @@ function build() {
    * Verification is mandatory — *when a mailer exists to make it possible*.
    *
    * The rule from §13.1 that every variable is optional outranks this one: with
-   * no `RESEND_API_KEY` there is no link to click, so requiring the click would
-   * turn every sign-up into an account nobody can ever reach, local development
-   * included. So the requirement follows the mailer. Read once here rather than
-   * per request, which is fine — the instance is memoised for the life of the
-   * process anyway, and a key added without a restart was never going to take
-   * effect either.
+   * no `SMTP_USER` / `SMTP_PASSWORD` there is no link to click, so requiring the
+   * click would turn every sign-up into an account nobody can ever reach, local
+   * development included. So the requirement follows the mailer. Read once here
+   * rather than per request, which is fine — the instance is memoised for the
+   * life of the process anyway, and credentials added without a restart were
+   * never going to take effect either.
    */
   const verificationRequired = mailerConfigured();
 

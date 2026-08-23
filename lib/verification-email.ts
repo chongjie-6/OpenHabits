@@ -1,8 +1,9 @@
 /**
  * The verification email — the first thing hapi ever says to a new account.
  *
- * Pure: a URL in, `{subject, html, text}` out. It knows nothing about Resend,
- * which keeps it testable and keeps `lib/email.ts` a transport and nothing else.
+ * Pure: a URL in, `{subject, html, text}` out. It knows nothing about nodemailer
+ * or SMTP, which keeps it testable and keeps `lib/email.ts` a transport and
+ * nothing else.
  *
  * ## Why it is written like a 2003 web page
  *

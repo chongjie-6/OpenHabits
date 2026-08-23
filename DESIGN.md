@@ -544,7 +544,7 @@ lib/
   colors.ts               ramp lookups, neutral and per-habit
   theme.ts                pre-paint script + localStorage mirror
   session.ts              the auth client + the local signed-in hint (§13.6)
-  email.ts                Resend transport, lazily built client (§13.9)
+  email.ts                nodemailer SMTP transport, built per send (§13.9)
   verification-email.ts   the verification mail: tables, inline styles, no images
   use-today.ts            the clock as external state
   use-media-query.ts
@@ -785,8 +785,8 @@ Covered: convergence, stale-write rejection, tombstone propagation and cascade, 
 ### 13.9 Outbound mail
 
 A reversal of §13.8 #7 and of the last paragraph of §13.6, both of which assumed
-no mailer. There is one now — Resend, behind `RESEND_API_KEY` — and a
-verification mail goes out on sign-up.
+no mailer. There is one now — nodemailer over Gmail SMTP, behind `SMTP_USER`
+and `SMTP_PASSWORD` — and a verification mail goes out on sign-up.
 
 **Verifying is still not required to sign in.** The reasoning in §13.6 has not
 changed: email is a label on an account whose real key is an opaque id, nothing
@@ -796,12 +796,14 @@ someone out of habits that exist on one device and nowhere else.
 from exactly that. What the mail buys today is a confirmed address to send a
 reset to later, and a signal to the user that the account is real.
 
-**The key is optional, like every other variable.** `new Resend(undefined)`
-throws, so the client is built lazily and memoised on `globalThis` — the same
-shape as `lib/server/db.ts` and for the same reason. Constructing at module
-scope would make a missing key fatal at import for `better-auth.ts`, which is to
+**The credentials are optional, like every other variable.** The transport is
+built inside the send, from the two variables, and throws a legible error when
+they are absent rather than mailing into the void. Building at module scope
+would make missing credentials fatal at import for `better-auth.ts`, which is to
 say fatal for the whole auth stack, on a project whose first rule (§13.1) is
-that it runs with nothing set.
+that it runs with nothing set. A transport per send is cheap next to the SMTP
+round-trip it wraps, so there is nothing here to memoise the way
+`lib/server/db.ts` memoises its pool.
 
 **A send that fails does not fail the sign-up.** `sendVerificationEmail` awaits
 the request — a floating promise inside a serverless invocation may never leave
@@ -851,11 +853,11 @@ was authorised by email before; something will be, and an account estate half of
 which was never confirmed is not a thing to start a reset flow on top of.
 
 **It follows the mailer, not a flag.** `mailerConfigured()` decides:
-`RESEND_API_KEY` present, verification required; absent, sign-up behaves exactly
+SMTP credentials present, verification required; absent, sign-up behaves exactly
 as it did in §13.9's world. §13.1 — the app runs with nothing set — outranks this
 section, and requiring a click that no mail can deliver would make every
-deployment without a Resend key a deployment where accounts cannot be created at
-all, local development first among them. It is read once per process, which is
+deployment without SMTP credentials a deployment where accounts cannot be
+created at all, local development first among them. It is read once per process, which is
 the same granularity as `secret` and `baseURL` and no worse.
 
 **A failed send now fails the sign-up**, reversing §13.9's last-but-two
