@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Sign in, sign out, and the sync state that follows from them. See DESIGN.md §13.6.
+ * Sign in, create an account, sign out, and the sync state that follows from
+ * them. See DESIGN.md §13.6 and §13.10.
  *
  * Everything here is gated on `mounted`, which is the §8.4 rule rather than
  * caution: these routes prerender to static HTML and the service worker caches
@@ -16,6 +17,30 @@ import { adoptAccount, useHapi, type SyncStatus } from "@/lib/store";
 import { syncNow } from "@/lib/sync/client";
 
 type Mode = "sign-in" | "sign-up";
+
+/**
+ * What just happened to the account, held above the form rather than in it.
+ *
+ * It has to live here, not inside `SignedOut`: a sign-up on a deployment with no
+ * mailer comes back with a live session, Better Auth's `useSession` flips, and
+ * the whole signed-out subtree unmounts on the next tick. A confirmation held in
+ * that subtree's state would flash and vanish — which is the thing being fixed,
+ * not a fix for it.
+ *
+ * `verify` is the §13.10 wait, reachable from both sides: a sign-up that created
+ * no session, and a sign-in the server answered 403. Which one it was is the
+ * only difference the copy has, so `origin` carries it.
+ *
+ * `created` is the *certain* one, and it is only ever certain on a deployment
+ * with no mailer. Once `requireEmailVerification` is on, Better Auth answers a
+ * sign-up for an address that already exists with a synthetic success — same
+ * shape, null token, no account made — so that nobody can use the form to test
+ * whether an address is registered. The client therefore cannot know, and
+ * `AwaitingVerification` must not claim to.
+ */
+type Outcome =
+  | { kind: "verify"; email: string; origin: Mode }
+  | { kind: "created"; email: string };
 
 /**
  * False on the server and through hydration, true afterwards.
@@ -38,8 +63,9 @@ function useMounted(): boolean {
 
 export function AccountCard() {
   const { data: session, isPending } = authClient.useSession();
-  const { syncStatus } = useHapi();
+  const { habits, syncStatus } = useHapi();
   const mounted = useMounted();
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   if (!mounted || isPending) {
     return (
@@ -49,25 +75,50 @@ export function AccountCard() {
     );
   }
 
+  // Ahead of the session check on purpose: the wait is the state of a browser
+  // that has no session yet, and the one route into it that could have one — a
+  // 403 on sign-in — is still not the state of that account.
+  if (outcome?.kind === "verify") {
+    return (
+      <Card>
+        <AwaitingVerification
+          email={outcome.email}
+          origin={outcome.origin}
+          onDone={() => setOutcome(null)}
+        />
+      </Card>
+    );
+  }
+
   return (
     <Card>
       {session?.user ? (
-        <SignedIn email={session.user.email} syncStatus={syncStatus} />
+        <SignedIn
+          email={session.user.email}
+          syncStatus={syncStatus}
+          created={outcome?.kind === "created" ? habits.length : null}
+          onClearCreated={() => setOutcome(null)}
+        />
       ) : (
-        <SignedOut />
+        <SignedOut onOutcome={setOutcome} />
       )}
     </Card>
   );
 }
 
-function SignedOut() {
+/**
+ * A failure worth reading, plus the one case that has an obvious next move:
+ * signing up with an address that already has an account is not really an
+ * error, it is the wrong half of the form.
+ */
+type FormError = { text: string; offerSignIn?: boolean };
+
+function SignedOut({ onOutcome }: { onOutcome: (outcome: Outcome) => void }) {
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  /** The address waiting on a click, or null. Both routes into §13.10 set it. */
-  const [awaiting, setAwaiting] = useState<string | null>(null);
+  const [error, setError] = useState<FormError | null>(null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -93,11 +144,26 @@ function SignedOut() {
       // already sent a fresh mail on its way out (`sendOnSignIn`) — so this is
       // not a failure to report, it is the wait, entered from the other side.
       if (result.error.code === "EMAIL_NOT_VERIFIED") {
-        setAwaiting(credentials.email);
-        setPassword("");
+        onOutcome({ kind: "verify", email: credentials.email, origin: "sign-in" });
         return;
       }
-      setError(result.error.message ?? "That did not work. Try again.");
+      // Only reachable with no mailer configured. Better Auth hides duplicates
+      // behind a synthetic success whenever `requireEmailVerification` is on
+      // (its `shouldReturnGenericDuplicateResponse`), so on a deployment that
+      // can send mail this branch never fires and the wait below has to carry
+      // the case instead. Both spellings, because the sign-up route throws the
+      // longer one and other paths throw the shorter.
+      if (
+        result.error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" ||
+        result.error.code === "USER_ALREADY_EXISTS"
+      ) {
+        setError({
+          text: "That address already has an account.",
+          offerSignIn: true,
+        });
+        return;
+      }
+      setError({ text: result.error.message ?? "That did not work. Try again." });
       return;
     }
 
@@ -106,8 +172,7 @@ function SignedOut() {
     // stay unset, or `lib/sync/client.ts` spends the wait collecting 401s. With
     // no mailer configured the token is real and this is the old path.
     if (!result.data?.token) {
-      setAwaiting(credentials.email);
-      setPassword("");
+      onOutcome({ kind: "verify", email: credentials.email, origin: "sign-up" });
       return;
     }
 
@@ -116,18 +181,12 @@ function SignedOut() {
     // notice, so the first sync starts on this tick instead of the next fetch.
     markSignedIn();
     void syncNow();
-  }
 
-  if (awaiting !== null) {
-    return (
-      <AwaitingVerification
-        email={awaiting}
-        onDone={() => {
-          setMode("sign-in");
-          setAwaiting(null);
-        }}
-      />
-    );
+    // Signing in explains itself — the card becomes the signed-in card. Being
+    // handed one silently, because this deployment has no mailer, does not.
+    if (mode === "sign-up") {
+      onOutcome({ kind: "created", email: credentials.email });
+    }
   }
 
   return (
@@ -140,19 +199,46 @@ function SignedOut() {
       </p>
 
       <form onSubmit={submit} className="mt-3 space-y-2">
+        {error && (
+          <Banner tone="error">
+            {error.text}
+            {error.offerSignIn && (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("sign-in");
+                    setError(null);
+                  }}
+                  className="underline underline-offset-4"
+                >
+                  Sign in instead
+                </button>
+              </>
+            )}
+          </Banner>
+        )}
+
         <Field
           label="Email"
           type="email"
           value={email}
           autoComplete="username"
-          onChange={setEmail}
+          onChange={(value) => {
+            setEmail(value);
+            setError(null);
+          }}
         />
         <Field
           label="Password"
           type="password"
           value={password}
           autoComplete={mode === "sign-up" ? "new-password" : "current-password"}
-          onChange={setPassword}
+          onChange={(value) => {
+            setPassword(value);
+            setError(null);
+          }}
         />
 
         {mode === "sign-up" && (
@@ -161,12 +247,6 @@ function SignedOut() {
             the account can be used, so use one you can open. There is no
             password reset yet — if you lose it your habits are still on this
             device, and Export backup below is how you move them.
-          </p>
-        )}
-
-        {error && (
-          <p role="alert" className="text-[12px] text-danger">
-            {error}
           </p>
         )}
 
@@ -200,18 +280,23 @@ function SignedOut() {
  * It is a state of the *form*, not of the app: no session exists yet, nothing
  * has synced, and the habits on this device are untouched — which is what the
  * copy has to get across, because "check your email" on a screen that just
- * swallowed your account reads as data loss otherwise.
+ * swallowed your account reads as data loss otherwise. `origin` is why the same
+ * screen can also confirm the sign-up went through: arriving from a 403 there is
+ * no sign-up to confirm, and even arriving from one, what is certain is that the
+ * request was accepted — not that an account was created. See `Outcome`.
  *
  * The resend endpoint answers the same way for an address that is unknown, or
  * already verified, as for one that is waiting — deliberately, so it cannot be
  * used to test whether an account exists. There is therefore nothing to branch
- * on here and nothing to report but "sent".
+ * on there and nothing to report but "sent".
  */
 function AwaitingVerification({
   email,
+  origin,
   onDone,
 }: {
   email: string;
+  origin: Mode;
   onDone: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -237,20 +322,43 @@ function AwaitingVerification({
 
   return (
     <>
+      {origin === "sign-up" && (
+        <div className="mb-2">
+          <Banner tone="ok">
+            Sign-up accepted — your link is on its way to{" "}
+            <span className="font-medium">{email}</span>.
+          </Banner>
+        </div>
+      )}
+
       <p className="text-[13px] leading-relaxed">
-        Check <span className="font-medium">{email}</span> for a link to confirm
-        the address. Signing in needs it.
+        {origin === "sign-up" ? (
+          <>Open it to confirm the address and finish the account.</>
+        ) : (
+          <>
+            Check <span className="font-medium">{email}</span> for a link to
+            confirm the address.
+          </>
+        )}{" "}
+        Signing in needs it.
       </p>
       <p className="mt-1 text-[12px] leading-relaxed text-muted">
         Nothing has left this device, and nothing will until you sign in — your
         habits are where they were. The link works on any device, and opening it
         signs that one in.
       </p>
+      {origin === "sign-up" && (
+        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+          If that address already had an account, no second one was made and no
+          mail was sent — sign in with it instead. We answer the same way either
+          way, so that this form cannot be used to find out who has an account.
+        </p>
+      )}
 
       {error && (
-        <p role="alert" className="mt-2 text-[12px] text-danger">
-          {error}
-        </p>
+        <div className="mt-2">
+          <Banner tone="error">{error}</Banner>
+        </div>
       )}
       {sent && !error && (
         <p role="status" className="mt-2 text-[12px] text-muted">
@@ -279,7 +387,18 @@ function AwaitingVerification({
   );
 }
 
-function SignedIn({ email, syncStatus }: { email: string; syncStatus: SyncStatus }) {
+function SignedIn({
+  email,
+  syncStatus,
+  created,
+  onClearCreated,
+}: {
+  email: string;
+  syncStatus: SyncStatus;
+  /** Habits on this device when the account was just created here, else null. */
+  created: number | null;
+  onClearCreated: () => void;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [warned, setWarned] = useState(false);
@@ -314,10 +433,33 @@ function SignedIn({ email, syncStatus }: { email: string; syncStatus: SyncStatus
     setBusy(false);
     setConfirming(false);
     setWarned(false);
+    // Or the next sign-in on this device is congratulated on an account it did
+    // not just create.
+    onClearCreated();
   }
 
   return (
     <>
+      {created !== null && (
+        <div className="mb-3">
+          <Banner tone="ok">
+            Account created.{" "}
+            {created > 0
+              ? `The ${created} habit${created === 1 ? "" : "s"} on this device ${
+                  created === 1 ? "is" : "are"
+                } being added to it now.`
+              : "Anything you add here is kept in it from now on."}{" "}
+            <button
+              type="button"
+              onClick={onClearCreated}
+              className="underline underline-offset-4"
+            >
+              Dismiss
+            </button>
+          </Banner>
+        </div>
+      )}
+
       <p className="text-[13px]">
         Signed in as <span className="font-medium">{email}</span>
       </p>
@@ -383,6 +525,34 @@ function describe(status: SyncStatus): string {
     case "off":
       return "Not syncing yet.";
   }
+}
+
+/**
+ * One slot, two tones, for anything this card has to report.
+ *
+ * `alert` interrupts a screen reader and `status` waits its turn, which is the
+ * right way round: a failure stands between you and what you asked for, a
+ * confirmation does not. Both borders are full-strength tokens — the rule that
+ * `--muted` may never be thinned is about legibility, and these are no
+ * different.
+ */
+function Banner({
+  tone,
+  children,
+}: {
+  tone: "ok" | "error";
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role={tone === "error" ? "alert" : "status"}
+      className={`rounded-control border px-3 py-2 text-[12px] leading-relaxed ${
+        tone === "error" ? "border-danger text-danger" : "border-accent text-accent"
+      }`}
+    >
+      {children}
+    </div>
+  );
 }
 
 function Field({

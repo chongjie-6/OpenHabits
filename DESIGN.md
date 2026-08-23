@@ -5,7 +5,7 @@ A local-first PWA that pairs a **daily quote from someone worth quoting** with a
 - **Status:** phases 0–6 built and passing; §11 has what remains. Sync (§13) runs: the auth seam is filled (§13.6) and an account is created from the Settings screen.
 - **Stack:** Next.js 16.3.1 (App Router), React 19.2, Tailwind CSS v4, TypeScript 5, Vitest
 - **Sync stack:** Postgres + Drizzle, Better Auth for identity, PGlite for tests (§13)
-- **Last updated:** 2026-08-21
+- **Last updated:** 2026-08-23
 
 > Sections marked **Revised during build** record where implementation contradicted the plan. They are kept rather than overwritten — the reasoning that turned out to be wrong is usually the reasoning most worth having on the record.
 
@@ -892,3 +892,38 @@ appeared to swallow an account reads as data loss.
 
 **Still no password reset**, so §13.8 #7 is only half closed. A confirmed address
 is the prerequisite for one, which is most of what this section is for.
+
+### 13.11 Saying whether it worked
+
+The states above were all built and none of them was ever *announced*. A sign-up
+either replaced the form with the verification panel or, on a deployment with no
+mailer, silently became the signed-in card — indistinguishable from having
+signed in — and a failure was a twelve-pixel line of `--danger` wedged between
+the hint paragraph and the buttons. `AccountCard` now reports every outcome
+through one `Banner`: `role="alert"` for failures, which should interrupt a
+screen reader because they stand between you and what you asked for, and
+`role="status"` for confirmations, which should not.
+
+**The outcome is held above the form, not in it.** With no mailer a sign-up comes
+back with a live session, Better Auth's `useSession` flips, and the entire
+signed-out subtree unmounts on the next tick — so a confirmation stored in that
+subtree's state would flash and vanish, which is a more annoying version of the
+bug. `AccountCard` owns an `Outcome`, and the signed-in card renders the
+"account created" banner (with the count of habits being uploaded into it) until
+it is dismissed or the account is signed out of.
+
+**What the sign-up panel is allowed to claim.** Not that an account was created —
+that is knowable only where verification is off. With it on, Better Auth answers
+a sign-up for an address that already exists with a synthetic success: same
+response shape, `token: null`, no row written, so that the form cannot be used to
+test whether an address is registered. This is the same non-disclosure the resend
+endpoint makes, and the panel's copy has to be true under both readings, which is
+why it confirms the *sign-up* and the mail rather than the account, and names the
+duplicate case as a possibility with an action attached. The single case where
+the app does know — mailer off, real token, therefore a real new account — is the
+one place it says "Account created" outright.
+
+**`USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL` is thrown only in that same case**, for
+the same reason, and the form turns it into "Sign in instead" with the address
+kept. The shorter `USER_ALREADY_EXISTS` is matched too; the sign-up route throws
+the longer spelling and other paths throw the other.
