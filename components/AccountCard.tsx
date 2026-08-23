@@ -37,10 +37,16 @@ type Mode = "sign-in" | "sign-up";
  * shape, null token, no account made — so that nobody can use the form to test
  * whether an address is registered. The client therefore cannot know, and
  * `AwaitingVerification` must not claim to.
+ *
+ * `habits` is counted once, at the moment of the sign-up, and carried. Reading
+ * the store live instead would let the banner contradict itself: the `syncNow()`
+ * fired alongside this can come back 409, which empties the store, and a live
+ * count would rewrite "the 3 habits here are being added" into "anything you add
+ * here is kept from now on" — the wipe narrated as a welcome.
  */
 type Outcome =
   | { kind: "verify"; email: string; origin: Mode }
-  | { kind: "created"; email: string };
+  | { kind: "created"; email: string; habits: number };
 
 /**
  * False on the server and through hydration, true afterwards.
@@ -63,7 +69,7 @@ function useMounted(): boolean {
 
 export function AccountCard() {
   const { data: session, isPending } = authClient.useSession();
-  const { habits, syncStatus } = useHapi();
+  const { syncStatus } = useHapi();
   const mounted = useMounted();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
@@ -96,7 +102,7 @@ export function AccountCard() {
         <SignedIn
           email={session.user.email}
           syncStatus={syncStatus}
-          created={outcome?.kind === "created" ? habits.length : null}
+          created={outcome?.kind === "created" ? outcome.habits : null}
           onClearCreated={() => setOutcome(null)}
         />
       ) : (
@@ -114,6 +120,7 @@ export function AccountCard() {
 type FormError = { text: string; offerSignIn?: boolean };
 
 function SignedOut({ onOutcome }: { onOutcome: (outcome: Outcome) => void }) {
+  const { habits } = useHapi();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -185,7 +192,10 @@ function SignedOut({ onOutcome }: { onOutcome: (outcome: Outcome) => void }) {
     // Signing in explains itself — the card becomes the signed-in card. Being
     // handed one silently, because this deployment has no mailer, does not.
     if (mode === "sign-up") {
-      onOutcome({ kind: "created", email: credentials.email });
+      // Counted here rather than read in the banner: this is the number of
+      // habits the sign-up undertook to upload, and it stays true whatever the
+      // sync that just started does to the store.
+      onOutcome({ kind: "created", email: credentials.email, habits: habits.length });
     }
   }
 
