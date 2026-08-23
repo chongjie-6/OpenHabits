@@ -43,10 +43,18 @@ type Mode = "sign-in" | "sign-up";
  * fired alongside this can come back 409, which empties the store, and a live
  * count would rewrite "the 3 habits here are being added" into "anything you add
  * here is kept from now on" — the wipe narrated as a welcome.
+ *
+ * `session` is the token the sign-up returned, and the banner is shown only
+ * while it is still the live one. Clearing the outcome on sign-out is not
+ * enough, because sign-out is not the only way a session ends: a cookie
+ * expires, another tab signs out, the server drops the row. Any of those leaves
+ * the outcome sitting here to congratulate the *next* ordinary sign-in on an
+ * account it did not create. Matching the token makes that structurally
+ * impossible rather than a case to remember.
  */
 type Outcome =
   | { kind: "verify"; email: string; origin: Mode }
-  | { kind: "created"; email: string; habits: number };
+  | { kind: "created"; email: string; habits: number; session: string };
 
 /**
  * False on the server and through hydration, true afterwards.
@@ -96,13 +104,18 @@ export function AccountCard() {
     );
   }
 
+  const created =
+    outcome?.kind === "created" && outcome.session === session?.session.token
+      ? outcome.habits
+      : null;
+
   return (
     <Card>
       {session?.user ? (
         <SignedIn
           email={session.user.email}
           syncStatus={syncStatus}
-          created={outcome?.kind === "created" ? outcome.habits : null}
+          created={created}
           onClearCreated={() => setOutcome(null)}
         />
       ) : (
@@ -195,7 +208,12 @@ function SignedOut({ onOutcome }: { onOutcome: (outcome: Outcome) => void }) {
       // Counted here rather than read in the banner: this is the number of
       // habits the sign-up undertook to upload, and it stays true whatever the
       // sync that just started does to the store.
-      onOutcome({ kind: "created", email: credentials.email, habits: habits.length });
+      onOutcome({
+        kind: "created",
+        email: credentials.email,
+        habits: habits.length,
+        session: result.data.token,
+      });
     }
   }
 
@@ -412,6 +430,7 @@ function SignedIn({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [warned, setWarned] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function attemptSignOut() {
     setBusy(true);
@@ -434,18 +453,35 @@ function SignedIn({
 
   async function finish() {
     setBusy(true);
-    await authClient.signOut();
+    setFailed(false);
+
+    // Awaited without a guard this takes the rest of the function with it on a
+    // dead network: the button keeps saying "Saving…" for good. The wipe is
+    // held behind it rather than run anyway because the cookie would survive a
+    // failed sign-out — `useSession` would still report a session, over a store
+    // that had already been emptied under it.
+    let ok = false;
+    try {
+      ok = (await authClient.signOut()).error == null;
+    } catch {
+      ok = false;
+    }
+
+    setBusy(false);
+    if (!ok) {
+      setFailed(true);
+      return;
+    }
+
     markSignedOut();
     // The wipe. Same path as the 409 account-mismatch case: the local store is
     // emptied and the cursor reset, so the next person to sign in on this device
     // starts from their own server state rather than inheriting this one.
     adoptAccount(null);
-    setBusy(false);
     setConfirming(false);
     setWarned(false);
-    // Or the next sign-in on this device is congratulated on an account it did
-    // not just create.
-    onClearCreated();
+    // The "Account created" banner needs no clearing here — it is bound to this
+    // session's token, and this session is over.
   }
 
   return (
@@ -487,6 +523,12 @@ function SignedIn({
               yet. Signing out now would lose them.
             </p>
           )}
+          {failed && (
+            <p role="alert" className="text-[12px] text-danger">
+              Could not sign out — the server did not answer. Nothing has
+              changed on this device; try again in a moment.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -502,6 +544,7 @@ function SignedIn({
               onClick={() => {
                 setConfirming(false);
                 setWarned(false);
+                setFailed(false);
               }}
               className="h-10 rounded-control border border-border px-3 text-[13px] font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
             >
