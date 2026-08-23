@@ -80,6 +80,12 @@ export function AccountCard() {
   const { syncStatus } = useHapi();
   const mounted = useMounted();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // The address the form should come back to. The wait renders *instead of*
+  // `SignedOut`, so leaving it is a remount and every field is blank again —
+  // and being asked to retype the address you were just shown, on the screen
+  // that told you to go and check it, reads as the sign-up having come undone.
+  // Only the address is kept: the password is a fresh mount's business.
+  const [resumeEmail, setResumeEmail] = useState("");
 
   if (!mounted || isPending) {
     return (
@@ -98,7 +104,10 @@ export function AccountCard() {
         <AwaitingVerification
           email={outcome.email}
           origin={outcome.origin}
-          onDone={() => setOutcome(null)}
+          onDone={() => {
+            setResumeEmail(outcome.email);
+            setOutcome(null);
+          }}
         />
       </Card>
     );
@@ -119,7 +128,7 @@ export function AccountCard() {
           onClearCreated={() => setOutcome(null)}
         />
       ) : (
-        <SignedOut onOutcome={setOutcome} />
+        <SignedOut initialEmail={resumeEmail} onOutcome={setOutcome} />
       )}
     </Card>
   );
@@ -132,10 +141,22 @@ export function AccountCard() {
  */
 type FormError = { text: string; offerSignIn?: boolean };
 
-function SignedOut({ onOutcome }: { onOutcome: (outcome: Outcome) => void }) {
+function SignedOut({
+  initialEmail,
+  onOutcome,
+}: {
+  /**
+   * Seeds the field on mount only, which is all that is needed: this component
+   * is never mounted while the wait is on screen, so coming back from it is
+   * always a fresh mount. `mode` is left at its default for the same reason —
+   * whichever side of the form you left from, what you return to do is sign in.
+   */
+  initialEmail: string;
+  onOutcome: (outcome: Outcome) => void;
+}) {
   const { habits } = useHapi();
   const [mode, setMode] = useState<Mode>("sign-in");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
