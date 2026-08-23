@@ -1,9 +1,9 @@
 /**
  * Cadence evaluation and day rollups. See DESIGN.md §3.1 and §4.2.
  *
- * Nothing here is ever persisted. A full year rebuild is well under the frame
- * budget, and derived state that gets written to disk is the main way an app
- * like this rots.
+ * Nothing here is ever persisted: a full year rebuild is well under the frame
+ * budget, and derived state written to disk is the main way an app like this
+ * rots.
  */
 
 import { addDays, daysBetween, startOfWeek, weekdayOf } from "./dates";
@@ -44,9 +44,9 @@ function isDone(habit: Habit, count: number): boolean {
 /**
  * Every habit's state on a given day, including whether it was scheduled.
  *
- * A `weekly: n times` habit counts toward the day's total only until its weekly
- * quota is met; after that it becomes a rest day for the remainder of the week.
- * That rewards front-loading the week rather than punishing it.
+ * A `weekly: n times` habit counts toward the day's total only until its quota is
+ * met, then becomes a rest day for the remainder of the week — which rewards
+ * front-loading the week rather than punishing it.
  */
 export function habitsForDay(
   habits: Habit[],
@@ -146,12 +146,10 @@ export function firstDayOf(habits: Habit[]): DayKey | null {
 }
 
 /**
- * A single habit's history, for its own grid.
- *
- * The aggregate grid treats a counted habit as all-or-nothing — a fraction of a
- * fraction is not readable off an 11px square. Here there is only one fraction,
- * so `count / target` drives the level directly and a 5-of-8 day is visibly
- * different from a 1-of-8 day.
+ * A single habit's history, for its own grid. The aggregate grid treats a counted
+ * habit as all-or-nothing, because a fraction of a fraction is not readable off
+ * an 11px square; here there is only one fraction, so `count / target` drives the
+ * level directly.
  */
 export function buildHabitHistory(
   habit: Habit,

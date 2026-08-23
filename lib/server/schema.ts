@@ -1,17 +1,14 @@
 /**
- * Server schema. See DESIGN.md §13.
+ * Server schema. See DESIGN.md §13. It follows `lib/types.ts` with three
+ * deliberate differences.
  *
- * The shape follows `lib/types.ts` closely, with three deliberate differences.
+ * 1. `userId` is part of the primary key rather than a column beside it.
+ *    Colliding client-generated UUIDs are vanishingly unlikely, but "unlikely"
+ *    is the wrong standard for a key that decides whose data you read.
  *
- * 1. Every row is scoped by `userId`, and it is part of the primary key rather
- *    than a column beside it. Habit ids are client-generated UUIDs, so two
- *    accounts colliding is vanishingly unlikely — but "unlikely" is the wrong
- *    standard for a key that decides whose data you read.
- *
- * 2. Civil dates stay `text`. `createdAt`, `archivedAt` and `entries.date` are
- *    'YYYY-MM-DD' in the *user's* timezone, and a Postgres `date` column would
- *    invite exactly the conversion this app spends §3 avoiding. Text sorts
- *    correctly in this format anyway, which is all the ordering we need.
+ * 2. Civil dates stay `text`. A Postgres `date` column would invite exactly the
+ *    timezone conversion §3 spends its length avoiding, and text sorts correctly
+ *    in this format anyway.
  *
  * 3. Each row carries `seq` alongside `updatedAt` — the server cursor next to
  *    the client merge stamp. See `lib/sync/protocol.ts` for why both exist.
@@ -32,14 +29,11 @@ import {
 import type { Cadence, Settings } from "../types";
 
 /**
- * The single source of `seq` for every row of every account.
- *
- * One global sequence rather than one per user: a sequence is a counter, and
- * per-user counters would mean a table of them plus a read-modify-write on every
- * sync. Cursors only ever need to be monotonic *within* an account, and a global
- * sequence restricted to one user's rows is exactly that — a subsequence of a
- * monotonic series is monotonic. The numbers have gaps between users; nothing
- * reads them as a count.
+ * The single source of `seq` for every row of every account. One global sequence
+ * rather than one per user, which would mean a table of counters plus a
+ * read-modify-write on every sync: cursors only need to be monotonic *within* an
+ * account, and a subsequence of a monotonic series is monotonic. The numbers gap
+ * between users; nothing reads them as a count.
  */
 export const syncSeq = pgSequence("hapi_sync_seq");
 
@@ -96,9 +90,8 @@ export const entries = pgTable(
     primaryKey({ columns: [t.userId, t.habitId, t.date] }),
     index("entries_user_seq_idx").on(t.userId, t.seq),
     // An entry without its habit is unreadable — nothing knows its target or
-    // cadence — so the database refuses to hold one. Habits are upserted first in
-    // the same transaction, and `applyPush` drops orphans before they get here, so
-    // this constraint is a backstop rather than a code path we rely on.
+    // cadence. Habits are upserted first in the same transaction and `applyPush`
+    // drops orphans, so this is a backstop rather than a path relied on.
     foreignKey({
       columns: [t.userId, t.habitId],
       foreignColumns: [habits.userId, habits.id],

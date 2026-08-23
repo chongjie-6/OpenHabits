@@ -1,22 +1,16 @@
 import "server-only";
 
 /**
- * The Postgres connection.
+ * The Postgres connection, shaped by running inside a serverless function.
  *
- * Two things this file is careful about, both consequences of running inside a
- * serverless function rather than a long-lived server:
+ * Cached on `globalThis` because route handler modules are re-evaluated across
+ * hot reloads and some cold starts, and a fresh pool per evaluation exhausts
+ * Postgres' connection limit long before it exhausts the request volume.
  *
- * - **The client is cached on `globalThis`.** Route handler modules are
- *   re-evaluated across hot reloads in dev and across some cold starts in prod;
- *   a fresh pool per evaluation exhausts Postgres' connection limit long before
- *   it exhausts the request volume.
- *
- * - **The pool is tiny and `prepare` is off.** Each function instance handles one
- *   request at a time, so a large pool buys nothing and costs a connection slot
- *   per instance. Prepared statements are disabled because they are per-session
- *   state, and a pooler handing out a different backend per checkout invalidates
- *   them — the failure looks like intermittent "prepared statement does not
- *   exist" errors under load, which is a miserable thing to debug.
+ * The pool is tiny because each instance handles one request at a time.
+ * `prepare` is off because prepared statements are per-session state, and a
+ * pooler handing out a different backend per checkout invalidates them — the
+ * failure looks like intermittent "prepared statement does not exist" under load.
  */
 
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -49,9 +43,8 @@ function client(): ReturnType<typeof postgres> {
 }
 
 /**
- * Lazily constructed, so importing anything from this module does not require a
- * database. Without that, a build-time trace of the route would fail on a
- * machine with no `DATABASE_URL`.
+ * Lazy, so importing this module does not require a database — otherwise a
+ * build-time trace of the route fails on a machine with no `DATABASE_URL`.
  */
 export function getDb() {
   return drizzle(client(), { schema });

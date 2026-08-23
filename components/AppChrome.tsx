@@ -13,17 +13,16 @@ import { useSync } from "@/lib/sync/client";
  */
 export function Hydrator() {
   useHydrate();
-  // Reconciles the local "am I signed in" hint against the real session. Order
-  // relative to `useSync` does not matter: a hint a render out of date costs at
-  // most a delayed first sync, and the server decides either way.
+  // Order relative to `useSync` does not matter: a hint a render out of date
+  // costs at most a delayed first sync, and the server decides either way.
   useSessionSync();
-  // Waits for hydration internally, and is inert when the user is not signed in
-  // or the deployment has no database.
+  // Inert until hydration, and when signed out or the deployment has no
+  // database.
   useSync();
 
   useEffect(() => {
     // Skipped in development: a caching worker turns every HMR update into a
-    // debugging session about stale assets.
+    // hunt for stale assets.
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
 

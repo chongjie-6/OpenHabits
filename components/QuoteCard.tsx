@@ -7,14 +7,12 @@ import { useToday } from "@/lib/use-today";
 /**
  * The hero. See DESIGN.md §5.1.
  *
- * The day is resolved on the client, not the server. This page prerenders to
- * static HTML, so a server-computed date would pin every visitor to the *build*
- * day's quote and then visibly swap it at hydration — and even request-time
- * rendering would be stale the moment the service worker served the page from
- * cache. Showing the wrong quote and correcting it is worse than showing none
- * for a beat, so the card renders a fixed-height placeholder until mount. The
- * selection itself is pure and synchronous, so it lands on the first client
- * render rather than waiting on IndexedDB.
+ * The day is resolved on the client. This page prerenders to static HTML, so a
+ * server-computed date would pin every visitor to the *build* day's quote — and
+ * even request-time rendering is stale once the service worker serves from cache.
+ * Showing the wrong quote and correcting it is worse than showing none for a
+ * beat, hence the fixed-height placeholder until mount. The selection itself is
+ * pure and synchronous, so it lands on the first client render.
  */
 export function QuoteCard() {
   const { settings } = useHapi();

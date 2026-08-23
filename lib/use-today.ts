@@ -5,16 +5,12 @@ import { todayKey } from "./dates";
 import type { DayKey } from "./types";
 
 /**
- * The current civil day, as external state.
+ * The current civil day, as external state — the clock genuinely is an external
+ * system, so React uses the server snapshot (`null`) through hydration and then
+ * switches over, with no mismatch and no cascading render.
  *
- * The clock genuinely is an external system, so this is a `useSyncExternalStore`
- * subscription rather than a `setState` in an effect: React uses the server
- * snapshot (`null`) through hydration and then switches over, with no mismatch
- * and no cascading render.
- *
- * Subscribing also means the app rolls over correctly if it is left open across
- * midnight — a habit tracker sitting on a bedside table at 23:59 should not
- * still be showing yesterday at 00:01.
+ * Subscribing also rolls the app over at midnight: a habit tracker left on a
+ * bedside table at 23:59 should not still show yesterday at 00:01.
  */
 
 const TICK_MS = 60_000;

@@ -1,16 +1,14 @@
 /**
  * Payload validation for the sync endpoint.
  *
- * `/api/sync` accepts a body from any client, so nothing here trusts its input.
- * Beyond rejecting malformed data, the caps matter for a specific reason: these
- * records go back out to the user's *other* devices, so a field that is accepted
- * here is a field every one of their devices will render. Bounding the sizes at
- * the boundary keeps one bad request from becoming a payload that breaks the
- * user's phone every time it syncs.
+ * The caps matter beyond rejecting malformed data: these records go back out to
+ * the user's *other* devices, so a field accepted here is a field every one of
+ * them renders. Bounding at the boundary keeps one bad request from becoming a
+ * payload that breaks the user's phone on every sync.
  *
- * Hand-written rather than schema-library-driven, matching the choice made for
- * `lib/db.ts`: the surface is small and fixed, and this is the layer where a
- * supply chain dependency is least welcome.
+ * Hand-written rather than schema-library-driven, as in `lib/db.ts`: the surface
+ * is small and fixed, and this is where a supply chain dependency is least
+ * welcome.
  */
 
 import {
@@ -56,11 +54,9 @@ function isStamp(value: unknown): value is number {
 }
 
 /**
- * A civil date, checked for real existence rather than just shape.
- *
- * The round-trip comparison is what rejects '2026-02-30': `Date` would silently
- * roll it forward to March 2nd, and a date that shifts under parsing is exactly
- * the class of bug §3 exists to prevent.
+ * A civil date, checked for existence rather than shape. The round-trip
+ * comparison is what rejects '2026-02-30', which `Date` would silently roll
+ * forward to March 2nd.
  */
 function isDayKey(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -79,8 +75,8 @@ function parseCadence(value: unknown): ParseResult<Cadence> {
       if (!Array.isArray(value.days)) return fail("cadence.days must be an array");
       if (value.days.length > 7) return fail("cadence.days has more than seven days");
       if (!value.days.every((d) => isCount(d, 6))) return fail("cadence.days must be 0–6");
-      // Deduplicated and sorted so the fingerprint in `protocol.ts` is stable
-      // across devices that happened to store the same days in another order.
+      // Sorted so the fingerprint in `protocol.ts` is stable across devices
+      // that stored the same days in another order.
       const days = [...new Set(value.days as number[])].sort((a, b) => a - b);
       return { ok: true, value: { kind: "weekdays", days } };
     }
@@ -125,8 +121,8 @@ function parseHabit(value: unknown): ParseResult<Habit> {
 
   return {
     ok: true,
-    // Rebuilt field by field rather than spread, so an unexpected property in the
-    // body cannot ride along into the database and back out to other devices.
+    // Field by field rather than spread, so an unexpected property cannot ride
+    // into the database and back out to other devices.
     value: {
       id: value.id,
       name: value.name,
@@ -198,8 +194,8 @@ function parseList<T>(
   const out: T[] = [];
   for (let i = 0; i < value.length; i++) {
     const parsed = parse(value[i]);
-    // The index is included because the client chunks its push: without it, a
-    // rejected batch gives no way to find the record at fault.
+    // The client chunks its push, so without the index a rejected batch gives
+    // no way to find the record at fault.
     if (!parsed.ok) return fail(`${field}[${i}]: ${parsed.message}`);
     out.push(parsed.value);
   }

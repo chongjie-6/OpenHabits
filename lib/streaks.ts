@@ -1,11 +1,9 @@
 /**
  * Streak maths. See DESIGN.md §3.1.
  *
- * Two rules give this its character:
- *   1. Rest days (nothing scheduled) are stepped over — they neither extend nor
- *      break a streak.
- *   2. The current day is forgiven while it is still in progress. Opening the
- *      app at 9am should not show your streak as already broken.
+ * Rest days (nothing scheduled) are stepped over — they neither extend nor break
+ * a streak — and the current day is forgiven while still in progress, because
+ * opening the app at 9am should not show a streak as already broken.
  */
 
 import type { DayStat } from "./history";
@@ -49,8 +47,7 @@ export function computeStreaks(stats: DayStat[]): Streaks {
     }
   }
 
-  // Walk back from today. The most recent day gets one free pass if it is
-  // incomplete, because the day is not over yet.
+  // The most recent day gets one free pass if incomplete: it is not over yet.
   let forgivenToday = false;
   for (let i = stats.length - 1; i >= 0; i--) {
     const stat = stats[i];

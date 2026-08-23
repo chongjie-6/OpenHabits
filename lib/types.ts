@@ -37,19 +37,18 @@ export type Cadence =
 /**
  * Sync metadata carried by every record that syncs. See DESIGN.md §13.
  *
- * Note the deliberate unit split. `createdAt`/`archivedAt` are civil dates
- * because they answer domain questions ("was this habit scheduled on the 4th?")
- * and must not shift under a timezone. `updatedAt`/`deletedAt` are epoch ms
- * because they answer a merge question ("which edit came last?") and a day's
- * resolution would make every same-day edit a tie.
+ * The unit split is deliberate: `createdAt`/`archivedAt` are civil dates because
+ * they answer domain questions and must not shift under a timezone.
+ * `updatedAt`/`deletedAt` are epoch ms because a day's resolution would make
+ * every same-day edit a tie.
  */
 export type Synced = {
   /** Epoch ms of the last local edit. Last-write-wins merge key. */
   updatedAt: number;
   /**
-   * Epoch ms of deletion, or null if live. Deleted records are kept as
-   * tombstones rather than removed, because on a replicated store a missing
-   * row is indistinguishable from a row the peer has not seen yet.
+   * Epoch ms of deletion, or null if live. Kept as a tombstone rather than
+   * removed: on a replicated store a missing row is indistinguishable from one
+   * the peer has not seen yet.
    */
   deletedAt: number | null;
 };
@@ -71,12 +70,11 @@ export type Habit = Synced & {
 /**
  * A habit's state on one day.
  *
- * Entries carry no tombstone, and that is a decision rather than an omission.
- * An entry is never individually deleted: "not done" is `count: 0`, which is a
- * value the LWW rule can merge like any other. The only bulk removal is a habit
- * deletion, and the habit's own tombstone already tells every peer to drop that
- * habit's entries — so a second tombstone per entry would carry no information
- * while multiplying the rows we sync by the length of the user's history.
+ * Entries carry no tombstone by decision, not omission. "Not done" is `count: 0`,
+ * a value LWW merges like any other, and the only bulk removal is a habit
+ * deletion whose own tombstone already tells peers to drop the entries. A second
+ * tombstone per entry would add no information and multiply the synced rows by
+ * the length of the user's history.
  */
 export type Entry = {
   habitId: string;
@@ -127,13 +125,10 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /**
- * Settings sync as a single last-write-wins blob rather than per field.
- *
- * Per-field merging would be more precise and is not worth it: the fields are
- * changed one at a time by one person, so a conflict means the same user edited
- * two devices between syncs, and the losing edit is a toggle they can flip back.
- * `theme` riding along is the one wart — a device-local look becomes a global
- * one — and is accepted because the alternative is splitting the type in two.
+ * Settings sync as a single last-write-wins blob rather than per field. A
+ * conflict means one person edited two devices between syncs, and the losing
+ * edit is a toggle they can flip back. `theme` riding along is the one wart — a
+ * device-local look becomes a global one.
  */
 export type SyncedSettings = {
   value: Settings;
@@ -147,12 +142,9 @@ export function entryKey(habitId: string, date: DayKey): string {
 }
 
 /**
- * Backup file format.
- *
- * v1 predates sync and so predates `updatedAt`/`deletedAt` on habits. Old files
- * stay readable: `normaliseHabit` fills the missing metadata in. Bumping the
- * version rather than silently widening v1 keeps a v2 file from being handed to
- * an old build that would drop the new fields on the next write.
+ * Backup file format. v1 predates sync and its metadata; `normaliseHabit` fills
+ * that in. Bumping the version rather than silently widening v1 keeps a v2 file
+ * out of an old build that would drop the new fields on the next write.
  */
 export type ExportBundle = {
   version: 2;
@@ -176,10 +168,9 @@ export type AnyExportBundle =
     };
 
 /**
- * Fill in sync metadata a v1 backup could not have carried.
- *
- * `updatedAt` falls back to the creation day rather than "now", so importing an
- * old backup cannot make its stale habits outrank edits already on the server.
+ * Fill in sync metadata a v1 backup could not have carried. `updatedAt` falls
+ * back to the creation day rather than "now", so an old backup's stale habits
+ * cannot outrank edits already on the server.
  */
 export function normaliseHabit(habit: LegacyHabit): Habit {
   if (habit.updatedAt !== undefined) {

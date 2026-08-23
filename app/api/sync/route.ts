@@ -1,15 +1,13 @@
 /**
  * POST /api/sync — the only server endpoint in the app. See DESIGN.md §13.
  *
- * Push and pull in one round trip, because they have to succeed or fail
- * together: a push that committed alongside a pull that did not would leave the
- * client's cursor and the server's contents describing different worlds.
+ * Push and pull in one round trip: a push that committed beside a pull that did
+ * not would leave the client's cursor and the server's contents describing
+ * different worlds.
  *
- * Deliberately the *only* endpoint. There is no `GET /habits`, no per-record
- * write route, no server rendering of user data. IndexedDB remains the source of
- * truth (§7.1) and this is a replication channel between copies of it — a design
- * that keeps the app fully functional with the database switched off, which is
- * also how it behaves for anyone who never signs in.
+ * Deliberately the *only* endpoint — no `GET /habits`, no per-record write route,
+ * no server rendering of user data. IndexedDB remains the source of truth (§7.1)
+ * and this is a replication channel between copies of it.
  */
 
 import { resolveUser } from "@/lib/server/auth";
@@ -22,10 +20,10 @@ import { parseSyncPush } from "@/lib/sync/validate";
 export const runtime = "nodejs";
 
 /**
- * Roughly `MAX_ROWS_PER_REQUEST` records at a generous size each, with headroom.
- * Checked before the body is read so an oversized request is refused rather than
- * buffered — `request.json()` on an unbounded body is the cheapest denial of
- * service there is.
+ * Roughly `MAX_ROWS_PER_REQUEST` records at a generous size each. Checked before
+ * the body is read, so an oversized request is refused rather than buffered —
+ * `request.json()` on an unbounded body is the cheapest denial of service there
+ * is.
  */
 const MAX_BODY_BYTES = 2_000_000;
 
@@ -38,8 +36,7 @@ function error(status: number, code: SyncErrorCode, message: string): Response {
 
 export async function POST(request: Request): Promise<Response> {
   if (!syncConfigured()) {
-    // Honest rather than broken: an app deployed without a database still works,
-    // and the client treats this as "sync is off" instead of retrying forever.
+    // The client treats this as "sync is off" rather than retrying forever.
     return error(503, "server-error", "Sync is not configured on this deployment.");
   }
 
@@ -70,13 +67,13 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
     if (cause instanceof AccountMismatchError) {
-      // Not an error condition so much as news: the client is holding data for
-      // someone else and needs to hand the device over. Nothing was written.
+      // News rather than an error: the client is holding someone else's data
+      // and needs to hand the device over. Nothing was written.
       return error(409, "account-mismatch", "Local data belongs to a different account.");
     }
 
-    // Logged in full, reported in outline. A driver error can quote the SQL it
-    // failed on, and that SQL contains another user's row values.
+    // Logged in full, reported in outline: a driver error can quote the SQL it
+    // failed on, and that SQL contains row values.
     console.error("hapi: sync failed", cause);
     return error(500, "server-error", "Sync failed. Your data is safe on this device.");
   }

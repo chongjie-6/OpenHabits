@@ -1,31 +1,18 @@
 /**
  * Better Auth's own tables. See DESIGN.md §13.6.
  *
- * Deliberately separate from `schema.ts:users`, and the separation is the whole
- * design. Two tables that both sound like "the user table" is a smell worth
- * justifying:
+ * `user` here is the *identity* Better Auth owns; `users` in `schema.ts` is the
+ * *account* sync rows hang off. Merging them would hand a dependency's migrations
+ * authority over the table `habits`, `entries` and `settings` all cascade from —
+ * a schema change could take years of history with it. The link is
+ * `users.id === user.id`, established by the upsert in `sync-store.ts`. No
+ * foreign key: the upsert already guarantees the row, and a cross-owner
+ * constraint would fail migrations in whichever order they ran.
  *
- * - `user` here is the *identity* — credentials, verification state, whatever a
- *   provider needs to recognise someone across devices. Better Auth owns every
- *   column and will add more as plugins are enabled.
- * - `users` in `schema.ts` is the *account* sync rows hang off. It holds an id
- *   and an email and nothing else, because it exists to be the left half of
- *   every primary key.
- *
- * Merging them would hand Better Auth's migrations authority over a table that
- * `habits`, `entries` and `settings` all reference with `onDelete: "cascade"` —
- * a schema change in a dependency could take years of history with it. The link
- * between the two is `users.id === user.id`, established by the upsert in
- * `sync-store.ts` on first sync. No foreign key: the upsert already guarantees
- * the row exists, and a cross-owner constraint would fail migrations in
- * whichever order they happened to run.
- *
- * Field *names* here must match Better Auth's model exactly — the Drizzle
- * adapter looks up properties by name, so `emailVerified` cannot be spelled
- * `verified`. Column names are snake_case to match the rest of this schema.
- * These definitions were taken from `@better-auth/core/dist/db/schema/*`;
- * re-read them when upgrading, since new fields arrive with new versions
- * (`account.issuer` did, in 1.7).
+ * Field *names* must match Better Auth's model exactly — the Drizzle adapter
+ * looks up properties by name. Taken from `@better-auth/core/dist/db/schema/*`;
+ * re-read on upgrade, since new fields arrive with new versions (`account.issuer`
+ * did, in 1.7).
  */
 
 import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";

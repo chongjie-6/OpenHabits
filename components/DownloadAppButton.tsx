@@ -5,12 +5,10 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 /**
  * The app's "Add to Home Screen" affordance — see DESIGN.md §8.4.
  *
- * This intercepts `beforeinstallprompt`, which the app deliberately did not do
- * until now. The two-tier experience that argued against it is handled rather
- * than avoided: Chromium gets the browser's own prompt, and every other engine
- * — iOS Safari above all — gets an instructions sheet worded for the browser
- * it is actually running in. It replaces the passive `InstallHint` card, whose
- * text this file's `InstallCard` inherits.
+ * Intercepts `beforeinstallprompt`, reversing an earlier decision not to. The
+ * two-tier experience that argued against it is handled rather than avoided:
+ * Chromium gets the browser's own prompt, every other engine — iOS Safari above
+ * all — gets a sheet worded for the browser it is actually running in.
  */
 
 interface BeforeInstallPromptEvent extends Event {
@@ -20,12 +18,8 @@ interface BeforeInstallPromptEvent extends Event {
 
 const DISPLAY_MODE = "(display-mode: standalone)";
 
-/* --------------------------------------------------------------------------
-   `beforeinstallprompt` fires once, early, and only on Chromium — usually
-   before React has hydrated. Catch it at module scope so a late mount still
-   has it, and hand it to components through `useSyncExternalStore` rather
-   than a `setState` in an effect.
-   -------------------------------------------------------------------------- */
+// `beforeinstallprompt` fires once, early, and only on Chromium — usually before
+// React has hydrated. Caught at module scope so a late mount still has it.
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 const listeners = new Set<() => void>();
@@ -140,8 +134,8 @@ const DEFAULT_CLASS =
   "h-11 w-full rounded-control bg-accent text-[14px] font-semibold text-accent-fg";
 
 function useInstallState(): InstallState {
-  // The server snapshot claims "already installed" so nothing install-related
-  // is in the prerendered HTML; it only ever appears, never disappears.
+  // The server snapshot claims "already installed", so nothing install-related
+  // is in the prerendered HTML: it only ever appears, never disappears.
   return useSyncExternalStore(subscribe, getSnapshot, () => "hidden");
 }
 

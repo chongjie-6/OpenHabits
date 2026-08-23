@@ -1,8 +1,8 @@
 /**
  * IndexedDB persistence. See DESIGN.md §7.3.
  *
- * Deliberately dependency-free: the surface we need is small enough that a
- * wrapper library would cost more in supply chain than it saves in lines.
+ * Dependency-free: the surface needed is small enough that a wrapper library
+ * would cost more in supply chain than it saves in lines.
  *
  * Stores
  *   habits   keyPath 'id'
@@ -37,8 +37,6 @@ function openDb(): Promise<IDBDatabase> {
         db.createObjectStore("kv", { keyPath: "key" });
       }
 
-      // v2 adds the sync metadata from §13. Nothing is created or dropped — the
-      // existing rows are rewritten in place with the two new fields.
       if (from < 2) {
         // `request.transaction` is the upgrade transaction; the writes below
         // belong to it and commit with the version change or not at all.
@@ -58,17 +56,11 @@ function openDb(): Promise<IDBDatabase> {
 /**
  * Give every pre-sync record the metadata sync needs.
  *
- * Habits get `updatedAt` derived from their creation day, not from the clock: a
- * habit created last year is not an edit made during this upgrade, and stamping
- * it "now" would let a stale local copy outrank the same habit's later edits
- * already sitting on the server.
- *
- * Settings are the exception and get the clock. They have no creation date to
- * fall back on, and unlike a habit the stored value genuinely does represent a
- * choice the user made and would expect to keep. The cost is that if two devices
- * upgrade separately, the one that upgraded later wins the first settings merge.
- * For a preferences blob that is a fair outcome; for a year of history it would
- * not have been, which is why the two are treated differently.
+ * Habits get `updatedAt` from their creation day, not the clock: stamping a
+ * year-old habit "now" would let a stale local copy outrank later edits already
+ * on the server. Settings get the clock — they have no creation date, so two
+ * devices upgrading separately means the later one wins the first settings merge.
+ * A fair outcome for a preferences blob, not for a year of history.
  */
 function backfillSyncMetadata(transaction: IDBTransaction): void {
   const cursorRequest = transaction.objectStore("habits").openCursor();
@@ -104,17 +96,12 @@ function tx(
   return db.transaction(stores, mode);
 }
 
-// ---------------------------------------------------------------------------
-// Reads
-// ---------------------------------------------------------------------------
-
 export type Snapshot = {
   habits: Habit[];
   /**
-   * Deleted habits, kept so sync can tell peers about the deletion. They are
-   * handed back separately rather than mixed into `habits` because every UI
-   * surface reads that array, and one forgotten filter would put a deleted habit
-   * back on the Today list.
+   * Deleted habits, kept so sync can tell peers. Handed back separately because
+   * every UI surface reads `habits`, and one forgotten filter would put a deleted
+   * habit back on the Today list.
    */
   tombstones: Habit[];
   entries: Entry[];
@@ -124,11 +111,9 @@ export type Snapshot = {
 };
 
 /**
- * Local sync bookkeeping. See `lib/sync/client.ts`.
- *
- * `cursor` is the server's `seq`; `pushedThrough` is a local `updatedAt`
- * watermark. They are different clocks and must not be compared or conflated —
- * see the header of `lib/sync/protocol.ts`.
+ * Local sync bookkeeping. `cursor` is the server's `seq`; `pushedThrough` is a
+ * local `updatedAt` watermark. Different clocks, never to be compared — see the
+ * header of `lib/sync/protocol.ts`.
  */
 export type SyncMeta = {
   cursor: number;
@@ -175,10 +160,6 @@ export async function loadAll(): Promise<Snapshot> {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Writes
-// ---------------------------------------------------------------------------
-
 export async function putHabit(habit: Habit): Promise<void> {
   const db = await openDb();
   await promisify(tx(db, ["habits"], "readwrite").objectStore("habits").put(habit));
@@ -191,12 +172,9 @@ export async function putHabits(habits: Habit[]): Promise<void> {
 }
 
 /**
- * Delete a habit by writing a tombstone, not by removing the row.
- *
- * The habit record stays with `deletedAt` set; only its entries go. On a store
- * that replicates, a *missing* row and a row *the peer has not seen yet* are the
- * same observation — so a hard delete here would be re-learned from the server on
- * the next sync and the habit would reappear, along with its history.
+ * Delete by writing a tombstone, not by removing the row: on a store that
+ * replicates, a missing row and a row the peer has not seen yet are the same
+ * observation, so a hard delete would be re-learned on the next sync.
  */
 export async function deleteHabitRecord(habit: Habit): Promise<void> {
   const db = await openDb();
@@ -256,12 +234,10 @@ export async function putSyncMeta(meta: SyncMeta): Promise<void> {
 }
 
 /**
- * Write a merged pull to disk as one transaction.
- *
- * Atomicity is the point. The cursor is only advanced by the caller after this
- * resolves, so a failure part-way through means the same payload is fetched and
- * applied again — whereas a partial commit paired with a saved cursor would leave
- * a permanent hole that no later sync would think to fill.
+ * Write a merged pull to disk as one transaction. The caller only advances the
+ * cursor after this resolves, so a failure means the payload is fetched again —
+ * whereas a partial commit under a saved cursor leaves a permanent hole no later
+ * sync would think to fill.
  */
 export async function applyMerge(input: {
   habits: Habit[];
@@ -308,10 +284,8 @@ export async function clearAll(): Promise<void> {
 }
 
 /**
- * Ask the browser to move our data out of the evictable bucket.
- *
- * Without this, a year of streaks can be reclaimed under storage pressure —
- * the highest-value line in the persistence layer for the cost of one call.
+ * Ask the browser to move our data out of the evictable bucket. Without it, a
+ * year of streaks can be reclaimed under storage pressure.
  */
 export async function requestPersistence(): Promise<boolean> {
   if (typeof navigator === "undefined" || !navigator.storage?.persist) return false;

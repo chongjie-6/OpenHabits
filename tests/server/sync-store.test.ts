@@ -2,13 +2,10 @@
  * Integration tests for the server half of sync, against real Postgres.
  *
  * PGlite is Postgres compiled to WebAssembly, so this exercises the actual
- * planner, the actual constraints and the actual `nextval` — not a mock. That
- * matters here more than in most places: the delicate parts of `sync-store.ts`
- * are all SQL-level (a sequence assigned inside `ON CONFLICT DO UPDATE`, a
- * row-value `IN`, a composite foreign key, an advisory lock), and none of them
- * would be checked by a test double.
- *
- * Each test gets its own database, created in memory and thrown away after.
+ * planner, constraints and `nextval`. The delicate parts of `sync-store.ts` are
+ * all SQL-level — a sequence inside `ON CONFLICT DO UPDATE`, a row-value `IN`, a
+ * composite foreign key, an advisory lock — and a test double would check none
+ * of them. Each test gets its own in-memory database.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -27,10 +24,9 @@ import { AccountMismatchError, runSync } from "@/lib/server/sync-store";
 const MIGRATIONS_DIR = fileURLToPath(new URL("../../drizzle", import.meta.url));
 
 /**
- * Every committed migration in order — not a pinned filename.
- *
- * A test that named one file would keep passing against the original schema after
- * the next migration landed, which is precisely when it needs to fail.
+ * Every committed migration in order, not a pinned filename: a test naming one
+ * file keeps passing against the original schema after the next migration lands,
+ * which is precisely when it needs to fail.
  */
 function migrations(): string[] {
   return readdirSync(MIGRATIONS_DIR)
@@ -44,9 +40,8 @@ let db: Db;
 beforeEach(async () => {
   const pglite = new PGlite();
 
-  // Applied verbatim. If drizzle-kit generates SQL this schema cannot actually
-  // run, that is a failure worth catching here rather than against a production
-  // database.
+  // Applied verbatim: SQL drizzle-kit generates but this schema cannot run is a
+  // failure worth catching here rather than against production.
   for (const sql of migrations()) {
     for (const statement of sql.split("--> statement-breakpoint")) {
       if (statement.trim()) await pglite.exec(statement);

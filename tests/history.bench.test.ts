@@ -1,15 +1,13 @@
 /**
  * Performance floor for the heatmap pipeline. See DESIGN.md §10.
  *
- * §10 budgets "heatmap render, 371 cells: < 8ms" and had it unmeasured. This
- * measures the part that is measurable without a browser: the pure computation
- * that turns habits and entries into the `DayStat[]` the grid renders. Actual
- * paint cost needs a real device and is called out as such in §11.
+ * Measures the part that is measurable without a browser: the computation turning
+ * habits and entries into the `DayStat[]` the grid renders. Paint cost needs a
+ * real device (§11).
  *
- * The thresholds here are deliberately loose — roughly 4× the observed figures.
- * A benchmark asserted tight enough to catch a 20% drift would fail on a busy CI
- * box and get deleted; one this loose still catches the regression that matters,
- * which is an accidental O(n²) in the day loop.
+ * Thresholds are deliberately loose, roughly 4× the observed figures. One tight
+ * enough to catch a 20% drift would fail on a busy CI box and get deleted; this
+ * still catches the regression that matters, an accidental O(n²) in the day loop.
  */
 
 import { describe, expect, it } from "vitest";

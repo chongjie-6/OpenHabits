@@ -2,14 +2,12 @@
  * Deterministic daily quote selection. See DESIGN.md §5.1.
  *
  * The requirement is "feels chosen": no repeat until the corpus is exhausted,
- * identical output on every device, and no server call. A plain
- * `hash(date) % N` fails the first of those — the birthday problem puts a
- * duplicate within a few weeks.
+ * identical output on every device, no server call. `hash(date) % N` fails the
+ * first — the birthday problem puts a duplicate within a few weeks — so the
+ * corpus is a deck reshuffled once per full pass.
  *
- * Instead the corpus is a deck that is reshuffled once per full pass. The
- * sequence is a pure function of the date, so nothing needs to be persisted,
- * reinstalling does not disturb it, and past and future days are computable —
- * which makes the archive view free.
+ * The sequence is a pure function of the date, so nothing is persisted,
+ * reinstalling does not disturb it, and the archive view is free.
  */
 
 import { QUOTES } from "@/data/quotes";
@@ -55,16 +53,14 @@ const seamWindow = (size: number) => Math.max(1, Math.floor(size / 8));
 /**
  * The shuffled deck for one cycle, with the seam repaired.
  *
- * A per-cycle shuffle guarantees each quote appears once per pass, but says
- * nothing about the *join* between passes: a quote near the end of one cycle
- * can land near the start of the next, and "I read that two days ago" is
- * precisely the experience that breaks the illusion of a chosen quote.
+ * A per-cycle shuffle says nothing about the *join* between passes: a quote near
+ * the end of one cycle can land near the start of the next. So anything shown in
+ * the closing `k` days of the previous cycle is pushed out of the opening `k`
+ * positions of this one.
  *
- * So anything shown in the closing `k` days of the previous cycle is pushed out
- * of the opening `k` positions of this one. Swap targets are drawn from
- * `[k, size - k)` and never touch the final `k` slots, which is what lets us
- * read the previous cycle's tail off its raw shuffle instead of recursing back
- * through every cycle that ever was.
+ * Swap targets come from `[k, size - k)` and never touch the final `k` slots,
+ * which is what lets the previous cycle's tail be read off its raw shuffle
+ * instead of recursing back through every cycle that ever was.
  */
 function deckForCycle(deck: Quote[], cycle: number): Quote[] {
   const shuffled = shuffle(deck, mulberry32(seedForCycle(cycle)));
@@ -98,10 +94,8 @@ export function deckFor(tags: QuoteTag[] = []): Quote[] {
 }
 
 /**
- * The quote for a given day.
- *
- * Every quote appears exactly once per pass through the deck, and no quote can
- * appear twice inside any window of `seamWindow(size)` days.
+ * The quote for a given day. Every quote appears exactly once per pass, and none
+ * twice inside any window of `seamWindow(size)` days.
  */
 export function quoteForDay(day: DayKey, deck: Quote[] = QUOTES): Quote {
   const size = deck.length;
@@ -122,14 +116,10 @@ export function quoteById(id: string): Quote | undefined {
 /**
  * When each quote next comes up, as `quoteId → DayKey` of its first appearance.
  *
- * Scans **two** cycles, not one. `from` is almost always mid-cycle, so a
- * single-cycle window is the tail of one shuffle plus the head of the next —
- * two different orderings that overlap arbitrarily, leaving some quotes
- * unreached. Two cycles is guaranteed to contain one whole aligned cycle, and
- * therefore every quote.
- *
- * Still one cheap pass rather than a search per quote, and only possible
- * because the selection is a pure function of the date.
+ * Scans **two** cycles. `from` is almost always mid-cycle, so a single-cycle
+ * window is the tail of one shuffle plus the head of the next — two orderings
+ * that overlap arbitrarily, leaving some quotes unreached. Two cycles must
+ * contain one whole aligned cycle, and therefore every quote.
  */
 export function upcomingSchedule(
   from: DayKey,

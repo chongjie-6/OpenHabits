@@ -3,11 +3,9 @@
 /**
  * The client half of sync. See DESIGN.md §13.
  *
- * Runs entirely beside the app rather than inside it. Nothing in the UI awaits a
- * sync, no screen renders a spinner for one, and every mutation still lands in
- * IndexedDB first — sync only ever arrives later and merges. That is what keeps
- * the tick budget from §10 intact and the app fully usable offline, signed out,
- * or with the database switched off entirely.
+ * Runs beside the app, not inside it: nothing in the UI awaits a sync, and every
+ * mutation still lands in IndexedDB first. That is what keeps the §10 tick budget
+ * intact and the app usable offline, signed out, or with no database at all.
  */
 
 import { useEffect } from "react";
@@ -22,13 +20,9 @@ import {
 } from "./protocol";
 
 /**
- * Ceiling on round trips per `syncNow()` call.
- *
- * Each trip either advances the cursor or drains part of the push backlog, so a
- * finite history always terminates well inside this. It exists for the case where
- * it does not — a bug that leaves `more` stuck true would otherwise spin against
- * the server indefinitely, and a sync that gives up is repairable while a hot
- * loop on someone's phone is not.
+ * Ceiling on round trips per `syncNow()` call. A finite history always terminates
+ * well inside this; the cap exists for the bug that leaves `more` stuck true. A
+ * sync that gives up is repairable, a hot loop on someone's phone is not.
  */
 const MAX_ROUND_TRIPS = 50;
 
@@ -37,10 +31,9 @@ let inFlight: Promise<void> | null = null;
 /**
  * Sync until the device and the server agree, or until something stops us.
  *
- * Single-flight: concurrent callers join the run already in progress. Two
- * overlapping syncs would each read the cursor before the other wrote it, and the
- * second to finish would save the older one — reprocessing a payload harmlessly,
- * but forever.
+ * Single-flight: two overlapping syncs would each read the cursor before the
+ * other wrote it, and the second to finish would save the older one —
+ * reprocessing a payload harmlessly, but forever.
  */
 export function syncNow(): Promise<void> {
   inFlight ??= run().finally(() => {
@@ -51,16 +44,15 @@ export function syncNow(): Promise<void> {
 
 async function run(): Promise<void> {
   if (!syncEnabled()) {
-    // Guarded here as well as in `useSync` so a direct `syncNow()` — a manual
-    // "sync now", a future keyboard shortcut — cannot post for a signed-out
-    // device just because it skipped the hook.
+    // Guarded here as well as in `useSync`, so a direct `syncNow()` cannot post
+    // for a signed-out device just because it skipped the hook.
     store.setSyncStatus({ kind: "off" });
     return;
   }
 
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    // Not an error. Offline is the expected state for a PWA, and the listeners in
-    // `useSync` will call back the moment it changes.
+    // Not an error: offline is the expected state for a PWA, and `useSync`'s
+    // listeners call back the moment it changes.
     return;
   }
 
@@ -80,8 +72,7 @@ async function run(): Promise<void> {
 
     store.setSyncStatus({ kind: "idle" });
   } catch (cause) {
-    // A failed sync is not a failed app: the data is on the device either way, so
-    // this is reported quietly and retried on the next trigger.
+    // A failed sync is not a failed app — the data is on the device either way.
     console.error("hapi: sync failed", cause);
     store.setSyncStatus({ kind: "error", message: "Could not reach the server." });
   }
@@ -97,9 +88,8 @@ async function roundTrip(): Promise<Outcome> {
   const meta = store.syncMeta();
   const before = store.localSnapshot();
 
-  // Nothing is pushed until the account is known. On a device that has never
-  // synced, `accountId` is null and this first request is a pull — which is also
-  // the safe direction, since it cannot put local data anywhere it should not go.
+  // Nothing is pushed until the account is known: a device that has never synced
+  // pulls first, which cannot put local data anywhere it should not go.
   const pending =
     meta.accountId === null
       ? { habits: [], entries: [], settings: null, complete: false }
@@ -128,8 +118,8 @@ async function roundTrip(): Promise<Outcome> {
   warnOnClockSkew(pull.serverNow);
 
   if (meta.accountId !== null && pull.accountId !== meta.accountId) {
-    // The 409 path should have caught this. Belt and braces: applying a payload
-    // from the wrong account is the one outcome worth an extra check.
+    // The 409 path should have caught this, but applying a payload from the
+    // wrong account is the one outcome worth an extra check.
     store.adoptAccount(pull.accountId);
     return { kind: "retry" };
   }
@@ -140,11 +130,9 @@ async function roundTrip(): Promise<Outcome> {
 
   store.applyPulled(merged, {
     cursor: pull.seq,
-    // Advanced past everything sent, including records the server rejected —
-    // their winning version arrives in this same response, so the local copy no
-    // longer carries the stamp that would re-select it. Orphaned entries the
-    // server dropped move past the watermark too, which is the point: retrying
-    // them forever would wedge this device's sync on garbage.
+    // Advanced past everything sent, rejected records included: their winning
+    // version arrives in this same response. Orphans the server dropped move
+    // past it too, or retrying them forever would wedge this device's sync.
     pushedThrough: watermarkAfterPush(pending, meta.pushedThrough),
     lastSyncAt: Date.now(),
     accountId: pull.accountId,
@@ -158,18 +146,15 @@ async function handleError(response: Response): Promise<Outcome> {
 
   switch (response.status) {
     case 401:
-      // Signed out, or never signed in. Sync is simply off; the app is unaffected.
-      //
       // Clearing the hint is what makes `syncEnabled()` safe to trust: a session
-      // that expired while the tab was closed leaves a device believing it is
-      // signed in, and without this it would retry on every foreground and
-      // network-online event for as long as the app stayed open.
+      // that expired while the tab was closed would otherwise retry on every
+      // foreground and online event for as long as the app stayed open.
       markSignedOut();
       return { kind: "stop", status: { kind: "off" } };
 
     case 409:
-      // Someone else is signed in on this device. The local copy belongs to the
-      // previous account and is cleared rather than merged or uploaded.
+      // Someone else is signed in here: the previous account's copy is cleared
+      // rather than merged or uploaded.
       store.adoptAccount(null);
       return { kind: "retry" };
 
@@ -178,9 +163,8 @@ async function handleError(response: Response): Promise<Outcome> {
 
     case 400:
     case 413:
-      // The server will reject this payload every time, so retrying is pointless
-      // and would burn the device's battery doing it. Surfaced loudly instead:
-      // this is a bug in the client, not a condition to wait out.
+      // The server rejects this payload every time, so retrying only burns
+      // battery. A bug in the client, not a condition to wait out.
       console.error("hapi: server rejected the sync payload", body?.message);
       return {
         kind: "stop",
@@ -196,12 +180,9 @@ async function handleError(response: Response): Promise<Outcome> {
 }
 
 /**
- * A device clock far enough out to break merge ordering.
- *
- * Worth saying out loud because the damage is invisible: with a clock an hour
- * behind, every edit made on this device loses to whatever the other device
- * wrote, and the user sees their changes silently reverting. Nothing here can fix
- * it — only the OS can — so this logs rather than acts.
+ * A device clock far enough out to break merge ordering. The damage is invisible
+ * — an hour behind, every edit here loses and the user sees changes revert — and
+ * only the OS can fix it, so this logs rather than acts.
  */
 function warnOnClockSkew(serverNow: number): void {
   const skew = Math.abs(Date.now() - serverNow);
@@ -214,30 +195,17 @@ function warnOnClockSkew(serverNow: number): void {
 }
 
 /**
- * How often a foregrounded app checks in, in ms.
- *
- * Long, deliberately. The triggers that matter are the event-driven ones below —
- * a tick on another device shows up when this one is next looked at, which is
- * when it is next brought to the front. The interval only covers the case of an
- * app left open and visible for hours.
+ * How often a foregrounded app checks in, in ms. Long, deliberately: the triggers
+ * that matter are the event-driven ones below, and this only covers an app left
+ * open and visible for hours.
  */
 const POLL_MS = 5 * 60 * 1000;
 
 /**
- * Whether this device should attempt to sync at all.
- *
- * Now a real signal rather than a build flag: "should I sync" is "is someone
- * signed in", and §13.6's seam being filled is what made that answerable. The
- * old `NEXT_PUBLIC_SYNC_ENABLED` gate existed because without it the client
- * posted on every page load and took a 401 or a 503 — and the browser logs a
- * failed request no matter how gracefully the JS handles it, so a deployment
- * with sync off showed an error to every visitor.
- *
- * `signedIn()` solves the same problem better: it is per-device rather than
- * per-build, so one deployment serves signed-in and signed-out visitors and only
- * the former make requests. It reads a local flag, so it costs no round trip and
- * works offline. And it is only a hint — the server still decides, and a device
- * that lies to itself here gets a 401 and is switched off by `handleError`.
+ * Whether this device should attempt to sync at all — per device rather than per
+ * build, so one deployment serves signed-in and signed-out visitors and only the
+ * former make requests. Only a hint: the server still decides, and a device that
+ * lies to itself here gets a 401 and is switched off by `handleError`.
  */
 function syncEnabled(): boolean {
   return signedIn();
@@ -246,22 +214,19 @@ function syncEnabled(): boolean {
 /**
  * Mount once, high in the tree, alongside `useHydrate`.
  *
- * Syncs after hydration and on the three events that mean the picture may have
- * changed: the app coming to the front, the network coming back, and the timer.
- * Deliberately not on every mutation — a habit tick would otherwise fire a
- * request per tap, and the merge is designed to arrive late rather than often.
+ * Deliberately not on every mutation — a habit tick would fire a request per tap,
+ * and the merge is designed to arrive late rather than often.
  */
 export function useSync(): void {
   const { hydrated } = store.useHapi();
-  // Subscribed to rather than merely read, so signing in starts sync on the spot
-  // instead of at the next foreground — and so signing out in another tab tears
-  // the listeners down in this one.
+  // Subscribed rather than read, so signing in starts sync on the spot and
+  // signing out in another tab tears the listeners down in this one.
   const enabled = useSignedIn();
 
   useEffect(() => {
     if (!enabled) return;
-    // Syncing before hydration would push an empty snapshot as though the device
-    // had no habits, and read the cursor as 0 when a real one is on disk.
+    // Syncing before hydration would push an empty snapshot as though the
+    // device had no habits, and read the cursor as 0 with a real one on disk.
     if (!hydrated) return;
 
     void syncNow();

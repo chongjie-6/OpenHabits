@@ -13,8 +13,7 @@ import { useMediaQuery, WIDE } from "@/lib/use-media-query";
  * One `<svg>`, one delegated listener, and a single tab stop with a virtual
  * cursor — not 371 React components with 371 handlers.
  *
- * Desktop lays weeks out as columns (the familiar arrangement). Below 640px the
- * grid transposes to 7 columns × N rows and flows vertically with the page,
+ * Below 640px the grid transposes to 7 columns × N rows and flows vertically,
  * because a horizontally-scrolling year strip on a phone traps vertical scroll
  * and hides most of the data.
  */

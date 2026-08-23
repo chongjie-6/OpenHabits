@@ -1,11 +1,10 @@
 /**
  * All DayKey arithmetic. See DESIGN.md §9.
  *
- * This is the only module that should ever call `new Date()` with the intent of
- * producing a DayKey. Day maths is done in UTC-space on parsed components so
- * that DST transitions can never shift a day boundary; the conversion to and
- * from *local* civil time happens only at the edges (`dayKeyFromDate`,
- * `todayKey`, and the formatters).
+ * The only module that should call `new Date()` to produce a DayKey. Day maths is
+ * done in UTC-space on parsed components so a DST transition can never shift a
+ * boundary; conversion to and from *local* civil time happens only at the edges
+ * (`dayKeyFromDate`, `todayKey`, and the formatters).
  */
 
 import type { DayKey } from "./types";
@@ -74,10 +73,6 @@ export function startOfWeek(key: DayKey, weekStartsOn: 0 | 1): DayKey {
   const offset = (weekdayOf(key) - weekStartsOn + 7) % 7;
   return addDays(key, -offset);
 }
-
-// ---------------------------------------------------------------------------
-// Formatting
-// ---------------------------------------------------------------------------
 
 /** "Thursday, 14 August" */
 export function formatDayLong(key: DayKey): string {

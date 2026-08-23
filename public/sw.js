@@ -1,14 +1,10 @@
 /**
- * hapi service worker. See DESIGN.md §8.2.
+ * hapi service worker.
  *
- * Runtime caching only — no build-time precache manifest, and therefore no
- * build integration to keep in sync. That is affordable here because the data
- * layer is entirely client-side: the worker's only job is delivering the shell,
- * and there is no sync protocol for it to get wrong. It never touches user
- * data, which lives in IndexedDB and is already offline by construction.
- *
- * Swap this for Serwist if precise precaching and revision-hashed invalidation
- * become worth the build-time coupling.
+ * Runtime caching only — no precache manifest, and therefore no build
+ * integration to keep in sync. Affordable because the worker's only job is
+ * delivering the shell: user data lives in IndexedDB and is already offline by
+ * construction.
  */
 
 const VERSION = "hapi-v1";
@@ -38,13 +34,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Never cache the API, and never answer for it from cache. `/api/sync` is a
-  // POST and was already excluded by the method check above, but `/api/auth/*`
-  // has GET endpoints — a session check among them. Served stale, that tells a
-  // signed-out browser it is still signed in, and keeps telling it so offline
-  // where nothing can correct the record. Falling through to the network means
-  // an offline session check fails, which is the right answer: this app does not
-  // need the network to show a habit, only to prove who you are.
+  // Never cache the API. `/api/auth/*` has GET endpoints, a session check among
+  // them, and served stale that tells a signed-out browser it is signed in —
+  // offline, where nothing corrects it. Falling through means an offline session
+  // check fails, which is right: this app needs the network to prove who you
+  // are, not to show a habit.
   if (url.pathname.startsWith("/api/")) return;
 
   // Navigations: network first, so a deploy is picked up immediately, with the

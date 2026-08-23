@@ -1,21 +1,18 @@
 import { defineConfig } from "drizzle-kit";
 
 /**
- * Migrations are generated, reviewed, and committed — never pushed straight to a
- * database. `drizzle-kit push` diffs a live schema and applies the result, which
- * is convenient right up to the first time it decides the way to reconcile a
- * renamed column is to drop it. The tables here hold years of habit history that
- * exists nowhere else once a device has been wiped, so every change goes through
- * a file a human has read.
+ * Migrations are generated, reviewed, and committed — never `drizzle-kit push`,
+ * which diffs a live schema and can decide the way to reconcile a renamed column
+ * is to drop it. These tables hold history that exists nowhere else once a device
+ * is wiped.
  *
  *   npx drizzle-kit generate   # write the SQL
  *   npx drizzle-kit migrate    # apply it
  */
 export default defineConfig({
   dialect: "postgresql",
-  // Two files: this app's own tables, and the ones Better Auth owns. Separate
-  // modules, one migration history — see `lib/server/auth-schema.ts` for why the
-  // tables are kept apart in the first place.
+  // Separate modules, one migration history — see `lib/server/auth-schema.ts`
+  // for why the tables are kept apart.
   schema: ["./lib/server/schema.ts", "./lib/server/auth-schema.ts"],
   out: "./drizzle",
   dbCredentials: {

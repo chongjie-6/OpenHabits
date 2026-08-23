@@ -1,38 +1,7 @@
 /**
  * The verification email — the first thing hapi ever says to a new account.
- *
- * Pure: a URL in, `{subject, html, text}` out. It knows nothing about nodemailer
- * or SMTP, which keeps it testable and keeps `lib/email.ts` a transport and
- * nothing else.
- *
- * ## Why it is written like a 2003 web page
- *
- * Email clients are not browsers. Outlook renders through Word, Gmail strips
- * `<head>` and every class it finds there, and roughly none of them implement
- * flexbox, custom properties, or external stylesheets. So: nested tables for
- * layout, every declaration inline, `#216e39` written out rather than
- * `var(--accent)`, and system fonts only. The palette is copied by hand from
- * `app/globals.css` §6.2 and has to be re-copied by hand if that changes —
- * there is no way to share it that survives the trip.
- *
- * ## No images
- *
- * The hero is hapi's contribution grid drawn in `<td>` cells. Outlook blocks
- * remote images by default and so does a large share of Gmail, and a
- * verification mail whose only branding is a broken image icon looks precisely
- * like a phishing attempt. Table cells always arrive. They also spare us
- * hosting an asset that has to outlive every mail that references it.
- *
- * ## Both parts, always
- *
- * `text` is not a courtesy. A multipart message with no plain-text alternative
- * is one of the oldest spam signals there is, and this mail has exactly one job
- * that fails if it lands in the junk folder.
  */
 
-// Copied from app/globals.css — see the header. Light theme only; the mail
-// declares `color-scheme: light only` so Apple Mail and Outlook.com do not
-// force-invert a palette that was never designed dark.
 const INK = "#1a1a19";
 const INK_2 = "#4a4a46";
 const MUTED = "#6f6f68";
@@ -46,19 +15,15 @@ const SANS =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const SERIF = "Georgia,'Times New Roman',serif";
 
-/** Weeks across, days down — the same orientation as the app's own grid (§4.1). */
 const COLUMNS = 10;
 const ROWS = 7;
-/** The one lit cell. Off-centre so it reads as a day, not as a target. */
 const TODAY = { row: 3, column: 6 };
 
 /**
  * The hero grid, built rather than hand-written: seventy literal `<td>`s in a
- * template string is seventy chances to typo a hex value.
- *
- * Gaps come from `cellspacing`, not margins or padding — margins on table cells
- * are ignored almost everywhere, and padding would grow the cells instead of
- * separating them.
+ * template string is seventy chances to typo a hex value. Gaps come from
+ * `cellspacing` — margins on table cells are ignored almost everywhere, and
+ * padding would grow the cells instead of separating them.
  */
 function grid(): string {
   const rows: string[] = [];
@@ -78,9 +43,9 @@ function grid(): string {
 }
 
 /**
- * Escape for an HTML attribute. The URL is signed and machine-generated, so in
- * practice it carries `&` between query parameters and nothing worse — but it
- * is interpolated into an `href`, and "in practice" is not a security argument.
+ * Escape for an HTML attribute. The URL is machine-generated and in practice
+ * carries nothing worse than `&`, but it is interpolated into an `href`, and "in
+ * practice" is not a security argument.
  */
 function escapeAttribute(value: string): string {
   return value

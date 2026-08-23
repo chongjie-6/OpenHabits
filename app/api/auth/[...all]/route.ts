@@ -1,21 +1,15 @@
 /**
  * Better Auth's endpoints. See DESIGN.md §13.6.
  *
- * The second dynamic route in the app, and the first since §7.1 claimed there
- * would only ever be one. That claim was about *user data* — there is still no
- * `GET /habits`, nothing renders a habit on the server, and IndexedDB is still
- * the source of truth. Sign-in is the one thing a local-first app cannot do
- * locally, because the whole point of an identity is that another machine
- * agrees about it.
+ * The second dynamic route in an app that claimed to need one. §7.1's claim was
+ * about *user data*, and sign-in is the one thing a local-first app cannot do
+ * locally — the point of an identity is that another machine agrees about it.
  *
- * `force-dynamic` is not decoration. A catch-all route whose GET Next decided
- * to prerender would bake one visitor's `/api/auth/get-session` response into
- * the build output and hand it to everybody.
- *
- * Note also `public/sw.js`, which excludes `/api/` from its caches. Without that
- * the service worker's stale-while-revalidate would answer a session check from
- * cache — telling a signed-out browser it is signed in, and doing it offline
- * where nothing can correct it.
+ * `force-dynamic` is load-bearing: a catch-all route whose GET Next decided to
+ * prerender would bake one visitor's `/api/auth/get-session` response into the
+ * build output and hand it to everybody. So is `public/sw.js` excluding `/api/`
+ * from its caches, or stale-while-revalidate would answer a session check from
+ * cache, offline, where nothing can correct it.
  */
 
 import { toNextJsHandler } from "better-auth/next-js";
@@ -27,10 +21,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Wrapped in a function rather than passed as `getAuth()` so the instance — and
- * with it a database connection — is built on the first request instead of at
- * module load. A deployment with no `DATABASE_URL` has no accounts to sign in
- * to, and says so rather than failing to boot.
+ * Wrapped rather than passed as `getAuth()`, so the instance — and with it a
+ * database connection — is built on the first request instead of at module load.
+ * A deployment with no `DATABASE_URL` says so rather than failing to boot.
  */
 const handler = async (request: Request): Promise<Response> => {
   if (!syncConfigured()) {

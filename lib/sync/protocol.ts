@@ -1,27 +1,20 @@
 /**
  * The sync wire format. See DESIGN.md §13.
  *
- * One endpoint, one round trip: the client posts what it has changed and the
- * server replies with what the client has not seen. Push and pull are the same
- * request because they have to be atomic — a push that succeeded followed by a
- * pull that failed would leave the client believing it was up to date.
+ * Push and pull are one request because they have to be atomic — a push that
+ * succeeded beside a pull that failed would leave the client believing it was up
+ * to date.
  *
- * ## Two clocks, and why
+ * ## Two clocks
  *
- * Every synced record carries `updatedAt`, an epoch-ms stamp from whichever
- * device made the edit. It decides merges: the later write wins.
+ * `updatedAt` is a client epoch-ms stamp and decides merges. It cannot also drive
+ * the pull cursor: device clocks disagree by hours, so a phone running five
+ * minutes slow writing an entry at 10:00 after the laptop pulled through 10:03
+ * would be stepped over permanently — no error, no retry, just a gap.
  *
- * It cannot also drive the pull cursor. Device clocks disagree, sometimes by
- * hours. If a phone running five minutes slow writes an entry stamped 10:00
- * while the laptop has already pulled through 10:03, a cursor built from
- * `updatedAt` would step straight over that entry and lose a day of history
- * permanently — no error, no retry, just a gap.
- *
- * So the server stamps every row it stores with `seq`, a value from a single
- * Postgres sequence. It is server-assigned, gap-free in the order that matters
- * (see `withUserLock` in `lib/server/sync-store.ts`) and never compared against
- * a client clock. `seq` moves the cursor; `updatedAt` decides conflicts. Keeping
- * those two jobs in two fields is the whole trick.
+ * `seq` is server-assigned from a single Postgres sequence, gap-free in the order
+ * that matters (`lockUser` in `lib/server/sync-store.ts`), and never compared
+ * against a client clock. `seq` moves the cursor; `updatedAt` decides conflicts.
  */
 
 import type { Entry, Habit, Settings } from "../types";
@@ -34,16 +27,11 @@ export type SyncPush = {
    */
   since: number;
   /**
-   * The account this client believes its data belongs to, or null if it has
-   * never synced.
-   *
-   * Stated up front so the server can refuse a mismatch *before* applying
-   * anything. Without it, a device where someone else has since signed in would
-   * upload the previous person's habits into the new account, and the first
-   * anyone would know of it is a stranger's data on their phone. Discovering the
-   * identity from the response is too late; discovering it in a prior round trip
-   * would cost a request on every sync. So the client asserts and the server
-   * checks.
+   * The account this client believes its data belongs to, or null if it has never
+   * synced. Stated up front so the server can refuse a mismatch *before* applying
+   * anything: otherwise a device where someone else has since signed in uploads
+   * the previous person's habits into the new account. Reading the identity off
+   * the response is too late, and a prior round trip costs a request every sync.
    */
   accountId: string | null;
   habits: Habit[];
@@ -65,12 +53,10 @@ export type SyncPull = {
   entries: Entry[];
   settings: { value: Settings; updatedAt: number } | null;
   /**
-   * True when the response was truncated and another round trip is due.
-   *
-   * Reported by the server rather than inferred from row counts: after the
-   * cursor clamp in `resumePoint`, a truncated collection can come back holding
-   * fewer rows than the limit, so counting them would have the client stop
-   * halfway through its own history and never come back for the rest.
+   * True when the response was truncated and another round trip is due. Reported
+   * rather than inferred from row counts: after the clamp in `resumePoint` a
+   * truncated collection can hold fewer rows than the limit, so counting would
+   * stop the client halfway through its own history.
    */
   more: boolean;
   /**
@@ -90,14 +76,10 @@ export type SyncErrorCode =
 export type SyncErrorBody = { error: SyncErrorCode; message: string };
 
 /**
- * Cap on records per request, applied per collection.
- *
- * A first sync from a heavy multi-year account can run to tens of thousands of
- * entries, which is a payload no serverless function should be asked to hold in
- * memory at once. The client chunks its push; the server truncates its pull to
- * this many rows and leaves the cursor short, so the client's next round trip
- * picks up where this one stopped. Sync is therefore always resumable and never
- * needs to succeed in one shot.
+ * Cap on records per request, applied per collection. A first sync from a
+ * multi-year account runs to tens of thousands of entries, which no serverless
+ * function should hold in memory at once. The server truncates and leaves the
+ * cursor short, so the next round trip resumes where this one stopped.
  */
 export const MAX_ROWS_PER_REQUEST = 500;
 
@@ -105,22 +87,16 @@ export const MAX_ROWS_PER_REQUEST = 500;
 export const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 /**
- * Last-write-wins for a single record, with a tiebreaker that has to be there.
+ * Last-write-wins, with a tiebreaker that has to be there.
  *
- * The obvious rule — "incoming wins ties" — is broken, and quietly. Two devices
- * that write the same record in the same millisecond each see the *other* value
- * as incoming, so each keeps the other's: they swap rather than converge, and
- * they stay disagreed forever with no error anywhere. Sync's whole job is to end
- * with both sides holding the same value, so the comparison must return the same
- * answer no matter which side evaluates it.
+ * "Incoming wins ties" is quietly broken: two devices writing the same record in
+ * the same millisecond each see the *other* value as incoming, so they swap
+ * rather than converge and stay disagreed forever with no error anywhere. A
+ * content tiebreaker is symmetric by construction — which value it picks is
+ * arbitrary, that both sides pick the same one is the entire point.
  *
- * The fix is to break ties on the record's own content. Both peers are comparing
- * the same two records with the same rule, so a content tiebreaker is symmetric
- * by construction. Which value it picks is arbitrary; that it picks the *same*
- * one on both devices is the entire point.
- *
- * Equal fingerprints mean the records are identical, and `false` is right: there
- * is nothing to write, which also keeps a replayed push from touching the disk.
+ * Equal fingerprints mean identical records, so `false` also keeps a replayed
+ * push off the disk.
  */
 export function wins<T extends { updatedAt: number }>(
   incoming: T,
@@ -133,13 +109,11 @@ export function wins<T extends { updatedAt: number }>(
 }
 
 /**
- * Content fingerprints for the tiebreaker.
- *
- * Written out field by field rather than via `JSON.stringify`, because
- * stringify's output follows key insertion order: the same habit built by two
- * code paths could serialise differently and break the symmetry this exists to
- * provide. Only fields a user can change are included — `id` and `createdAt` are
- * fixed for the life of a record and would add nothing but length.
+ * Content fingerprints for the tiebreaker. Field by field rather than
+ * `JSON.stringify`, whose output follows key insertion order — the same habit
+ * built by two code paths would serialise differently and break the symmetry this
+ * exists to provide. Only fields a user can change; `id` and `createdAt` are
+ * fixed for the life of a record.
  */
 export function fingerprintHabit(h: Habit): string {
   return [

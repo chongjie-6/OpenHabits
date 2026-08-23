@@ -1,9 +1,8 @@
 /**
  * Merging a pulled payload into local state, and choosing what to push.
  *
- * Kept pure and free of both IndexedDB and Postgres so the rules can be tested
- * directly. Everything in this file is a function of its arguments; the store
- * and the driver layers do the writing.
+ * Pure and free of both IndexedDB and Postgres, so the rules can be tested
+ * directly. The store and driver layers do the writing.
  */
 
 import { entryKey, type Entry, type Habit, type Settings } from "../types";
@@ -31,9 +30,9 @@ export type Incoming = {
 export type MergeResult = {
   snapshot: LocalSnapshot;
   /**
-   * The subset of the merge that has to reach IndexedDB. Writing only the
-   * changed rows keeps a routine sync from rewriting the user's whole history,
-   * which on a large account is the difference between a frame and a stall.
+   * The subset of the merge that has to reach IndexedDB. Writing only changed
+   * rows keeps a routine sync from rewriting the user's whole history, which on
+   * a large account is the difference between a frame and a stall.
    */
   changedHabits: Habit[];
   changedEntries: Entry[];
@@ -43,12 +42,10 @@ export type MergeResult = {
 };
 
 /**
- * Apply a pulled payload to local state under last-write-wins.
- *
- * Habits are merged before entries so that a tombstone arriving in the same
- * payload as its habit's entries is already known by the time those entries are
- * considered — otherwise a deleted habit's history would be reinstated for one
- * sync and pushed back up, resurrecting it.
+ * Apply a pulled payload under last-write-wins. Habits merge before entries, so a
+ * tombstone arriving alongside its habit's entries is already known when those
+ * entries are considered — otherwise the history is reinstated and pushed back
+ * up, resurrecting the habit.
  */
 export function mergeIncoming(local: LocalSnapshot, incoming: Incoming): MergeResult {
   const habits = new Map(local.habits.map((h) => [h.id, h]));
@@ -62,10 +59,9 @@ export function mergeIncoming(local: LocalSnapshot, incoming: Incoming): MergeRe
     habits.set(habit.id, habit);
     changedHabits.push(habit);
 
-    // A newly-won tombstone is the signal to drop the habit's history. Doing it
-    // here rather than in the entry loop means it also happens on a payload that
-    // carries the tombstone alone, which is the common case: the deleting device
-    // has already dropped the entries, so it has none to send.
+    // Here rather than in the entry loop, so it also happens on a payload
+    // carrying the tombstone alone — the common case, since the deleting device
+    // has already dropped the entries and has none to send.
     if (habit.deletedAt !== null && existing?.deletedAt == null) {
       purgedHabitIds.push(habit.id);
     }
@@ -80,8 +76,7 @@ export function mergeIncoming(local: LocalSnapshot, incoming: Incoming): MergeRe
 
   const changedEntries: Entry[] = [];
   for (const entry of incoming.entries) {
-    // Entries for a habit we know to be gone are dropped rather than stored.
-    // The peer that sent them has not applied the tombstone yet; it will.
+    // The peer that sent these has not applied the tombstone yet; it will.
     const habit = habits.get(entry.habitId);
     if (!habit || habit.deletedAt !== null) continue;
 
@@ -113,18 +108,14 @@ export function mergeIncoming(local: LocalSnapshot, incoming: Incoming): MergeRe
 /**
  * Choose the local records to send.
  *
- * `pushedThrough` is a local watermark: the highest `updatedAt` that has been
- * accepted by the server. Anything stamped later is either a local edit or a
- * record pulled from the server whose stamp happens to sit past the watermark.
- * Re-sending the latter is wasteful but harmless — the server's merge is
- * idempotent and the value is identical — and avoiding it would mean tracking a
- * dirty flag per row, which is a second source of truth that can drift out of
- * agreement with the data. One redundant round trip beats a bookkeeping bug.
+ * `pushedThrough` is the highest `updatedAt` the server has accepted. Anything
+ * later is a local edit — or a pulled record whose stamp sits past the watermark,
+ * which is re-sent wastefully but harmlessly. Avoiding that would mean a dirty
+ * flag per row: a second source of truth that can drift.
  *
- * Note what is *not* here: no renumbering of `habit.order`. Import normalises
- * order to 0…n-1, and sync must not, because a device that renumbers on every
- * merge produces a fresh edit on every merge, and two such devices would trade
- * order rewrites forever without the user touching anything.
+ * Note what is *not* here: no renumbering of `habit.order`. A device that
+ * renumbers on every merge produces an edit on every merge, and two of them would
+ * trade order rewrites forever with the user touching nothing.
  */
 export function collectPush(
   local: LocalSnapshot,
@@ -139,8 +130,8 @@ export function collectPush(
     .filter((e) => e.updatedAt > pushedThrough)
     .sort((a, b) => a.updatedAt - b.updatedAt);
 
-  // Oldest-first truncation, so a backlog drains in order and the watermark can
-  // advance to the last row actually sent.
+  // Oldest-first truncation, so a backlog drains in order and the watermark
+  // advances to the last row actually sent.
   const complete = habits.length <= limit && entries.length <= limit;
 
   return {
@@ -152,11 +143,9 @@ export function collectPush(
 }
 
 /**
- * The watermark to store after a push is accepted.
- *
- * It is the newest stamp actually sent, not `Date.now()`. Using the clock would
- * skip any edit made while the request was in flight: that edit's stamp would
- * fall below the new watermark and never be selected again.
+ * The newest stamp actually sent, not `Date.now()`: the clock would skip any edit
+ * made while the request was in flight, leaving its stamp below the new watermark
+ * and never selected again.
  */
 export function watermarkAfterPush(
   sent: { habits: Habit[]; entries: Entry[]; settings: { updatedAt: number } | null },
