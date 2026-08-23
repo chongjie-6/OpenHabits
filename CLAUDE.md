@@ -4,38 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
-## Commands
+## Code style
 
-```bash
-npm run dev              # next dev
-npm run build            # next build
-npm start                # next start (use for Lighthouse / perf checks)
-npm run lint             # eslint (flat config, eslint-config-next core-web-vitals + typescript)
-npm test                 # vitest run — tests/**/*.test.ts only
-npm run test:watch
-npx vitest run tests/sync/merge.test.ts          # single file
-npx vitest run -t "takes the later write"        # single case by name
-npm run icons            # regenerate public/icon-*.png + app/apple-icon.png
-npm run db:generate      # drizzle-kit generate — write a migration
-npm run db:migrate       # drizzle-kit migrate — apply committed migrations
-npm run db:studio
-```
-
-There is no typecheck script; `npm run build` is the typecheck.
-
-Tests all live under `tests/`, mirroring the `lib/` tree they cover (`lib/sync/merge.ts` → `tests/sync/merge.test.ts`), and reach their subjects through the `@/` alias rather than relative paths. They cover pure logic only — there are no component or E2E tests. `tests/server/sync-store.test.ts` boots a real Postgres in-process (PGlite, WASM) per case and applies the committed `drizzle/` migrations verbatim, hence the 30s `testTimeout`. Vitest aliases `server-only` to its empty module so `lib/server/*` is importable in tests.
-
-`DATABASE_URL` etc. are all optional — see `.env.example`. With none set, the app runs exactly as it did before sync existed.
-
-## Conventions
-
-- **Components are PascalCase — the file and the export.** `components/DownloadAppButton.tsx` exporting `DownloadAppButton`. All of `components/` follows this. A file exporting several components takes the name of its primary one, or of the group when they are peers (`AppChrome.tsx` → `Hydrator` + `BottomNav`). Modules under `lib/` stay kebab-case (`use-today.ts`).
+Comments explain the non-obvious: an invariant, a workaround, a reason the straightforward version is wrong. Do not narrate what the code already says, restate the function name in prose, or leave section banners. If a comment would only paraphrase the line under it, delete it and let the naming carry the meaning.
 
 ## Architecture
 
 `DESIGN.md` is the authoritative design document and is kept current; section numbers (§7.1, §13.2, …) are referenced from module headers throughout the source. Read the relevant section before changing anything in `lib/`.
 
-**Local-first.** IndexedDB is the source of truth. Every route prerenders to static HTML; `POST /api/sync` is the only endpoint and the only dynamic route. Sync is replication between copies of the local store, not server-authoritative data — with `DATABASE_URL` unset the endpoint answers 503 and the app is fully functional.
+**Local-first.** IndexedDB is the source of truth. Every route prerenders to static HTML; `POST /api/sync` is the only endpoint and the only dynamic route. Sync is replication between copies of the local store, not server-authoritative data — with `DATABASE_URL` unset the endpoint answers 503 and the app is fully functional. Every env var is optional (`.env.example`); with none set the app runs exactly as it did before sync existed.
 
 Data flow: React client components → `lib/store.ts` (in-memory cache + `useSyncExternalStore`) → `lib/db.ts` (IndexedDB, fire-and-forget writes) → `lib/sync/client.ts` merges server state in later. **The dependency runs one way**: sync imports the store; the store knows nothing about sync.
 
