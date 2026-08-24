@@ -17,6 +17,7 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getDb } from "./db";
+import { resolveBaseURL } from "./base-url";
 import * as authSchema from "./auth-schema";
 import { mailerConfigured, sendVerificationEmail } from "../email";
 
@@ -76,10 +77,12 @@ function build() {
     secret: process.env.BETTER_AUTH_SECRET || undefined,
 
     /**
-     * Inferred from the request when unset. Set it explicitly behind a proxy that
-     * rewrites Host, or callback URLs point somewhere the browser cannot reach.
+     * Pinned rather than inferred from the request. See `base-url.ts` and
+     * DESIGN.md §13.11: the origin Better Auth resolves is the origin it mails
+     * verification links into, and inferring it means taking it from a header
+     * the caller controls.
      */
-    baseURL: process.env.BETTER_AUTH_URL || undefined,
+    baseURL: resolveBaseURL(),
 
     database: drizzleAdapter(getDb(), {
       provider: "pg",

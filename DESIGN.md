@@ -929,3 +929,53 @@ one place it says "Account created" outright.
 the same reason, and the form turns it into "Sign in instead" with the address
 kept. The shorter `USER_ALREADY_EXISTS` is matched too; the sign-up route throws
 the longer spelling and other paths throw the other.
+
+---
+
+### 13.11 The origin is configured, not inferred
+
+A reversal of §13.6's `baseURL`, which was left unset so Better Auth could work
+the origin out per request. It cannot be allowed to: the value it would work out
+comes from the `Host` header, and the client sends that.
+
+**What the inferred origin is used for.** Verification links. `sendVerificationEmail`
+is handed a URL Better Auth assembles as `${baseURL}/verify-email?token=…`, and
+`autoSignInAfterVerification` (§13.10) means possession of that token is a
+session. Two things this app already wanted then combine into a chain: mail is
+sent from the app's own address with the app's own branding, and
+`POST /api/auth/send-verification-email` takes any address, with no session, so
+that "resend" needs no second endpoint and cannot be used to enumerate accounts.
+
+So an unauthenticated request with `Host: attacker.example` makes OpenHabits
+mail a real, correctly-branded verification link, from its real mail server, to
+an address the attacker names — pointing at the attacker's server, with a live
+token in the query string. The victim clicks a link they were half expecting;
+the attacker replays the token against the real host and is signed in as them.
+Nothing in the app is spoofed, which is the part that makes it work.
+
+**Why the front door is not the answer.** A platform that routes by bound domain
+drops an unknown `Host` before Next sees it, and on that kind of deployment none
+of this is reachable. `next start` behind an nginx `default_server`, or exposed
+directly, passes the header straight through — and §13.1 promises the app runs
+anywhere Postgres does. A property that holds only on some hosts is not one to
+rest an account takeover on.
+
+**`lib/server/base-url.ts` decides, and fails closed.** `BETTER_AUTH_URL` is
+pinned when set. `BETTER_AUTH_ALLOWED_HOSTS` takes precedence when a deployment
+answers on several hosts — preview URLs beside a custom domain — because there
+is no single right answer to pin there and the wrong one mails half the
+visitors a link into an origin they are not using; Better Auth resolves per
+request against the list and refuses everything outside it, which is the
+property that matters, and the protocol is forced to `https` because a proxy
+terminating TLS leaves the app seeing plain http. With neither set, production
+throws and development infers, where the only `Host` on offer is the developer's
+own.
+
+**It does not cost §13.1.** The check lives inside `build()`, which is lazy and
+reached only through `getAuth()` — and every caller of that is already behind
+`syncConfigured()`. A deployment with no `DATABASE_URL` never evaluates it, and
+one that misconfigures it loses accounts and nothing else: habits are in
+IndexedDB, `/api/sync` answers 401 through `resolveUser`'s catch rather than 500,
+and the app is the app it was before sync existed. This is the same shape as
+`BETTER_AUTH_SECRET`, which Better Auth has always made fatal in production for
+the same reason — a value that must be right, refusing to be guessed.

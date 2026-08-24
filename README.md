@@ -78,17 +78,20 @@ Sync is **replication between copies of the local store**, not a move to server-
 
 ### Configuration
 
-Every variable is optional; `.env.example` carries the full commentary.
+Setting nothing is a supported configuration. `DATABASE_URL` is what turns accounts on, and in production it brings two obligations with it: `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`, each fatal when missing. `.env.example` carries the full commentary.
 
 ```bash
 DATABASE_URL=postgres://…   # turns on both sync and accounts; unset → 503, app unaffected
 BETTER_AUTH_SECRET=         # signs session cookies; required in production
-BETTER_AUTH_URL=            # only behind a proxy that rewrites Host; otherwise inferred
+BETTER_AUTH_URL=            # the app's public origin; required in production
+BETTER_AUTH_ALLOWED_HOSTS=  # instead of the above, for a multi-host deployment
 SMTP_USER=                  # a Gmail app password, not the account password
 SMTP_PASSWORD=
 
 npm run db:migrate
 ```
+
+**The app is told its own origin rather than working it out.** Inferring it means reading the request's `Host` header, and that origin is what verification links are built from — while `/api/auth/send-verification-email` takes any address and no session. A forged `Host` would have this app mail a genuine link into an attacker's server, carrying a token that `autoSignInAfterVerification` turns into a session. Development still infers; production fails to start accounts until `BETTER_AUTH_URL` (or `BETTER_AUTH_ALLOWED_HOSTS`, for several hosts) is set. See DESIGN.md §13.11.
 
 **Email verification follows the mailer, not a flag.** With SMTP credentials set, sign-up creates no session — the link in the mail does (`autoSignInAfterVerification`), an unverified sign-in 403s and resends on the way out, and a failed send fails the sign-up so the address is not held hostage against a retry. With no credentials, requiring a click that no mail can deliver would break sign-up entirely, so verification is off and a send error is logged and swallowed.
 

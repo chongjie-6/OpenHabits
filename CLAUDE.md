@@ -12,7 +12,7 @@ Comments explain the non-obvious: an invariant, a workaround, a reason the strai
 
 `DESIGN.md` is the authoritative design document and is kept current; section numbers (§7.1, §13.2, …) are referenced from module headers throughout the source. Read the relevant section before changing anything in `lib/`.
 
-**Local-first.** IndexedDB is the source of truth. Every route prerenders to static HTML; `POST /api/sync` is the only endpoint and the only dynamic route. Sync is replication between copies of the local store, not server-authoritative data — with `DATABASE_URL` unset the endpoint answers 503 and the app is fully functional. Every env var is optional (`.env.example`); with none set the app runs exactly as it did before sync existed.
+**Local-first.** IndexedDB is the source of truth. Every route prerenders to static HTML; `POST /api/sync` is the only endpoint and the only dynamic route. Sync is replication between copies of the local store, not server-authoritative data — with `DATABASE_URL` unset the endpoint answers 503 and the app is fully functional. Setting nothing is a supported configuration (`.env.example`) — with none set the app runs exactly as it did before sync existed. `DATABASE_URL` turns accounts on, and in production drags two more with it: `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` are both fatal when missing (§13.11).
 
 Data flow: React client components → `lib/store.ts` (in-memory cache + `useSyncExternalStore`) → `lib/db.ts` (IndexedDB, fire-and-forget writes) → `lib/sync/client.ts` merges server state in later. **The dependency runs one way**: sync imports the store; the store knows nothing about sync.
 
@@ -33,7 +33,7 @@ Data flow: React client components → `lib/store.ts` (in-memory cache + `useSyn
 
 ### Server side
 
-`lib/server/` is the only server code. `auth.ts` is the identity seam and **Better Auth fills it** (`better-auth.ts`, email + password, same Postgres); `resolveUser` is the only way in, so swapping providers rewrites one function. It fails closed — anything but a valid session is 401 — with a `OPENHABITS_DEV_USER_ID` bypass that is ignored in production. Every table is keyed by `(userId, …)`; `runSync` takes `pg_advisory_xact_lock` on the account so commit order matches `seq` assignment order.
+`lib/server/` is the only server code. `auth.ts` is the identity seam and **Better Auth fills it** (`better-auth.ts`, email + password, same Postgres); `resolveUser` is the only way in, so swapping providers rewrites one function. It fails closed — anything but a valid session is 401 — with a `OPENHABITS_DEV_USER_ID` bypass that is ignored in production. **The auth origin is configured, never inferred** (`base-url.ts`, §13.11): the origin Better Auth resolves is the one it mails verification links into, inference takes it from the `Host` header, and `send-verification-email` accepts any address with no session — so production throws rather than guess. Every table is keyed by `(userId, …)`; `runSync` takes `pg_advisory_xact_lock` on the account so commit order matches `seq` assignment order.
 
 **`auth-schema.ts` tables are separate from `schema.ts:users` on purpose.** `user` is the identity Better Auth owns; `users` is the account sync rows cascade from. Same id, no foreign key, linked by the upsert in `sync-store.ts`. Do not merge them — a dependency's migrations would gain authority over the table holding every habit. `SyncUser` lives alone in `auth-types.ts` so `sync-store.ts` can name its argument without importing an auth stack (this is what keeps the PGlite test runnable).
 
