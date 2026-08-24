@@ -1,5 +1,5 @@
 /**
- * The verification email — the first thing hapi ever says to a new account.
+ * The verification email — the first thing OpenHabits ever says to a new account.
  */
 
 const INK = "#1a1a19";
@@ -59,7 +59,7 @@ function escapeAttribute(value: string): string {
 export const VERIFICATION_SUBJECT = "One square from day one";
 
 /** Shown after the subject in the inbox list, then hidden in the body. */
-const PREHEADER = "Verify your address and hapi starts keeping your grid.";
+const PREHEADER = "Verify your address and OpenHabits starts keeping your grid.";
 
 export function verificationEmail(url: string): {
   subject: string;
@@ -95,7 +95,7 @@ export function verificationEmail(url: string): {
         </tr>
         <tr>
           <td align="center" style="padding-bottom:32px;font-family:${SANS};font-size:15px;line-height:1.65;color:${INK_2};">
-            hapi keeps a square for every day of the year. Verify this address and the grid above becomes yours &mdash; on your phone, your laptop, and anywhere else you sign in.
+            OpenHabits keeps a square for every day of the year. Verify this address and the grid above becomes yours &mdash; on your phone, your laptop, and anywhere else you sign in.
           </td>
         </tr>
         <tr>
@@ -112,7 +112,7 @@ export function verificationEmail(url: string): {
         <tr>
           <td align="center" style="border-top:1px solid ${RULE};padding-top:22px;font-family:${SANS};font-size:12px;line-height:1.65;color:${MUTED};">
             <p style="margin:0 0 6px;">Didn&rsquo;t sign up? Ignore this and nothing happens.</p>
-            <p style="margin:0;">hapi &middot; daily quotes &amp; habits</p>
+            <p style="margin:0;">OpenHabits &middot; daily quotes &amp; habits</p>
           </td>
         </tr>
       </table>
@@ -125,7 +125,7 @@ export function verificationEmail(url: string): {
   const text = [
     "One square from day one.",
     "",
-    "hapi keeps a square for every day of the year. Verify this address and",
+    "OpenHabits keeps a square for every day of the year. Verify this address and",
     "the grid becomes yours — on your phone, your laptop, and anywhere else",
     "you sign in.",
     "",
@@ -134,7 +134,7 @@ export function verificationEmail(url: string): {
     "",
     "Didn't sign up? Ignore this and nothing happens.",
     "",
-    "hapi · daily quotes & habits",
+    "OpenHabits · daily quotes & habits",
   ].join("\n");
 
   return { subject: VERIFICATION_SUBJECT, html, text };

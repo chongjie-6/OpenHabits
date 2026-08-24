@@ -89,7 +89,7 @@ const getServerSnapshot = () => 0;
  * Subscribe to the store. `EMPTY` with `hydrated: false` on the server and the
  * first client render, which is what keeps SSR and hydration in agreement.
  */
-export function useHapi(): State {
+export function useOpenHabits(): State {
   useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return state;
 }
@@ -131,7 +131,7 @@ function hydrate(): Promise<void> {
     .catch((error) => {
       // Private-mode Safari and similar. Run in memory rather than showing a
       // dead app — the user loses persistence, not the session.
-      console.error("hapi: could not open the database", error);
+      console.error("openhabits: could not open the database", error);
       state = { ...state, hydrated: true };
       emit();
     });
@@ -141,7 +141,7 @@ function hydrate(): Promise<void> {
 
 function persist(run: () => Promise<unknown>): void {
   void run().catch((error) => {
-    console.error("hapi: write failed", error);
+    console.error("openhabits: write failed", error);
   });
 }
 

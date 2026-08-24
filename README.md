@@ -1,4 +1,4 @@
-# hapi
+# OpenHabits
 
 A local-first PWA that pairs a **daily quote from someone worth quoting** with a **habit tracker whose history renders as a GitHub-style contribution grid**.
 
@@ -75,8 +75,8 @@ To run it locally:
 ```bash
 DATABASE_URL=postgres://…        # unset → /api/sync answers 503, app unaffected
 NEXT_PUBLIC_SYNC_ENABLED=1       # client-side gate (placeholder for a session check)
-HAPI_DEV_USER_ID=dev             # single-user dev identity; ignored when NODE_ENV=production
-HAPI_DEV_USER_EMAIL=you@example.com   # optional, defaults to <id>@hapi.local
+OPENHABITS_DEV_USER_ID=dev             # single-user dev identity; ignored when NODE_ENV=production
+OPENHABITS_DEV_USER_EMAIL=you@example.com   # optional, defaults to <id>@openhabits.local
 
 npm run db:migrate
 ```

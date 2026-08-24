@@ -190,12 +190,12 @@ export function DownloadAppButton({ className = "" }: { className?: string }) {
       <dialog
         ref={dialog}
         onClose={() => setSheetOpen(false)}
-        aria-label="Add hapi to your home screen"
+        aria-label="Add OpenHabits to your home screen"
         className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-6 text-foreground backdrop:bg-black/40"
       >
         <div className="flex items-start justify-between gap-4">
           <h2 className="text-[15px] font-semibold tracking-tight">
-            Add hapi to your home screen
+            Add OpenHabits to your home screen
           </h2>
           <button
             type="button"
@@ -252,7 +252,7 @@ export function InstallCard() {
 
   return (
     <div className="rounded-card border border-border bg-surface-2 p-4">
-      <p className="text-[13px] font-medium">Add hapi to your home screen</p>
+      <p className="text-[13px] font-medium">Add OpenHabits to your home screen</p>
       <p className="mt-1 text-[12px] leading-relaxed text-muted">
         It opens full screen, starts on Today, and works offline.
       </p>

@@ -74,7 +74,7 @@ export async function POST(request: Request): Promise<Response> {
 
     // Logged in full, reported in outline: a driver error can quote the SQL it
     // failed on, and that SQL contains row values.
-    console.error("hapi: sync failed", cause);
+    console.error("openhabits: sync failed", cause);
     return error(500, "server-error", "Sync failed. Your data is safe on this device.");
   }
 }

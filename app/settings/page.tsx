@@ -12,12 +12,12 @@ import {
   moveHabit,
   resetEverything,
   updateSettings,
-  useHapi,
+  useOpenHabits,
 } from "@/lib/store";
 import type { AnyExportBundle, Habit, Settings } from "@/lib/types";
 
 export default function SettingsPage() {
-  const { hydrated, habits, settings } = useHapi();
+  const { hydrated, habits, settings } = useOpenHabits();
   const fileInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -30,7 +30,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `hapi-backup-${bundle.exportedAt.slice(0, 10)}.json`;
+    link.download = `openhabits-backup-${bundle.exportedAt.slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
     setNotice("Backup downloaded.");
@@ -212,7 +212,7 @@ export default function SettingsPage() {
       </Group>
 
       <p className="pb-4 text-center text-[11px] text-muted">
-        hapi · {QUOTE_COUNT} quotes in the deck · {settings.favourites.length} saved
+        OpenHabits · {QUOTE_COUNT} quotes in the deck · {settings.favourites.length} saved
       </p>
     </section>
   );

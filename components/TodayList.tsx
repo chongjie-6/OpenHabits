@@ -7,7 +7,7 @@ import { HabitRow } from "@/components/HabitRow";
 import { levelColor } from "@/lib/colors";
 import { addDays, formatDayLong } from "@/lib/dates";
 import { buildHistory, habitsForDay } from "@/lib/history";
-import { useHapi } from "@/lib/store";
+import { useOpenHabits } from "@/lib/store";
 import { computeStreaks } from "@/lib/streaks";
 import { useToday } from "@/lib/use-today";
 
@@ -15,7 +15,7 @@ import { useToday } from "@/lib/use-today";
 const STREAK_WINDOW = 365;
 
 export function TodayList() {
-  const { hydrated, habits, entries, settings } = useHapi();
+  const { hydrated, habits, entries, settings } = useOpenHabits();
   const day = useToday(settings.dayStartHour);
 
   const view = useMemo(() => {

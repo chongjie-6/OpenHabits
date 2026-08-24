@@ -73,7 +73,7 @@ async function run(): Promise<void> {
     store.setSyncStatus({ kind: "idle" });
   } catch (cause) {
     // A failed sync is not a failed app — the data is on the device either way.
-    console.error("hapi: sync failed", cause);
+    console.error("openhabits: sync failed", cause);
     store.setSyncStatus({ kind: "error", message: "Could not reach the server." });
   }
 }
@@ -165,7 +165,7 @@ async function handleError(response: Response): Promise<Outcome> {
     case 413:
       // The server rejects this payload every time, so retrying only burns
       // battery. A bug in the client, not a condition to wait out.
-      console.error("hapi: server rejected the sync payload", body?.message);
+      console.error("openhabits: server rejected the sync payload", body?.message);
       return {
         kind: "stop",
         status: { kind: "error", message: "This device's data could not be synced." },
@@ -188,7 +188,7 @@ function warnOnClockSkew(serverNow: number): void {
   const skew = Math.abs(Date.now() - serverNow);
   if (skew > MAX_CLOCK_SKEW_MS) {
     console.warn(
-      `hapi: this device's clock is ${Math.round(skew / 60000)} minutes off the server. ` +
+      `openhabits: this device's clock is ${Math.round(skew / 60000)} minutes off the server. ` +
         "Edits may merge in the wrong order until it is corrected.",
     );
   }
@@ -218,7 +218,7 @@ function syncEnabled(): boolean {
  * and the merge is designed to arrive late rather than often.
  */
 export function useSync(): void {
-  const { hydrated } = store.useHapi();
+  const { hydrated } = store.useOpenHabits();
   // Subscribed rather than read, so signing in starts sync on the spot and
   // signing out in another tab tears the listeners down in this one.
   const enabled = useSignedIn();

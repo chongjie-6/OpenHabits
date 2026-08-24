@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "hapi — daily quotes & habits",
-    short_name: "hapi",
+    name: "OpenHabits — daily quotes & habits",
+    short_name: "OpenHabits",
     description:
       "A daily quote worth reading, and a habit tracker that shows you the year you had.",
     start_url: "/",

@@ -7,7 +7,7 @@ import { Heatmap, HeatmapLegend } from "@/components/Heatmap";
 import { habitColor } from "@/lib/colors";
 import { addDays, formatDayFull, startOfWeek } from "@/lib/dates";
 import { buildHistory, habitsForDay, perHabitTotals } from "@/lib/history";
-import { useHapi } from "@/lib/store";
+import { useOpenHabits } from "@/lib/store";
 import { computeStreaks } from "@/lib/streaks";
 import { useMediaQuery, WIDE } from "@/lib/use-media-query";
 import { useToday } from "@/lib/use-today";
@@ -17,7 +17,7 @@ const FULL_YEAR_WEEKS = 53;
 const COMPACT_WEEKS = 20;
 
 export default function StatsPage() {
-  const { hydrated, habits, entries, settings } = useHapi();
+  const { hydrated, habits, entries, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
   const wide = useMediaQuery(WIDE);
   const [expanded, setExpanded] = useState(false);

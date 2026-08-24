@@ -1,4 +1,4 @@
-# hapi — Design Document
+# OpenHabits — Design Document
 
 A local-first PWA that pairs a **daily quote from someone worth quoting** with a **habit tracker** whose history renders as a GitHub-style contribution grid.
 
@@ -426,8 +426,8 @@ Per `01-app/02-guides/progressive-web-apps.md` in this Next version.
 
 ```ts
 {
-  name: "hapi — daily quotes & habits",
-  short_name: "hapi",
+  name: "OpenHabits — daily quotes & habits",
+  short_name: "OpenHabits",
   start_url: "/",
   display: "standalone",
   background_color: "#ffffff",
@@ -488,7 +488,7 @@ Install state is exposed through `useSyncExternalStore` over `matchMedia("(displ
 
 ### 8.6 Page metadata
 
-The root layout owns the shared half: `title.template` (`"%s · hapi"`), the description, `applicationName`, `appleWebApp`, `formatDetection`, and an `openGraph`/`twitter` pair. Each route then adds its own `title` and `description`.
+The root layout owns the shared half: `title.template` (`"%s · OpenHabits"`), the description, `applicationName`, `appleWebApp`, `formatDetection`, and an `openGraph`/`twitter` pair. Each route then adds its own `title` and `description`.
 
 Two constraints shape where that per-route metadata lives.
 
@@ -738,7 +738,7 @@ The push watermark is the newest stamp **actually sent**, never `Date.now()` —
 
 Sync needs one thing from auth: a stable account id to scope rows by. Everything else about signing in is separate work with its own decisions, and the sync layer was built without waiting for it.
 
-`lib/server/auth.ts` defines that contract and nothing more. **It fails closed:** anything other than a valid session returns null and the endpoint answers 401 — no cookie, an expired one, a database that cannot be reached. A permissive default would pool every visitor's habits into one row set, and the first symptom would be a stranger's data on someone's phone. A `HAPI_DEV_USER_ID` override exists for local development and is ignored when `NODE_ENV=production` — two conditions, because the failure worth preventing is that variable surviving into a real deployment.
+`lib/server/auth.ts` defines that contract and nothing more. **It fails closed:** anything other than a valid session returns null and the endpoint answers 401 — no cookie, an expired one, a database that cannot be reached. A permissive default would pool every visitor's habits into one row set, and the first symptom would be a stranger's data on someone's phone. A `OPENHABITS_DEV_USER_ID` override exists for local development and is ignored when `NODE_ENV=production` — two conditions, because the failure worth preventing is that variable surviving into a real deployment.
 
 *This section originally ended here, recording that no provider was wired in and that sync therefore ran for nobody. It now does.* **Better Auth** fills the seam, configured in `lib/server/better-auth.ts` and reached only through `resolveUser`. Email and password, self-hosted on the same Postgres the habits live in: no third-party dependency for an app whose whole argument is that your data is yours, and no outbound mail required to create the first account. Swapping providers still means rewriting one function.
 
@@ -818,7 +818,7 @@ the `href`, the plain-text alternative present, no `<img>` anywhere.
 
 **It is written like a 2003 web page on purpose.** Nested tables, every
 declaration inline, hex values copied by hand from `globals.css` because
-`var(--accent)` does not survive Gmail. The hero — hapi's contribution grid, one
+`var(--accent)` does not survive Gmail. The hero — OpenHabits's contribution grid, one
 square lit — is drawn in `<td>` cells rather than an image, so it renders with
 remote images blocked, which is the default in Outlook and common in Gmail. A
 verification mail whose only branding is a broken-image icon reads as phishing.

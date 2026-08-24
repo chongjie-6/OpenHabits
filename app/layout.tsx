@@ -18,18 +18,18 @@ const DESCRIPTION =
   "A daily quote, and a habit tracker that shows you the year you had. Local-first, offline, no account.";
 
 export const metadata: Metadata = {
-  title: { default: "hapi — daily quotes & habits", template: "%s · hapi" },
+  title: { default: "OpenHabits — daily quotes & habits", template: "%s · OpenHabits" },
   description: DESCRIPTION,
-  applicationName: "hapi",
-  appleWebApp: { capable: true, title: "hapi", statusBarStyle: "default" },
+  applicationName: "OpenHabits",
+  appleWebApp: { capable: true, title: "OpenHabits", statusBarStyle: "default" },
   formatDetection: { telephone: false, date: false, address: false },
   openGraph: {
     type: "website",
-    siteName: "hapi",
-    title: "hapi — daily quotes & habits",
+    siteName: "OpenHabits",
+    title: "OpenHabits — daily quotes & habits",
     description: DESCRIPTION,
   },
-  twitter: { card: "summary", title: "hapi", description: DESCRIPTION },
+  twitter: { card: "summary", title: "OpenHabits", description: DESCRIPTION },
 };
 
 export const viewport: Viewport = {

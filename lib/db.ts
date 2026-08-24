@@ -12,6 +12,8 @@
 
 import { DEFAULT_SETTINGS, normaliseHabit, type Entry, type Habit, type Settings } from "./types";
 
+/** Pre-rebrand name, kept: renaming the database orphans every existing
+ *  install's habits, and IndexedDB is the source of truth. */
 const DB_NAME = "hapi";
 const DB_VERSION = 2;
 
@@ -47,7 +49,7 @@ function openDb(): Promise<IDBDatabase> {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
     request.onblocked = () =>
-      reject(new Error("hapi database blocked by another open tab"));
+      reject(new Error("OpenHabits database blocked by another open tab"));
   });
 
   return dbPromise;

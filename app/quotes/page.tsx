@@ -5,14 +5,14 @@ import Link from "next/link";
 import { QUOTES } from "@/data/quotes";
 import { daysBetween } from "@/lib/dates";
 import { ALL_TAGS, MIN_REPEAT_GAP, QUOTE_COUNT, upcomingSchedule } from "@/lib/quotes";
-import { toggleFavourite, useHapi } from "@/lib/store";
+import { toggleFavourite, useOpenHabits } from "@/lib/store";
 import { useToday } from "@/lib/use-today";
 import type { DayKey, Quote, QuoteTag } from "@/lib/types";
 
 type Tab = "saved" | "all";
 
 export default function QuotesPage() {
-  const { hydrated, settings } = useHapi();
+  const { hydrated, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
 
   const [tab, setTab] = useState<Tab>("saved");

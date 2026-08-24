@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { verificationEmail } from "@/lib/verification-email";
 
-const URL = "https://hapi.app/api/auth/verify-email?token=abc123&callbackURL=/";
+const URL = "https://openhabits.app/api/auth/verify-email?token=abc123&callbackURL=/";
 
 describe("verificationEmail", () => {
   it("puts the link in both parts", () => {
     const { html, text } = verificationEmail(URL);
     // The href is attribute-escaped; the plain-text part is not, and must not be.
-    expect(html).toContain('href="https://hapi.app/api/auth/verify-email?token=abc123&amp;callbackURL=/"');
+    expect(html).toContain('href="https://openhabits.app/api/auth/verify-email?token=abc123&amp;callbackURL=/"');
     expect(text).toContain(URL);
   });
 
   it("escapes a URL that would otherwise break out of the attribute", () => {
-    const { html } = verificationEmail('https://hapi.app/?t=x"><script>alert(1)</script>');
+    const { html } = verificationEmail('https://openhabits.app/?t=x"><script>alert(1)</script>');
     expect(html).not.toContain("<script>");
     expect(html).toContain("&quot;&gt;&lt;script&gt;");
   });

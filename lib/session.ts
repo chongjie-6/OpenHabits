@@ -25,6 +25,8 @@ import { createAuthClient } from "better-auth/react";
 /** No `baseURL`: hardcoding one would break every deploy preview. */
 export const authClient = createAuthClient();
 
+/** Pre-rebrand key, kept so signed-in devices do not lose the hint and skip
+ *  a sync until the next sign-in. */
 const HINT_KEY = "hapi:signed-in";
 
 const listeners = new Set<() => void>();

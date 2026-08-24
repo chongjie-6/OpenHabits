@@ -10,7 +10,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { authClient, markSignedIn, markSignedOut } from "@/lib/session";
-import { adoptAccount, useHapi, type SyncStatus } from "@/lib/store";
+import { adoptAccount, useOpenHabits, type SyncStatus } from "@/lib/store";
 import { syncNow } from "@/lib/sync/client";
 
 type Mode = "sign-in" | "sign-up";
@@ -54,7 +54,7 @@ function useMounted(): boolean {
 
 export function AccountCard() {
   const { data: session, isPending } = authClient.useSession();
-  const { syncStatus } = useHapi();
+  const { syncStatus } = useOpenHabits();
   const mounted = useMounted();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   // The wait renders instead of `SignedOut`, so leaving it is a remount with
@@ -119,7 +119,7 @@ function SignedOut({
   initialEmail: string;
   onOutcome: (outcome: Outcome) => void;
 }) {
-  const { habits } = useHapi();
+  const { habits } = useOpenHabits();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
@@ -138,7 +138,7 @@ function SignedOut({
             ...credentials,
             // The schema requires a name and this app never asks for one; an
             // empty string would look like a bug in any admin tool.
-            name: credentials.email.split("@")[0] || "hapi",
+            name: credentials.email.split("@")[0] || "OpenHabits",
           })
         : await authClient.signIn.email(credentials);
 

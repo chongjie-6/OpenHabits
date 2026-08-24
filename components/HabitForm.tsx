@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { habitColor } from "@/lib/colors";
 import { weekdayShortNames } from "@/lib/dates";
-import { useHapi } from "@/lib/store";
+import { useOpenHabits } from "@/lib/store";
 import { HABIT_COLORS, type Cadence, type HabitColorKey } from "@/lib/types";
 
 /**
@@ -38,7 +38,7 @@ export function HabitForm({
   onSubmit: (values: HabitFormValues) => void;
   onCancel: () => void;
 }) {
-  const { settings } = useHapi();
+  const { settings } = useOpenHabits();
 
   const [name, setName] = useState(initial?.name ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? EMOJI[0]);

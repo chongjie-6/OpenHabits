@@ -24,7 +24,7 @@ const globalForAuth = globalThis as unknown as {
   // `ReturnType<typeof build>` rather than `ReturnType<typeof betterAuth>`:
   // Better Auth's return type is generic in the options it was given, and the
   // erased form is not assignable to the concrete one.
-  hapiAuth?: ReturnType<typeof build>;
+  openHabitsAuth?: ReturnType<typeof build>;
 };
 
 function build() {
@@ -54,7 +54,7 @@ function build() {
         try {
           await sendVerificationEmail({ to: user.email, url });
         } catch (error) {
-          console.error("[hapi] verification email failed", error);
+          console.error("[openhabits] verification email failed", error);
           if (verificationRequired) throw error;
         }
       },
@@ -63,7 +63,7 @@ function build() {
       autoSignInAfterVerification: true,
     },
 
-    appName: "hapi",
+    appName: "OpenHabits",
 
     /**
      * Signs the session cookie; rotating it invalidates every session. Unset in
@@ -111,11 +111,11 @@ function build() {
 export function getAuth(): ReturnType<typeof build> {
   // A local rather than `??=` and a re-read: a mutable property on a global is
   // not narrowed by the assignment, so the second read is `T | undefined`.
-  const existing = globalForAuth.hapiAuth;
+  const existing = globalForAuth.openHabitsAuth;
   if (existing) return existing;
 
   const auth = build();
-  globalForAuth.hapiAuth = auth;
+  globalForAuth.openHabitsAuth = auth;
   return auth;
 }
 

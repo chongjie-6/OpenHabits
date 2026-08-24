@@ -10,12 +10,12 @@ import {
   weekdayInitials,
 } from "@/lib/dates";
 import { habitsForDay, type HabitDayState } from "@/lib/history";
-import { toggleEntry, useHapi } from "@/lib/store";
+import { toggleEntry, useOpenHabits } from "@/lib/store";
 import { useToday } from "@/lib/use-today";
 import type { DayKey } from "@/lib/types";
 
 export default function WeekPage() {
-  const { hydrated, habits, entries, settings } = useHapi();
+  const { hydrated, habits, entries, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
   const [offset, setOffset] = useState(0);
 

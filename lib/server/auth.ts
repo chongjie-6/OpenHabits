@@ -36,7 +36,7 @@ export async function resolveUser(request: Request): Promise<SyncUser | null> {
   } catch (cause) {
     // Logged rather than thrown: the caller answers 401, and a 500 here would
     // tell the client to keep retrying against a broken dependency.
-    console.error("hapi: session lookup failed", cause);
+    console.error("openhabits: session lookup failed", cause);
     return null;
   }
 }
@@ -51,8 +51,8 @@ export async function resolveUser(request: Request): Promise<SyncUser | null> {
 function devUser(): SyncUser | null {
   if (process.env.NODE_ENV === "production") return null;
 
-  const id = process.env.HAPI_DEV_USER_ID;
+  const id = process.env.OPENHABITS_DEV_USER_ID;
   if (!id) return null;
 
-  return { id, email: process.env.HAPI_DEV_USER_EMAIL ?? `${id}@hapi.local` };
+  return { id, email: process.env.OPENHABITS_DEV_USER_EMAIL ?? `${id}@openhabits.local` };
 }

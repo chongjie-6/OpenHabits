@@ -34,6 +34,9 @@ import type { Cadence, Settings } from "../types";
  * read-modify-write on every sync: cursors only need to be monotonic *within* an
  * account, and a subsequence of a monotonic series is monotonic. The numbers gap
  * between users; nothing reads them as a count.
+ *
+ * It keeps its pre-rebrand name: renaming it is a migration against a live
+ * counter every row's `seq` was drawn from, for no behavioural gain.
  */
 export const syncSeq = pgSequence("hapi_sync_seq");
 

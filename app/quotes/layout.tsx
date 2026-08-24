@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 
 const DESCRIPTION =
-  "Every quote in hapi, and the ones you have saved — searchable by author, source and tag.";
+  "Every quote in OpenHabits, and the ones you have saved — searchable by author, source and tag.";
 
 export const metadata: Metadata = {
   title: "Collection",
   description: DESCRIPTION,
   openGraph: {
     type: "website",
-    siteName: "hapi",
-    title: "Collection · hapi",
+    siteName: "OpenHabits",
+    title: "Collection · OpenHabits",
     description: DESCRIPTION,
   },
 };

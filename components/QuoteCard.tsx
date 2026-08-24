@@ -1,7 +1,7 @@
 "use client";
 
 import { quoteForDay } from "@/lib/quotes";
-import { toggleFavourite, useHapi } from "@/lib/store";
+import { toggleFavourite, useOpenHabits } from "@/lib/store";
 import { useToday } from "@/lib/use-today";
 
 /**
@@ -15,7 +15,7 @@ import { useToday } from "@/lib/use-today";
  * pure and synchronous, so it lands on the first client render.
  */
 export function QuoteCard() {
-  const { settings } = useHapi();
+  const { settings } = useOpenHabits();
   const day = useToday(settings.dayStartHour);
 
   if (!day) return <QuoteCardPlaceholder />;

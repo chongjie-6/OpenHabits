@@ -6,7 +6,7 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   title: "Week",
   description: DESCRIPTION,
-  openGraph: { type: "website", siteName: "hapi", title: "Week · hapi", description: DESCRIPTION },
+  openGraph: { type: "website", siteName: "OpenHabits", title: "Week · OpenHabits", description: DESCRIPTION },
 };
 
 /**

@@ -29,17 +29,17 @@ function connectionString(): string {
 }
 
 const globalForDb = globalThis as unknown as {
-  hapiSql?: ReturnType<typeof postgres>;
+  openHabitsSql?: ReturnType<typeof postgres>;
 };
 
 function client(): ReturnType<typeof postgres> {
-  globalForDb.hapiSql ??= postgres(connectionString(), {
+  globalForDb.openHabitsSql ??= postgres(connectionString(), {
     max: 1,
     prepare: false,
     idle_timeout: 20,
     connect_timeout: 10,
   });
-  return globalForDb.hapiSql;
+  return globalForDb.openHabitsSql;
 }
 
 /**

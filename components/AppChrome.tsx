@@ -28,7 +28,7 @@ export function Hydrator() {
 
     navigator.serviceWorker
       .register("/sw.js", { scope: "/", updateViaCache: "none" })
-      .catch((error) => console.error("hapi: service worker failed", error));
+      .catch((error) => console.error("openhabits: service worker failed", error));
   }, []);
 
   return null;

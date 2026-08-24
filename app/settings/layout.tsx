@@ -6,7 +6,7 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   title: "Settings",
   description: DESCRIPTION,
-  openGraph: { type: "website", siteName: "hapi", title: "Settings · hapi", description: DESCRIPTION },
+  openGraph: { type: "website", siteName: "OpenHabits", title: "Settings · OpenHabits", description: DESCRIPTION },
 };
 
 /** See the note in `app/week/layout.tsx` — `page.tsx` is a client component. */

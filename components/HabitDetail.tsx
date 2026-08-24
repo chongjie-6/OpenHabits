@@ -8,7 +8,7 @@ import { describeCadence, HabitForm } from "@/components/HabitForm";
 import { habitColor } from "@/lib/colors";
 import { addDays, formatDayFull, startOfWeek } from "@/lib/dates";
 import { buildHabitHistory } from "@/lib/history";
-import { deleteHabit, toggleEntry, updateHabit, useHapi } from "@/lib/store";
+import { deleteHabit, toggleEntry, updateHabit, useOpenHabits } from "@/lib/store";
 import { computeStreaks } from "@/lib/streaks";
 import { useMediaQuery, WIDE } from "@/lib/use-media-query";
 import { useToday } from "@/lib/use-today";
@@ -20,7 +20,7 @@ const COMPACT_WEEKS = 20;
 export function HabitDetail() {
   const id = useSearchParams().get("id");
   const router = useRouter();
-  const { hydrated, habits, entries, settings } = useHapi();
+  const { hydrated, habits, entries, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
   const wide = useMediaQuery(WIDE);
 

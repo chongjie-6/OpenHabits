@@ -1,5 +1,5 @@
 /**
- * hapi service worker.
+ * OpenHabits service worker.
  *
  * Runtime caching only — no precache manifest, and therefore no build
  * integration to keep in sync. Affordable because the worker's only job is
@@ -7,7 +7,7 @@
  * construction.
  */
 
-const VERSION = "hapi-v1";
+const VERSION = "openhabits-v1";
 const SHELL = `${VERSION}-shell`;
 const ASSETS = `${VERSION}-assets`;
 const KEEP = new Set([SHELL, ASSETS]);

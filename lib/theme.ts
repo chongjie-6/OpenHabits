@@ -7,6 +7,9 @@ import type { Settings } from "./types";
  * snippet in the document head reads this key synchronously to set
  * `data-theme`, which is what prevents a flash of the wrong theme.
  * See DESIGN.md §7.1.
+ *
+ * The key keeps its pre-rebrand name: a rename reads as "no theme stored" and
+ * flashes every existing install back to system on its next load.
  */
 export const THEME_KEY = "hapi-theme";
 
