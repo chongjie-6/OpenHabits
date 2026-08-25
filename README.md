@@ -106,6 +106,26 @@ OPENHABITS_DEV_USER_EMAIL=you@example.com   # optional; defaults to <id>@openhab
 
 This is a bypass, not a stand-in, and is ignored when `NODE_ENV=production`.
 
+### Deploying to Vercel
+
+Zero-config: it is a stock Next app, and it builds with no environment set at all — a first deploy works before the database exists, with sync and accounts answering 503. Node comes from `engines` in `package.json` (Vercel does not read `.nvmrc`; CI does).
+
+Set these on the project, for Production **and** Preview:
+
+```bash
+DATABASE_URL=                # Neon's *pooled* connection string, ?sslmode=require
+BETTER_AUTH_SECRET=          # a different value per environment
+BETTER_AUTH_ALLOWED_HOSTS=openhabits.example,*.vercel.app
+SMTP_USER=
+SMTP_PASSWORD=
+```
+
+**`BETTER_AUTH_ALLOWED_HOSTS`, not `BETTER_AUTH_URL`.** Every preview deployment answers on its own `*.vercel.app` host, and one pinned origin would mail a preview's visitors a verification link into production. The list is resolved per request and every host outside it is refused, which is the property that matters (§13.11).
+
+**Pool through Neon's `-pooler` host.** `lib/server/db.ts` opens one connection per instance with `prepare: false` precisely so a pooler can hand out a different backend per checkout; a direct endpoint runs out of connections long before the functions run out of work.
+
+**Migrations do not run on deploy.** `npm run db:migrate` against the production `DATABASE_URL`, before promoting a build that needs it — the alternative is a build step with authority over tables holding history that exists nowhere else. Give previews their own Neon branch unless you want them writing to real accounts.
+
 ## Commands
 
 ```bash
