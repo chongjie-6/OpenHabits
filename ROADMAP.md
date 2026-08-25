@@ -3,7 +3,7 @@
 What is left, in the order it is worth doing. `DESIGN.md` holds the reasoning; this file holds the sequence.
 
 - **Status:** phases 0–6 of §11 built and passing. Phase 7 (Field) is the only unfinished one, and it needs hardware.
-- **This document's phase 1 (CI and the pins) is done.** Phase 2 — tests for `lib/store.ts` and the rest of the stateful half — is next.
+- **CI landed 2026-08-25**, along with the pins it needed; that phase is off this list. Tests for `lib/store.ts` and the rest of the stateful half are next.
 - **Last updated:** 2026-08-25
 
 ---
@@ -22,27 +22,11 @@ Verified 2026-08-25.
 | `@ts-ignore` / `@ts-expect-error` / `eslint-disable` | 0 |
 | `.github/workflows/` | `ci.yml` — the four checks above, on push and PR |
 
-**All four now run on every push and pull request**, which is what phase 1 was for. Before that they ran only when a human remembered to type them, so a green suite was only ever as current as the last time someone did.
+**All four now run on every push and pull request.** Before CI they ran only when a human remembered to type them, so a green suite was only ever as current as the last time someone did. The build step is given no environment on purpose: every variable in `.env.example` is optional, so a build that needs one has broken that promise and CI is the thing that should say so.
 
 ---
 
-## 2. Phase 1 — Make the tree provable — **done**
-
-Nothing here was a feature; it exists so every later phase is verifiable.
-
-1. **`.github/workflows/ci.yml`** — `npm ci` → `lint` → `typecheck` → `test` → `build`, on push to `master` and on every pull request. **No environment is supplied to the build on purpose**: every variable in `.env.example` is optional, so a build that needs one has broken that promise and CI should be the thing that says so.
-2. **`typecheck` script** (`tsc --noEmit`), and `README.md` no longer claims `next build` is the typecheck.
-3. **Node pinned** — `.nvmrc` at `22.13.0` and `engines: >=22.13.0 <23`; CI reads the version from `.nvmrc`, so the pin and the matrix cannot drift apart.
-4. **`.env.example`** now carries `OPENHABITS_DEV_USER_ID` and `OPENHABITS_DEV_USER_EMAIL`, with the production guard spelled out beside them.
-5. **`@types/node` bumped `^20` → `^22`**, matching the runtime. **`@types/nodemailer` stays**: nodemailer 9.0.5 ships no `.d.ts` of its own, and `@types/nodemailer`'s newest release *is* 8.0.1 — the version mismatch is DefinitelyTyped's numbering, not staleness. `lib/email.ts` uses `nodemailer.Transporter` and `nodemailer.SentMessageInfo`, both of which come from it. Revisit only if nodemailer starts publishing types.
-
-**Deliberately not in this phase: Prettier.** It would reformat the whole tree in one commit and bury the history of a codebase whose prose is load-bearing. Worth doing, worth doing alone, and now possible to do safely — CI exists to prove it changed nothing.
-
-Still true, and now at least caught on a fresh CI install rather than on someone's laptop: `@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0, and all three carry either the schema or the suite that validates it. Only the lockfile pins them, and `npm ci` is what makes CI honour it.
-
----
-
-## 3. Phase 2 — Test what can lose data
+## 2. Phase 1 — Test what can lose data
 
 124 tests is a good number attached to an uneven distribution. Everything **pure** is well covered, and `tests/server/sync-store.test.ts` is genuinely strong — it boots PGlite per case and applies every `.sql` in `drizzle/` verbatim, so the SQL-level subtleties (a sequence assigned inside `ON CONFLICT DO UPDATE`, a composite foreign key, the advisory lock) are all exercised for real.
 
@@ -69,7 +53,7 @@ None of this needs jsdom; it all runs in the existing node environment. Componen
 
 ---
 
-## 4. Phase 3 — Close the shipping blockers
+## 3. Phase 2 — Close the shipping blockers
 
 What stands between this and a real domain with real users.
 
@@ -78,11 +62,11 @@ What stands between this and a real domain with real users.
 3. **A Content-Security-Policy on app routes.** `next.config.ts` gives one to `/sw.js` and nothing else. **Note the constraint**: `lib/theme.ts:THEME_SCRIPT` is a blocking inline script by design (§7.1 — it must read `localStorage` pre-paint), so this needs a nonce or a hash. A naive `script-src 'self'` will break the theme.
 4. **A favicon.** The only PWA gap. `app/apple-icon.png` already covers apple-touch and the manifest is complete, but there is no `favicon.ico`, `icon.png` or `icon.svg` in `app/` or `public/`, so Next emits no `<link rel="icon">` and `/favicon.ico` 404s. `scripts/generate-icons.mjs` already exists to extend.
 5. **Deployment config.** Nothing is pinned. `.env.example` names Neon and `.gitignore` mentions `.vercel`, so the target is implied but not committed.
-6. **Decide `importBundle`'s `"replace"` mode.** It is implemented in full — `db.clearAll()`, tombstone discard, all of it — and **unreachable from the UI**: `app/settings/page.tsx` only ever passes `"merge"`. Either surface an import-mode picker or delete the branch. A complete destructive path with no caller is the kind of thing that gets wired up wrongly later. Do this after phase 2 covers it either way.
+6. **Decide `importBundle`'s `"replace"` mode.** It is implemented in full — `db.clearAll()`, tombstone discard, all of it — and **unreachable from the UI**: `app/settings/page.tsx` only ever passes `"merge"`. Either surface an import-mode picker or delete the branch. A complete destructive path with no caller is the kind of thing that gets wired up wrongly later. Do this after phase 1 covers it either way.
 
 ---
 
-## 5. Phase 4 — Decide the open questions
+## 4. Phase 3 — Decide the open questions
 
 §12 and §13.8 are a list of decisions, not a backlog. This phase *closes* them, and for several the right close is "leave it, and say so in the doc".
 
@@ -100,7 +84,7 @@ What stands between this and a real domain with real users.
 
 ---
 
-## 6. Phase 5 — Product depth
+## 5. Phase 4 — Product depth
 
 Only after the above.
 
@@ -111,7 +95,7 @@ Only after the above.
 
 ---
 
-## 7. Documentation debt
+## 6. Documentation debt
 
 `DESIGN.md` is authoritative and is cited by § number from module headers, so drift in it is a real cost.
 
@@ -123,9 +107,12 @@ Only after the above.
 
 ---
 
-## 8. Housekeeping
+## 7. Housekeeping
 
 - **Dead exports:** `lib/db.ts:deleteEntriesFor` (`applyMerge` inlines the same `IDBKeyRange.bound` purge instead) and `lib/quotes.ts:quoteById`. Neither is referenced anywhere, tests included.
 - **Test-only exports:** `lib/dates.ts:weekdayIndex` and `lib/quotes.ts:deckFor` are used by `tests/` and by no application code. Fine, but worth knowing before someone "cleans them up".
+- **Prettier, alone and on its own commit.** It would reformat the whole tree at once and bury the history of a codebase whose prose is load-bearing. Deliberately left out of the CI work; now safe to do, because CI can prove it changed nothing.
+- **`@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0**, and all three carry either the schema or the suite that validates it. Only the lockfile pins them — `npm ci` is what makes CI honour it, so a drifting install now shows up there rather than on one laptop.
+- **`@types/nodemailer` stays at `^8` against nodemailer `^9`.** nodemailer 9 ships no `.d.ts` of its own and 8.0.1 *is* the newest `@types/nodemailer`; the mismatch is DefinitelyTyped's numbering, not staleness. Revisit only if nodemailer starts publishing types.
 - **Leave `AGENTS.md` alone.** It is regenerated by `next dev`; removing it from a diff only re-creates the change.
 - **Leave the four `hapi`-named storage keys alone** — `lib/db.ts:DB_NAME`, `lib/theme.ts:THEME_KEY`, `lib/session.ts:HINT_KEY`, and the `hapi_sync_seq` sequence. Each names data that already exists on a device or in Postgres. They are not leftovers to tidy up, and both `README.md` and `CLAUDE.md` say so.
