@@ -162,6 +162,8 @@ public/sw.js    runtime-caching service worker (no build-time precache)
 - **Settings sync as one blob, `theme` included**, so a device-local look becomes a global one.
 - Reminders, conflict surfacing and tombstone collection are absent by decision, not oversight. DESIGN.md §12 and §13.8 hold the reasoning.
 
+`ROADMAP.md` sequences all of the above — what is worth doing, in what order, and which of these gaps are decisions to leave alone rather than work to pick up.
+
 ## Contributing
 
 - Read the relevant `DESIGN.md` section first. §12 and §13.8 list open questions — check them before "fixing" something that was decided deliberately.
