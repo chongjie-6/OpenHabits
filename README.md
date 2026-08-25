@@ -23,6 +23,8 @@ npm run dev          # http://localhost:3000
 
 **No environment variables are required.** With none set, the app is fully functional: `/api/sync` and `/api/auth/*` answer 503, the client treats sync as switched off, and nothing else changes except the Account card, which explains itself.
 
+Node 22 (`.nvmrc`, and `engines` in `package.json`). CI runs on the same version.
+
 ## Screens
 
 | Route | Name | Purpose |
@@ -108,9 +110,10 @@ This is a bypass, not a stand-in, and is ignored when `NODE_ENV=production`.
 
 ```bash
 npm run dev              # next dev
-npm run build            # next build — also the typecheck; there is no separate script
+npm run build            # next build
 npm start                # next start (use for Lighthouse / perf checks)
 npm run lint             # eslint (flat config)
+npm run typecheck        # tsc --noEmit
 npm test                 # vitest run
 npm run test:watch
 
@@ -166,6 +169,7 @@ public/sw.js    runtime-caching service worker (no build-time precache)
 
 ## Contributing
 
+- `.github/workflows/ci.yml` runs `lint` → `typecheck` → `test` → `build` on every push and pull request, with no environment supplied — a build that needs a variable has broken the promise that all of them are optional. Run the same four locally before pushing.
 - Read the relevant `DESIGN.md` section first. §12 and §13.8 list open questions — check them before "fixing" something that was decided deliberately.
 - DESIGN.md records reversals rather than overwriting them. When a section reads as a reversal, the current behaviour is the one described second (§13.10 reverses §13.9 on verification; §8.4 reverses its own original refusal to intercept `beforeinstallprompt`).
 - Comments explain the non-obvious — an invariant, a workaround, a reason the straightforward version is wrong. If a comment would only paraphrase the line under it, delete it.

@@ -3,6 +3,7 @@
 What is left, in the order it is worth doing. `DESIGN.md` holds the reasoning; this file holds the sequence.
 
 - **Status:** phases 0–6 of §11 built and passing. Phase 7 (Field) is the only unfinished one, and it needs hardware.
+- **This document's phase 1 (CI and the pins) is done.** Phase 2 — tests for `lib/store.ts` and the rest of the stateful half — is next.
 - **Last updated:** 2026-08-25
 
 ---
@@ -13,29 +14,31 @@ Verified 2026-08-25.
 
 | Check | Result |
 |---|---|
-| `npx vitest run` | **124 passed / 124**, 11 files, 21.6s |
-| `npx eslint .` | clean |
+| `npm test` | **124 passed / 124**, 11 files, ~18s |
+| `npm run lint` | clean |
+| `npm run typecheck` | clean |
+| `npm run build` | clean, with no environment set |
 | `TODO` / `FIXME` / `HACK` | 0 |
 | `@ts-ignore` / `@ts-expect-error` / `eslint-disable` | 0 |
-| `.github/workflows/` | absent |
+| `.github/workflows/` | `ci.yml` — the four checks above, on push and PR |
 
-**Nothing runs any of this except a human typing `npm test`.** There is no CI of any kind and no pre-commit hook, so a green suite is only ever as current as the last time someone remembered to run one. That is why CI is phase 1 and everything else waits behind it.
+**All four now run on every push and pull request**, which is what phase 1 was for. Before that they ran only when a human remembered to type them, so a green suite was only ever as current as the last time someone did.
 
 ---
 
-## 2. Phase 1 — Make the tree provable
+## 2. Phase 1 — Make the tree provable — **done**
 
-Hours, not days. Nothing here is a feature; it exists so every later phase is verifiable.
+Nothing here was a feature; it exists so every later phase is verifiable.
 
-1. **`.github/workflows/ci.yml`** — `npm ci` → `lint` → `typecheck` → `test` → `build`, on push and PR.
-2. **A `typecheck` script** (`tsc --noEmit`). `README.md` currently says `next build` is the typecheck, which makes typechecking cost a full build and makes it awkward to run in CI as a distinct step.
-3. **Pin Node** — `.nvmrc` plus `engines`, matched to the CI matrix. Nothing pins it today.
-4. **`.env.example`** is missing `OPENHABITS_DEV_USER_ID` and `OPENHABITS_DEV_USER_EMAIL`, both of which the README already documents.
-5. **`@types/node` is `^20` while the runtime is Node 22**, and `@types/nodemailer ^8` sits against `nodemailer ^9`. Bump the first; check whether the second can be dropped, since modern nodemailer ships its own types.
+1. **`.github/workflows/ci.yml`** — `npm ci` → `lint` → `typecheck` → `test` → `build`, on push to `master` and on every pull request. **No environment is supplied to the build on purpose**: every variable in `.env.example` is optional, so a build that needs one has broken that promise and CI should be the thing that says so.
+2. **`typecheck` script** (`tsc --noEmit`), and `README.md` no longer claims `next build` is the typecheck.
+3. **Node pinned** — `.nvmrc` at `22.13.0` and `engines: >=22.13.0 <23`; CI reads the version from `.nvmrc`, so the pin and the matrix cannot drift apart.
+4. **`.env.example`** now carries `OPENHABITS_DEV_USER_ID` and `OPENHABITS_DEV_USER_EMAIL`, with the production guard spelled out beside them.
+5. **`@types/node` bumped `^20` → `^22`**, matching the runtime. **`@types/nodemailer` stays**: nodemailer 9.0.5 ships no `.d.ts` of its own, and `@types/nodemailer`'s newest release *is* 8.0.1 — the version mismatch is DefinitelyTyped's numbering, not staleness. `lib/email.ts` uses `nodemailer.Transporter` and `nodemailer.SentMessageInfo`, both of which come from it. Revisit only if nodemailer starts publishing types.
 
-**Deliberately not in this phase: Prettier.** It would reformat the whole tree in one commit and bury the history of a codebase whose prose is load-bearing. Worth doing, worth doing alone, and worth doing *after* CI exists to prove it changed nothing.
+**Deliberately not in this phase: Prettier.** It would reformat the whole tree in one commit and bury the history of a codebase whose prose is load-bearing. Worth doing, worth doing alone, and now possible to do safely — CI exists to prove it changed nothing.
 
-Also worth knowing: `@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0, and all three carry either the schema or the suite that validates it. Only the lockfile pins them. With no CI, a fresh install on a new machine can pick up different behaviour silently.
+Still true, and now at least caught on a fresh CI install rather than on someone's laptop: `@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0, and all three carry either the schema or the suite that validates it. Only the lockfile pins them, and `npm ci` is what makes CI honour it.
 
 ---
 
