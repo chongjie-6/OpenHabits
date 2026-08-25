@@ -126,6 +126,16 @@ SMTP_PASSWORD=
 
 **Migrations do not run on deploy.** `npm run db:migrate` against the production `DATABASE_URL`, before promoting a build that needs it — the alternative is a build step with authority over tables holding history that exists nowhere else. Give previews their own Neon branch unless you want them writing to real accounts.
 
+**Production is deployed from CI, not from the Git integration.** `vercel.json` sets `git.deploymentEnabled.master` to `false`, because Vercel and GitHub Actions subscribe to the same push webhook independently — left on, Vercel ships a build whose tests are still running, or have already failed. The `deploy` job in `.github/workflows/ci.yml` runs `needs: verify` and does the same thing the integration did:
+
+```bash
+vercel pull --yes --environment=production   # the project's Production env
+vercel build --prod                          # unlike the verify build, which gets none
+vercel deploy --prebuilt --prod
+```
+
+It needs three repository secrets — `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (the last two are `projectId`/`orgId` from a local `vercel link`, in `.vercel/project.json`). Preview branches still deploy from Git, ungated.
+
 ## Commands
 
 ```bash
