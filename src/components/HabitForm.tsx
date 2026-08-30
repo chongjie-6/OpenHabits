@@ -229,7 +229,7 @@ export function HabitForm({ habit, onSubmit, onCancel, submitLabel = 'Add habit'
             />
           )}
           <span className="text-xs text-muted">
-            {target > 1 ? `${emoji} ${trimmed || 'Habit'} × ${target}` : 'A simple tick'}
+            {target > 1 && `${emoji} ${trimmed || 'Habit'} × ${target}`}
           </span>
         </div>
       </fieldset>
