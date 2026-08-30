@@ -1,111 +1,152 @@
+@import 'tailwindcss';
+
+/*
+ * Theme switching is class-based, not media-based, because the user can override
+ * the system setting in Settings. The pre-paint script in index.html resolves
+ * 'system' against `prefers-color-scheme` and stamps `.dark` on <html> before the
+ * first frame, so there is never a flash of the wrong theme.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * `@theme inline` maps Tailwind utilities onto plain CSS variables rather than
+ * fixed values, so `bg-surface` follows the variable and the whole palette can be
+ * swapped by toggling one class.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+}
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --raised: #f1f2f5;
+  --border: #e3e4e9;
+  --ink: #16181d;
+  --muted: #6b7280;
+  --faint: #9ca3af;
+  --accent: #5b53d6;
+  --accent-soft: #eceafb;
+  --danger: #dc2626;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* The six habit colours. Chosen to stay distinguishable at 10px, which is the
+     size they appear at in the week grid and the heatmap. */
+  --habit-rose: #e8436b;
+  --habit-amber: #d97706;
+  --habit-emerald: #059669;
+  --habit-sky: #0284c7;
+  --habit-violet: #7c3aed;
+  --habit-slate: #526077;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0b0d11;
+  --surface: #14171d;
+  --raised: #1b1f27;
+  --border: #272c36;
+  --ink: #eceef2;
+  --muted: #97a0af;
+  --faint: #6b7280;
+  --accent: #9d95f5;
+  --accent-soft: #221f3d;
+  --danger: #f87171;
+
+  --habit-rose: #fb7185;
+  --habit-amber: #fbbf24;
+  --habit-emerald: #34d399;
+  --habit-sky: #38bdf8;
+  --habit-violet: #a78bfa;
+  --habit-slate: #94a3b8;
+
+  color-scheme: dark;
+}
+
+html {
   background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  /* Room for the fixed bottom tab bar on phones, plus the home indicator. */
+  padding-bottom: env(safe-area-inset-bottom);
+  overscroll-behavior-y: none;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+/* Taps on habit rows and grid cells shouldn't paint a grey box on mobile. */
+@media (pointer: coarse) {
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
-p {
-  margin: 0;
+
+/*
+ * Utilities used by more than one screen. Everything else stays as inline
+ * Tailwind classes; these earn a name because they carry real logic.
+ */
+@utility habit-tint {
+  /* Set --habit on the element (from the habit's colour) and these follow. */
+  color: var(--habit);
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* The four heatmap intensities, mixed from the accent so they stay coherent in
+   both themes without maintaining eight separate hex values. */
+@layer components {
+  .heat-0 {
+    background: var(--raised);
+  }
+  .heat-1 {
+    background: color-mix(in oklab, var(--accent) 22%, var(--raised));
+  }
+  .heat-2 {
+    background: color-mix(in oklab, var(--accent) 45%, var(--raised));
+  }
+  .heat-3 {
+    background: color-mix(in oklab, var(--accent) 70%, var(--raised));
+  }
+  .heat-4 {
+    background: var(--accent);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+  }
+
+  .focus-ring {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

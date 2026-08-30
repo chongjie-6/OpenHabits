@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="OpenHabits">
+  <rect width="512" height="512" rx="112" fill="#5b53d6"/>
+  <g fill="#ffffff">
+    <rect x="112" y="130" width="66" height="66" rx="18" opacity="0.45"/>
+    <rect x="223" y="130" width="66" height="66" rx="18" opacity="0.7"/>
+    <rect x="334" y="130" width="66" height="66" rx="18"/>
+    <rect x="112" y="241" width="66" height="66" rx="18" opacity="0.7"/>
+    <rect x="223" y="241" width="66" height="66" rx="18"/>
+    <rect x="334" y="241" width="66" height="66" rx="18" opacity="0.45"/>
+    <rect x="112" y="352" width="66" height="66" rx="18"/>
+    <rect x="223" y="352" width="66" height="66" rx="18" opacity="0.45"/>
+    <rect x="334" y="352" width="66" height="66" rx="18" opacity="0.7"/>
+  </g>
+</svg>
