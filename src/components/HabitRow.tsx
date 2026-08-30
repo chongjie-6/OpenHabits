@@ -16,9 +16,11 @@ interface Props {
 /**
  * One habit on one day.
  *
- * A simple habit is a single tap. A counted habit ("Water × 8") gets −/+ controls
- * and a progress bar, because tapping a tick eight times to log eight glasses is
- * the kind of thing that makes people stop using a tracker.
+ * The emoji on the left is identity, not state — it stays put whatever happens,
+ * so a row is recognisable at a glance. State lives on the right: a checkbox for
+ * a simple habit, and −/+ with a progress bar for a counted one ("Water × 8"),
+ * because tapping a tick eight times to log eight glasses is the kind of thing
+ * that makes people stop using a tracker.
  */
 export function HabitRow({ habit, date, subtitle }: Props) {
   const state = useAppState()
@@ -35,33 +37,13 @@ export function HabitRow({ habit, date, subtitle }: Props) {
         done && 'border-[color-mix(in_oklab,var(--habit)_40%,var(--border))]',
       )}
     >
-      {counted ? (
-        <span
-          aria-hidden="true"
-          className="grid size-10 shrink-0 place-items-center rounded-xl text-xl"
-          style={{ background: 'color-mix(in oklab, var(--habit) 14%, transparent)' }}
-        >
-          {habit.emoji}
-        </span>
-      ) : (
-        <button
-          type="button"
-          onClick={() => cycleCount(habit, date, count)}
-          aria-pressed={done}
-          aria-label={`${done ? 'Mark not done' : 'Mark done'}: ${habit.name}`}
-          className={clsx(
-            'grid size-10 shrink-0 place-items-center rounded-xl text-xl transition-all active:scale-95',
-            done ? 'text-white' : 'border border-border',
-          )}
-          style={
-            done
-              ? { background: 'var(--habit)' }
-              : { background: 'color-mix(in oklab, var(--habit) 8%, transparent)' }
-          }
-        >
-          {done ? '✓' : habit.emoji}
-        </button>
-      )}
+      <span
+        aria-hidden="true"
+        className="grid size-10 shrink-0 place-items-center rounded-xl text-xl"
+        style={{ background: 'color-mix(in oklab, var(--habit) 14%, transparent)' }}
+      >
+        {habit.emoji}
+      </span>
 
       <div className="min-w-0 flex-1">
         <Link
@@ -119,11 +101,21 @@ export function HabitRow({ habit, date, subtitle }: Props) {
           </button>
         </div>
       ) : (
-        <span
-          className={clsx('shrink-0 text-xs font-medium', done ? 'habit-tint' : 'text-faint')}
+        <button
+          type="button"
+          onClick={() => cycleCount(habit, date, count)}
+          aria-pressed={done}
+          aria-label={`${done ? 'Mark not done' : 'Mark done'}: ${habit.name}`}
+          className={clsx(
+            'grid size-9 shrink-0 place-items-center rounded-xl text-base leading-none transition-all active:scale-95',
+            done
+              ? 'text-white'
+              : 'border border-border hover:border-[color-mix(in_oklab,var(--habit)_45%,var(--border))]',
+          )}
+          style={done ? { background: 'var(--habit)' } : undefined}
         >
-          {done ? 'Done' : rest ? 'Rest' : ''}
-        </span>
+          {done ? '✓' : ''}
+        </button>
       )}
     </li>
   )
