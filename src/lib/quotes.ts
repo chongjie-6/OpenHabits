@@ -37,10 +37,6 @@ const N = QUOTES.length
 
 const QUOTE_BY_ID = new Map<number, Quote>(QUOTES.map((q) => [q.id, q]))
 
-export function quoteById(id: number): Quote | undefined {
-  return QUOTE_BY_ID.get(id)
-}
-
 /** mulberry32 — small, fast, and well-distributed enough to shuffle a deck. */
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0
@@ -153,15 +149,4 @@ export function nextAppearance(quoteId: number, from: ISODate): ISODate {
   if (idx >= pos) return addDays(from, idx - pos)
   const nextIdx = deckFor(cycle + 1).indexOf(quoteId)
   return addDays(from, N - pos + nextIdx)
-}
-
-/** Full-text match across the quote, its author and its source. */
-export function matchesSearch(quote: Quote, query: string): boolean {
-  const q = query.trim().toLowerCase()
-  if (!q) return true
-  return (
-    quote.text.toLowerCase().includes(q) ||
-    quote.author.toLowerCase().includes(q) ||
-    (quote.source?.toLowerCase().includes(q) ?? false)
-  )
 }

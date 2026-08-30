@@ -6,7 +6,6 @@ const TABS = [
   { to: '/', label: 'Today', icon: '◎' },
   { to: '/week', label: 'Week', icon: '▦' },
   { to: '/stats', label: 'Stats', icon: '▤' },
-  { to: '/quotes', label: 'Quotes', icon: '❝' },
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ] as const
 

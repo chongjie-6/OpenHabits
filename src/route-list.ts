@@ -8,6 +8,6 @@
  * `/habit` is here without an id because the id lives in the query string — the
  * static file is the same for every habit, and the client fills in which one.
  */
-export const ROUTES = ['/', '/week', '/stats', '/quotes', '/settings', '/habit'] as const
+export const ROUTES = ['/', '/week', '/stats', '/settings', '/habit'] as const
 
 export type AppRoute = (typeof ROUTES)[number]

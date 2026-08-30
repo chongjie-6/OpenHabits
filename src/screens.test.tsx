@@ -128,16 +128,6 @@ describe('stats', () => {
   })
 })
 
-describe('quotes', () => {
-  it('lists the whole corpus with next-appearance dates', () => {
-    seed()
-    const html = render('/quotes')
-    expect(html).toContain('168 quotes')
-    expect(html).toContain('1 saved')
-    expect(html).toMatch(/Next:|Showing today/)
-  })
-})
-
 describe('settings', () => {
   it('shows the habit list, sync state and the backup controls', () => {
     seed()
