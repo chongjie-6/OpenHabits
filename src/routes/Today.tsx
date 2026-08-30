@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import clsx from 'clsx'
 import { Link } from 'react-router'
 import { DownloadAppButton } from '../components/DownloadAppButton'
 import { HabitForm } from '../components/HabitForm'
 import { HabitRow } from '../components/HabitRow'
 import { QuoteCard } from '../components/QuoteCard'
-import { formatLong, relativeDayLabel } from '../lib/date'
-import { dayCompletion, last7Days, scheduledFor } from '../lib/history'
+import { formatShort } from '../lib/date'
+import { dayCompletion, scheduledFor } from '../lib/history'
 import { quoteForDate } from '../lib/quotes'
 import { addHabit } from '../lib/repo'
 import { activeHabits, useAppState } from '../lib/store'
@@ -15,13 +14,13 @@ import { useToday } from '../lib/ui'
 
 function ProgressRing({ done, total }: { done: number; total: number }) {
   const ratio = total ? done / total : 0
-  const size = 56
-  const stroke = 5
+  const size = 104
+  const stroke = 7
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
 
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div className="relative mx-auto" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         <circle
           cx={size / 2}
@@ -44,7 +43,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
           className="transition-[stroke-dashoffset] duration-500"
         />
       </svg>
-      <span className="absolute inset-0 grid place-items-center text-sm font-semibold tabular-nums">
+      <span className="absolute inset-0 grid place-items-center text-2xl font-semibold tabular-nums">
         {total ? `${done}/${total}` : '–'}
       </span>
     </div>
@@ -59,11 +58,10 @@ export function Today() {
   const habits = activeHabits(state)
   const dueToday = scheduledFor(today, habits)
   const { done, scheduled } = dayCompletion(state, today, habits)
-  const strip = last7Days(state, today)
   const quote = quoteForDate(today)
 
-  // The longest run going right now, so the summary says something specific
-  // rather than averaging every habit into a meaningless number.
+  // The longest run going right now, so the streak badge says something
+  // specific rather than averaging every habit into a meaningless number.
   const best = habits.reduce(
     (leader, habit) => {
       const streak = currentStreak(state, habit, today, state.settings.weekStart)
@@ -73,79 +71,33 @@ export function Today() {
   )
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Today</h1>
-          <p className="text-xs text-muted">{formatLong(today)}</p>
+    <div className="space-y-5">
+      {/* Check-in: the one thing this screen is for */}
+      <section className="pt-1 text-center">
+        <p className="text-xs font-semibold tracking-wide text-muted uppercase">
+          {formatShort(today)}
+        </p>
+        <div className="mt-2">
+          <ProgressRing done={done} total={scheduled} />
         </div>
-        <ProgressRing done={done} total={scheduled} />
-      </header>
-
-      <QuoteCard quote={quote} eyebrow="Quote of the day" />
-
-      {/* Last seven days */}
-      <section className="card p-4" aria-label="The last seven days">
-        <div className="flex items-end justify-between gap-1">
-          {strip.map((day) => (
-            <div key={day.date} className="flex flex-1 flex-col items-center gap-1.5">
-              <span className="text-[10px] text-faint">
-                {relativeDayLabel(day.date, today) === 'Today'
-                  ? 'Today'
-                  : day.date.slice(8).replace(/^0/, '')}
-              </span>
-              <div
-                className={clsx(
-                  'grid h-9 w-full place-items-center rounded-lg text-[11px] font-semibold tabular-nums transition-colors',
-                  day.complete
-                    ? 'bg-accent text-white'
-                    : day.done > 0
-                      ? 'bg-accent-soft text-accent'
-                      : 'bg-raised text-faint',
-                  day.isToday && 'ring-2 ring-secondary ring-offset-2 ring-offset-surface',
-                )}
-              >
-                {day.scheduled ? `${day.done}/${day.scheduled}` : '–'}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Streak summary */}
-      {habits.length > 0 && (
-        <section className="card flex items-center gap-3 p-4">
-          <span aria-hidden="true" className="text-2xl">
-            {best.streak > 0 ? '🔥' : '🌱'}
-          </span>
-          <div className="min-w-0 flex-1">
-            {best.streak > 0 && best.habit ? (
-              <>
-                <p className="text-sm font-medium">
-                  {best.streak} {streakUnit(best.habit) === 'weeks' ? 'week' : 'day'}
-                  {best.streak === 1 ? '' : 's'} on {best.habit.name}
-                </p>
-                <p className="text-xs text-muted">Your longest run right now.</p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-medium">No streak yet</p>
-                <p className="text-xs text-muted">Tick something today and it starts.</p>
-              </>
-            )}
-          </div>
-          <Link to="/stats" className="shrink-0 text-xs font-medium text-secondary hover:underline">
-            Stats →
+        <p className="mt-2 text-sm text-muted">
+          {scheduled > 0 ? `${done} of ${scheduled} done` : 'Nothing scheduled'}
+        </p>
+        {best.streak > 0 && best.habit && (
+          <Link
+            to="/stats"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-dark transition-opacity hover:opacity-80"
+          >
+            🔥 {best.streak} {streakUnit(best.habit) === 'weeks' ? 'week' : 'day'}
+            {best.streak === 1 ? '' : 's'} on {best.habit.name}
           </Link>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* Today's habits */}
       <section aria-label="Habits for today">
         <div className="mb-2 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold">
-            {scheduled > 0 ? `${done} of ${scheduled} done` : 'Nothing scheduled'}
-          </h2>
+          <h2 className="text-sm font-semibold">Today</h2>
           {habits.length > 0 && !adding && (
             <button
               type="button"
@@ -201,6 +153,9 @@ export function Today() {
           onCancel={() => setAdding(false)}
         />
       )}
+
+      {/* Tucked below the habits — a quiet close rather than the day's opener */}
+      <QuoteCard quote={quote} eyebrow="Quote of the day" compact />
 
       <DownloadAppButton />
     </div>
