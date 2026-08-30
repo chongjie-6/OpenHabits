@@ -28,7 +28,7 @@ export function HabitDetail() {
         <p className="text-sm text-muted">
           {state.ready ? 'That habit no longer exists.' : 'Loading…'}
         </p>
-        <Link to="/" className="mt-3 inline-block text-sm text-accent hover:underline">
+        <Link to="/" className="mt-3 inline-block text-sm text-secondary hover:underline">
           Back to Today
         </Link>
       </div>
@@ -120,7 +120,7 @@ export function HabitDetail() {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-dark"
           >
             Edit
           </button>

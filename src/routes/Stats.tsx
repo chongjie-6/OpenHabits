@@ -74,7 +74,7 @@ export function Stats() {
       {habits.length === 0 ? (
         <p className="card p-5 text-center text-sm text-muted">
           No habits yet.{' '}
-          <Link to="/" className="text-accent hover:underline">
+          <Link to="/" className="text-secondary hover:underline">
             Add one on Today
           </Link>
           .

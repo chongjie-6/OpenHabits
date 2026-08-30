@@ -47,7 +47,7 @@ export function Quotes() {
                 aria-pressed={tab === value}
                 className={clsx(
                   'rounded-[10px] px-3 py-1.5 text-xs font-medium capitalize transition-colors',
-                  tab === value ? 'bg-accent text-white' : 'text-muted hover:text-ink',
+                  tab === value ? 'bg-secondary text-white' : 'text-muted hover:text-ink',
                 )}
               >
                 {value}

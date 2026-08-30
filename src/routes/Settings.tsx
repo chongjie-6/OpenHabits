@@ -51,7 +51,7 @@ function Segmented<T extends string | number>({
           aria-pressed={value === option.value}
           className={clsx(
             'rounded-[10px] px-2.5 py-1.5 text-xs font-medium transition-colors',
-            value === option.value ? 'bg-accent text-white' : 'text-muted hover:text-ink',
+            value === option.value ? 'bg-secondary text-white' : 'text-muted hover:text-ink',
           )}
         >
           {option.label}
@@ -154,7 +154,7 @@ export function Settings() {
         {active.length === 0 ? (
           <p className="mt-2 text-xs text-muted">
             None yet.{' '}
-            <Link to="/" className="text-accent hover:underline">
+            <Link to="/" className="text-secondary hover:underline">
               Add one
             </Link>
             .
@@ -289,7 +289,7 @@ export function Settings() {
           <button
             type="button"
             onClick={downloadBackup}
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-dark"
           >
             Export
           </button>
@@ -330,7 +330,10 @@ export function Settings() {
         </p>
 
         {report && (
-          <p className="mt-2 rounded-xl bg-accent-soft px-3 py-2 text-xs text-accent">
+          <p
+            className="mt-2 rounded-xl px-3 py-2 text-xs text-success"
+            style={{ background: 'color-mix(in oklab, var(--success) 14%, transparent)' }}
+          >
             Imported a format-{report.sourceVersion} backup in {report.mode} mode:{' '}
             {report.habits} habits, {report.entries} entries, {report.savedQuotes} saved quotes
             applied

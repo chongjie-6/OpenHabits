@@ -165,7 +165,7 @@ export function DownloadAppButton() {
             <button
               type="button"
               onClick={() => setSheetOpen(false)}
-              className="mt-4 w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white"
+              className="mt-4 w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-dark"
             >
               Got it
             </button>

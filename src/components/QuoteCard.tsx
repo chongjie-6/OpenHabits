@@ -47,7 +47,7 @@ export function QuoteCard({ quote, eyebrow, compact, footer }: Props) {
         title={saved ? 'Saved' : 'Save'}
         className={clsx(
           'absolute top-3 right-3 rounded-full p-2 text-lg leading-none transition-colors',
-          saved ? 'text-accent' : 'text-faint hover:text-muted',
+          saved ? 'text-secondary' : 'text-faint hover:text-muted',
         )}
       >
         {saved ? '★' : '☆'}

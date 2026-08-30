@@ -22,7 +22,13 @@
   --color-muted: var(--muted);
   --color-faint: var(--faint);
   --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
   --color-accent-soft: var(--accent-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-dark: var(--secondary-dark);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-danger: var(--danger);
 
   --font-sans:
@@ -30,16 +36,27 @@
 }
 
 :root {
-  --bg: #f5f6f8;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --raised: #f1f2f5;
-  --border: #e3e4e9;
-  --ink: #16181d;
-  --muted: #6b7280;
-  --faint: #9ca3af;
-  --accent: #5b53d6;
-  --accent-soft: #eceafb;
-  --danger: #dc2626;
+  --raised: #f1f5f9;
+  --border: #e2e8f0;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --faint: #94a3b8;
+
+  /* Primary (emerald) drives CTAs and "done/complete" states. */
+  --accent: #10b981;
+  --accent-dark: #059669;
+  --accent-soft: #d1fae5;
+
+  /* Secondary (indigo) drives navigation, links, and toggle/segmented controls. */
+  --secondary: #6366f1;
+  --secondary-dark: #4f46e5;
+  --secondary-soft: #e0e7ff;
+
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
 
   /* The six habit colours. Chosen to stay distinguishable at 10px, which is the
      size they appear at in the week grid and the heatmap. */
@@ -54,15 +71,24 @@
 }
 
 .dark {
-  --bg: #0b0d11;
-  --surface: #14171d;
-  --raised: #1b1f27;
-  --border: #272c36;
-  --ink: #eceef2;
-  --muted: #97a0af;
-  --faint: #6b7280;
-  --accent: #9d95f5;
-  --accent-soft: #221f3d;
+  --bg: #0b1220;
+  --surface: #111827;
+  --raised: #1e293b;
+  --border: #263449;
+  --ink: #f1f5f9;
+  --muted: #94a3b8;
+  --faint: #64748b;
+
+  --accent: #34d399;
+  --accent-dark: #10b981;
+  --accent-soft: #0f2e22;
+
+  --secondary: #818cf8;
+  --secondary-dark: #6366f1;
+  --secondary-soft: #221f45;
+
+  --success: #4ade80;
+  --warning: #fbbf24;
   --danger: #f87171;
 
   --habit-rose: #fb7185;

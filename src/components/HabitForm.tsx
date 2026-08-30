@@ -151,7 +151,7 @@ export function HabitForm({ habit, onSubmit, onCancel, submitLabel = 'Add habit'
               className={clsx(
                 'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                 kind === value
-                  ? 'bg-accent text-white'
+                  ? 'bg-secondary text-white'
                   : 'border border-border text-muted hover:text-ink',
               )}
             >
@@ -238,7 +238,7 @@ export function HabitForm({ habit, onSubmit, onCancel, submitLabel = 'Add habit'
         <button
           type="submit"
           disabled={invalid}
-          className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-40"
+          className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-dark disabled:opacity-40 disabled:hover:bg-accent"
         >
           {submitLabel}
         </button>

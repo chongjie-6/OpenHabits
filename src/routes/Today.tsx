@@ -102,7 +102,7 @@ export function Today() {
                     : day.done > 0
                       ? 'bg-accent-soft text-accent'
                       : 'bg-raised text-faint',
-                  day.isToday && 'ring-2 ring-accent ring-offset-2 ring-offset-surface',
+                  day.isToday && 'ring-2 ring-secondary ring-offset-2 ring-offset-surface',
                 )}
               >
                 {day.scheduled ? `${day.done}/${day.scheduled}` : '–'}
@@ -134,7 +134,7 @@ export function Today() {
               </>
             )}
           </div>
-          <Link to="/stats" className="shrink-0 text-xs font-medium text-accent hover:underline">
+          <Link to="/stats" className="shrink-0 text-xs font-medium text-secondary hover:underline">
             Stats →
           </Link>
         </section>
@@ -150,7 +150,7 @@ export function Today() {
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="text-xs font-medium text-accent hover:underline"
+              className="text-xs font-medium text-secondary hover:underline"
             >
               + Add habit
             </button>
@@ -185,7 +185,7 @@ export function Today() {
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="mt-4 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white"
+            className="mt-4 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-dark"
           >
             Add your first habit
           </button>

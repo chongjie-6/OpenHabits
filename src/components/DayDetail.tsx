@@ -86,7 +86,7 @@ export function DayDetail({ date, today, onClose }: Props) {
                   <span
                     className={clsx(
                       'shrink-0 text-xs',
-                      status === 'missed' ? 'text-danger' : isDone ? 'habit-tint' : 'text-muted',
+                      status === 'missed' ? 'text-warning' : isDone ? 'habit-tint' : 'text-muted',
                     )}
                   >
                     {habit.target > 1 && status !== 'rest'

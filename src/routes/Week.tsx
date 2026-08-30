@@ -119,7 +119,7 @@ export function Week() {
       {habits.length === 0 ? (
         <p className="card p-5 text-center text-sm text-muted">
           No habits yet.{' '}
-          <Link to="/" className="text-accent hover:underline">
+          <Link to="/" className="text-secondary hover:underline">
             Add one on Today
           </Link>
           .
@@ -137,7 +137,7 @@ export function Week() {
                     <span
                       className={clsx(
                         'block text-[10px] leading-tight font-medium',
-                        date === today ? 'text-accent' : 'text-faint',
+                        date === today ? 'text-secondary' : 'text-faint',
                       )}
                     >
                       {WEEKDAY_INITIALS[dayOfWeek(date)]}
@@ -145,7 +145,7 @@ export function Week() {
                     <span
                       className={clsx(
                         'block text-[11px] tabular-nums',
-                        date === today ? 'font-bold text-accent' : 'text-muted',
+                        date === today ? 'font-bold text-secondary' : 'text-muted',
                       )}
                     >
                       {Number(date.slice(8))}

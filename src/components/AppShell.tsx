@@ -14,7 +14,7 @@ function tabClass({ isActive }: { isActive: boolean }) {
   return clsx(
     'flex flex-1 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors',
     'sm:flex-none sm:flex-row sm:gap-2 sm:px-3 sm:py-2 sm:text-sm',
-    isActive ? 'text-accent bg-accent-soft' : 'text-muted hover:text-ink',
+    isActive ? 'text-secondary bg-secondary-soft' : 'text-muted hover:text-ink',
   )
 }
 
