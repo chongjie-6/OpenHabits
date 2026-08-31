@@ -40,4 +40,12 @@ export default defineConfig([
       globals: { ...globals.node },
     },
   },
+  {
+    // End-to-end specs drive a browser from Node: the test body is Node, and the
+    // callbacks passed to page.evaluate are browser code inside the same file.
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
+    },
+  },
 ])

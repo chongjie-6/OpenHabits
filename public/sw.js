@@ -19,26 +19,41 @@ const CACHE = `openhabits-${VERSION}`
  * The routes prerendered at build time, plus what the shell references.
  *
  * This duplicates the router's list because a service worker is plain JavaScript
- * served as-is and cannot import from src/. The build checks the two agree and
- * fails if a route is missing here.
+ * served as-is and cannot import from src/. The build checks the two agree in
+ * both directions and fails on a route missing here, or one left here after the
+ * router dropped it.
  */
 const SHELL = [
   '/',
   '/week',
   '/stats',
-  '/quotes',
   '/settings',
   '/habit',
   '/manifest.webmanifest',
   '/icon.svg',
 ]
 
+/**
+ * The hashed JS and CSS the shell loads. Stamped in at build time by
+ * scripts/prerender.mjs, because the filenames change with every build.
+ *
+ * Without this, offline worked from the *second* visit and not the first. The
+ * shell HTML was precached at install, but the bundle it pulls in was only
+ * cached opportunistically, by the fetch handler, on a request that had already
+ * gone to the network before this worker was controlling anything. So the first
+ * offline load served the prerendered HTML and then failed to fetch the script:
+ * the right pixels, none of the app — buttons that do nothing when tapped.
+ *
+ * A precache is only honest if it covers what the page actually needs to run.
+ */
+const ASSETS = []
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE)
       // One failed URL must not fail the whole install, so add them individually.
-      await Promise.allSettled(SHELL.map((url) => cache.add(url)))
+      await Promise.allSettled([...SHELL, ...ASSETS].map((url) => cache.add(url)))
       await self.skipWaiting()
     })(),
   )
@@ -57,6 +72,22 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') void self.skipWaiting()
 })
+
+/**
+ * Cache lookups ignore `Vary`.
+ *
+ * Static hosts commonly answer with `Vary: Origin`, and a cached response that
+ * carries it is only returned to a request whose `Origin` header matches the one
+ * that filled the cache. Those do not line up here: the shell is precached by
+ * `cache.add` during install, while the page later asks for the same file as a
+ * module script — a CORS-mode request that sends `Origin`. Same URL, same bytes,
+ * no match, and the fallback below answers a 504 that reads as "offline" when the
+ * file was sitting in the cache the whole time.
+ *
+ * Every URL cached here is same-origin and hash-named, so its content does not
+ * depend on request headers and ignoring `Vary` cannot serve the wrong bytes.
+ */
+const MATCH = { ignoreVary: true }
 
 /** Fetch and cache in the background; failure is silent and expected offline. */
 function revalidate(request, cache) {
@@ -85,7 +116,8 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE)
-        const cached = (await cache.match(url.pathname)) ?? (await cache.match('/'))
+        const cached =
+          (await cache.match(url.pathname, MATCH)) ?? (await cache.match('/', MATCH))
         if (cached) {
           void revalidate(request, cache)
           return cached
@@ -101,7 +133,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE)
-      const cached = await cache.match(request)
+      const cached = await cache.match(request, MATCH)
       if (cached) {
         void revalidate(request, cache)
         return cached

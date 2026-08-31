@@ -11,7 +11,7 @@
  * nav, the headings and the layout, and the client fills in your data the moment
  * it boots.
  */
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
@@ -66,28 +66,61 @@ async function main() {
  * The version matters because the cache name is derived from it: without a new
  * name, a deploy leaves the old entries in place and `activate` has nothing to
  * clean up. The shell check matters because sw.js keeps its own copy of the
- * route list — it has to, it is plain JS served as-is — and a route added to the
- * router but not to the shell would silently stop working offline.
+ * route list — it has to, it is plain JS served as-is — and the two can drift in
+ * both directions. A route added to the router but missing from the shell stops
+ * working offline. A route deleted from the router but left in the shell is
+ * worse, because it is silent: `cache.add` rejects on every single install and
+ * `Promise.allSettled` swallows it, so nothing ever says so. Both are errors here.
  */
 async function finaliseServiceWorker(routes) {
   const swPath = join(dist, 'sw.js')
   const source = await readFile(swPath, 'utf8')
 
-  const missing = routes.filter((route) => !source.includes(`'${route}'`))
+  const shell = readShell(source)
+
+  const missing = routes.filter((route) => !shell.includes(route))
   if (missing.length) {
     throw new Error(
       `public/sw.js does not precache ${missing.join(', ')} — add them to SHELL or they will not work offline.`,
     )
   }
 
+  // Only route-shaped entries are compared: SHELL also lists the manifest, the
+  // icon and anything else the shell references, none of which are routes.
+  const stale = shell.filter((entry) => !entry.includes('.') && !routes.includes(entry))
+  if (stale.length) {
+    throw new Error(
+      `public/sw.js precaches ${stale.join(', ')}, which the router no longer serves — remove them from SHELL. Every install would fail to cache them, silently.`,
+    )
+  }
+
   const version = `v${Date.now().toString(36)}`
-  const stamped = source.replace(/const VERSION = '[^']*'/, `const VERSION = '${version}'`)
+  let stamped = source.replace(/const VERSION = '[^']*'/, `const VERSION = '${version}'`)
   if (stamped === source) {
     throw new Error('Could not find the VERSION constant in public/sw.js to stamp.')
   }
 
+  // The bundle's filenames are hash-suffixed and change every build, so the
+  // worker cannot name them itself — it gets told, here, what to precache.
+  const assets = await readdir(join(dist, 'assets'))
+  const list = assets.map((file) => `'/assets/${file}'`).join(', ')
+  const withAssets = stamped.replace('const ASSETS = []', `const ASSETS = [${list}]`)
+  if (withAssets === stamped) {
+    throw new Error('Could not find the ASSETS placeholder in public/sw.js to stamp.')
+  }
+  stamped = withAssets
+
   await writeFile(swPath, stamped, 'utf8')
-  console.log(`service worker cache version ${version}`)
+  console.log(`service worker cache version ${version}, ${assets.length} assets precached`)
+}
+
+/** The string entries of the SHELL array in sw.js, in source order. */
+function readShell(source) {
+  const open = source.indexOf('const SHELL = [')
+  const close = open === -1 ? -1 : source.indexOf(']', open)
+  if (close === -1) throw new Error('Could not find the SHELL array in public/sw.js to check.')
+  const body = source.slice(open, close)
+  return [...body.matchAll(/'([^']+)'/g)].map((match) => match[1])
 }
 
 await main()
