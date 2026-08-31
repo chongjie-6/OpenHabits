@@ -7,19 +7,19 @@ leaves the device unless you export it.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 72 tests
+npm test         # 73 unit tests
 npm run build    # bundles, then prerenders every route to static HTML
 npm run preview  # serves dist/ the way a static host would
+npm run test:e2e # builds, serves, pulls the plug, checks it still works
 ```
 
 ## Screens
 
 | Route | What it does |
 | --- | --- |
-| `/` | The day's quote (save it or don't), today's habits with tick or counter rows, "N of M done", your longest running streak, the last seven days, add-habit form, install prompt |
+| `/` | A check-in ring showing "N of M done", today's habits as tick or counter rows, your longest running streak, add-habit form, the day's quote, install prompt |
 | `/week` | A 7-day × all-habits grid. Tick any cell to backfill or correct a past day; arrow back through previous weeks; per-day totals along the bottom |
 | `/stats` | Contribution heatmap (20 weeks on a phone, 53 expanded), current and longest streak, perfect days, completion rate, per-habit totals. Click a day for its detail — and to fix it |
-| `/quotes` | All 168 quotes plus a saved tab. Search text, author or source, filter by tag, and see when each quote next comes round |
 | `/settings` | Theme, week start, day-rollover hour, habit reorder and archive, account, reminders, JSON export/import, reset |
 | `/habit?id=` | One habit's own year heatmap, streaks, cadence in plain English, edit, archive, delete |
 
@@ -51,6 +51,12 @@ day can be a miss, and the streak counts satisfied weeks
 ([`public/sw.js`](public/sw.js)) caches that shell stale-while-revalidate, so
 every route opens offline, straight from the cache, before any JavaScript runs.
 
+The same build step stamps the hashed bundle filenames into the worker, because
+a shell without its script is a screenshot: the right pixels, and every button
+inert. [`e2e/offline.spec.ts`](e2e/offline.spec.ts) is what keeps that honest —
+it drives the built app in a real browser with the network cut, and fails on any
+request the worker could not answer.
+
 **Deleting is a tombstone, not a removal.** Every record carries `updatedAt` and
 `deletedAt`, and entries are keyed `habitId:date`. That is what makes importing
 the same backup twice a no-op, and what will make replication a drop-in rather
@@ -58,8 +64,8 @@ than a migration.
 
 ## Backup
 
-Export writes one JSON file with every habit, tick, saved quote and setting.
-Import accepts that format and the older v1 shape, in two modes:
+Export writes one JSON file with every habit, tick and setting. Import accepts
+that format and the older v1 shape, in two modes:
 
 - **Merge** — per-record last-write-wins on `updatedAt`, tombstones respected.
   Importing the same file twice changes nothing.
@@ -97,8 +103,10 @@ src/lib/date.test.ts        rollover hour, week start, DST boundaries
 src/lib/quotes.test.ts      permutation, minimum gap, seams, next appearance
 src/lib/streaks.test.ts     rest days, today forgiven, the three cadences
 src/lib/backup.test.ts      v1 migration, merge idempotency, tombstones
+src/lib/db.test.ts          the schema ladder, at a version not yet shipped
 src/screens.test.tsx        every screen renders, empty and with real data
-src/interactions.test.tsx   ticking, counting, adding, backfilling, archiving
+src/interactions.test.tsx   ticking, counting, adding, backfilling, a crashed screen
+e2e/offline.spec.ts         the built app, served, with the network switched off
 ```
 
 ## Not built yet
@@ -108,3 +116,40 @@ than to broken: with no server configured, `syncStatus()` reports "off",
 `AccountCard` says so plainly, and everything else on the device carries on
 working. The data model is already replication-ready — see the tombstone note
 above and [`src/lib/sync/index.ts`](src/lib/sync/index.ts).
+
+One decision is already made and binding: **sync will be end-to-end encrypted or
+it will not ship.** The server relays ciphertext it cannot open, merging happens
+on the device, and a lost passphrase means lost server data. The reasoning, and
+what it rules out, is written down at the top of
+[`src/lib/sync/index.ts`](src/lib/sync/index.ts) — the file that would otherwise
+be where the promise on line 3 of this README quietly stops being true.
+
+## Contributing
+
+Issues and pull requests are welcome. Everything CI runs on a push, you can run
+first:
+
+```bash
+npm run lint     # eslint, no warnings
+npx tsc -b       # no type errors
+npm test         # all green
+npm run build    # must succeed — the prerender pass checks the service worker
+npm run test:e2e # the offline promise, in a real browser
+```
+
+Beyond that:
+
+- **Derive, don't store.** If a number can be computed from habits and entries,
+  compute it during render. Nothing goes in the database that could disagree with
+  something else in the database.
+- **Tombstone, don't delete.** Every mutation stamps `updatedAt`; every removal
+  sets `deletedAt`. This is what keeps import idempotent and sync possible.
+- **New colours come from [`src/index.css`](src/index.css).** No hex values in
+  components — see [CLAUDE.md](CLAUDE.md) for what each role means.
+- **A new route goes in [`src/route-list.ts`](src/route-list.ts) *and*
+  `SHELL` in [`public/sw.js`](public/sw.js).** The build fails if they disagree
+  in either direction.
+
+## Licence
+
+[MIT](LICENSE).
