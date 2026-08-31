@@ -1,20 +1,26 @@
 import clsx from 'clsx'
-import { setQuoteSaved } from '../lib/repo'
-import { isQuoteSaved, useAppState } from '../lib/store'
 import type { Quote } from '../lib/types'
 
 interface Props {
   quote: Quote
-  /** The heading above the quote; omitted on the collection screen. */
+  /** The heading above the quote. */
   eyebrow?: string
   compact?: boolean
   footer?: React.ReactNode
 }
 
+/**
+ * The day's quote — read, not collected.
+ *
+ * There used to be a save button here and a library screen to see what it saved.
+ * The library went; the button stayed, writing into a place nothing could show.
+ * One quote a day is a grace note on a habit tracker, so it is now exactly that:
+ * something to read on the way past, with nothing to manage.
+ *
+ * Saved quotes still exist in the schema and in `backup.ts`, so a backup written
+ * by an older version imports without losing anything.
+ */
 export function QuoteCard({ quote, eyebrow, compact, footer }: Props) {
-  const state = useAppState()
-  const saved = isQuoteSaved(state, quote.id)
-
   return (
     <article className={clsx('card relative', compact ? 'p-4' : 'p-5 sm:p-6')}>
       {eyebrow && (
@@ -25,7 +31,7 @@ export function QuoteCard({ quote, eyebrow, compact, footer }: Props) {
 
       <blockquote
         className={clsx(
-          'pr-9 text-balance',
+          'text-balance',
           compact ? 'text-[15px] leading-relaxed' : 'text-lg leading-relaxed sm:text-xl',
         )}
       >
@@ -38,20 +44,6 @@ export function QuoteCard({ quote, eyebrow, compact, footer }: Props) {
       </figcaption>
 
       {footer}
-
-      <button
-        type="button"
-        onClick={() => setQuoteSaved(quote.id, !saved)}
-        aria-pressed={saved}
-        aria-label={saved ? 'Remove from saved quotes' : 'Save this quote'}
-        title={saved ? 'Saved' : 'Save'}
-        className={clsx(
-          'absolute top-3 right-3 rounded-full p-2 text-lg leading-none transition-colors',
-          saved ? 'text-secondary' : 'text-faint hover:text-muted',
-        )}
-      >
-        {saved ? '★' : '☆'}
-      </button>
     </article>
   )
 }

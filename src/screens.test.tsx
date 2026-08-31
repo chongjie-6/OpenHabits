@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from './App'
 import { ROUTES } from './route-list'
 import { todayISO } from './lib/date'
-import { addHabit, setCount, setQuoteSaved } from './lib/repo'
+import { addHabit, setCount } from './lib/repo'
 import { getState, resetState } from './lib/store'
 
 /**
@@ -64,7 +64,6 @@ function seed() {
     setCount(run.id, daysAgo(i), i % 2 === 0 ? 1 : 0)
     setCount(read.id, daysAgo(i), 1)
   }
-  setQuoteSaved(7, true)
   return { water, run, read }
 }
 

@@ -186,25 +186,11 @@ export function incrementCount(habit: Habit, date: ISODate, current: number, by:
 }
 
 // ---------------------------------------------------------------------------
-// Quotes, settings, reset
+// Settings, reset
 // ---------------------------------------------------------------------------
-
-export function setQuoteSaved(quoteId: number, saved: boolean): void {
-  const now = Date.now()
-  const state = getState()
-  const existing = state.savedQuotes.find((q) => q.id === quoteId)
-  const next = {
-    id: quoteId,
-    savedAt: existing?.savedAt ?? now,
-    updatedAt: now,
-    deletedAt: saved ? null : now,
-  }
-  const savedQuotes = existing
-    ? state.savedQuotes.map((q) => (q.id === quoteId ? next : q))
-    : [...state.savedQuotes, next]
-  setState({ savedQuotes })
-  void db.putSavedQuote(next)
-}
+//
+// Nothing here writes saved quotes: the daily quote is read, not collected.
+// `backup.ts` still merges the store so an older backup imports intact.
 
 export function updateSettings(patch: Partial<Omit<Settings, 'updatedAt'>>): void {
   const next: Settings = { ...getState().settings, ...patch, updatedAt: Date.now() }

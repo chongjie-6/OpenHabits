@@ -137,11 +137,3 @@ export function countFor(s: AppState, habitId: string, date: string): number {
   const entry = s.entryIndex.get(entryKey(habitId, date))
   return entry && !entry.deletedAt ? entry.count : 0
 }
-
-export function isQuoteSaved(s: AppState, quoteId: number): boolean {
-  return s.savedQuotes.some((q) => q.id === quoteId && !q.deletedAt)
-}
-
-export function savedQuoteIds(s: AppState): number[] {
-  return s.savedQuotes.filter((q) => !q.deletedAt).map((q) => q.id)
-}

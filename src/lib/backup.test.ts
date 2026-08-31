@@ -2,8 +2,8 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { exportData, importBackup, parseBackup } from './backup'
 import { flush } from './db'
-import { addHabit, setCount, setQuoteSaved } from './repo'
-import { countFor, getState, resetState } from './store'
+import { addHabit, setCount } from './repo'
+import { countFor, getState, resetState, setState } from './store'
 
 beforeEach(() => {
   resetState()
@@ -20,7 +20,10 @@ function seed() {
   })
   setCount(habit.id, '2026-08-29', 8)
   setCount(habit.id, '2026-08-30', 3)
-  setQuoteSaved(12, true)
+  // Saved quotes are legacy data now: no screen creates them, but an older
+  // backup still carries them and must not lose them on the way through.
+  const now = Date.now()
+  setState({ savedQuotes: [{ id: 12, savedAt: now, updatedAt: now, deletedAt: null }] })
   return habit
 }
 

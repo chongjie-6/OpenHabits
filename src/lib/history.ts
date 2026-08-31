@@ -8,11 +8,11 @@
  * they contribute to per-habit totals but not to the daily ratio.
  */
 
-import { addDays, daysEndingAt, diffDays, startOfWeek, weekDates } from './date'
-import { countFor, visibleHabits } from './store'
+import { addDays, diffDays, startOfWeek, weekDates } from './date'
+import { visibleHabits } from './store'
 import type { AppState } from './store'
 import { isComplete, isRequired } from './streaks'
-import type { DayStatus, Habit, ISODate } from './types'
+import type { Habit, ISODate } from './types'
 
 export interface DayCompletion {
   date: ISODate
@@ -176,49 +176,6 @@ export function heatmapWeeks(
     out.push({ start, cells, label })
   }
   return out
-}
-
-/** The seven-day strip on Today: oldest first, ending today. */
-export interface StripDay {
-  date: ISODate
-  done: number
-  scheduled: number
-  complete: boolean
-  isToday: boolean
-}
-
-export function last7Days(state: AppState, today: ISODate): StripDay[] {
-  const habits = visibleHabits(state)
-  return daysEndingAt(today, 7).map((date) => {
-    const { done, scheduled } = dayCompletion(state, date, habits)
-    return {
-      date,
-      done,
-      scheduled,
-      complete: scheduled > 0 && done === scheduled,
-      isToday: date === today,
-    }
-  })
-}
-
-/** One habit's status for a day, for the day-detail popover on /stats. */
-export interface DayDetailRow {
-  habit: Habit
-  count: number
-  status: DayStatus
-}
-
-export function dayDetail(
-  state: AppState,
-  date: ISODate,
-  today: ISODate,
-  statusOf: (habit: Habit, date: ISODate, today: ISODate) => DayStatus,
-): DayDetailRow[] {
-  return visibleHabits(state).map((habit) => ({
-    habit,
-    count: countFor(state, habit.id, date),
-    status: statusOf(habit, date, today),
-  }))
 }
 
 /** The earliest date worth showing on a year view. */
