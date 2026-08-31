@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { Link } from 'react-router'
 import { AccountCard } from '../components/AccountCard'
 import { downloadBackup, importBackup } from '../lib/backup'
 import type { ImportMode, ImportReport } from '../lib/backup'
+import { requestPersistence, storagePersistence } from '../lib/db'
+import type { StoragePersistence } from '../lib/db'
 import { archiveHabit, moveHabit, resetEverything, updateSettings } from '../lib/repo'
 import { activeHabits, archivedHabits, useAppState } from '../lib/store'
 import { describeCadence } from '../lib/streaks'
@@ -69,6 +71,11 @@ export function Settings() {
   const [report, setReport] = useState<ImportReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmReset, setConfirmReset] = useState('')
+  const [persistence, setPersistence] = useState<StoragePersistence | null>(null)
+
+  useEffect(() => {
+    void storagePersistence().then(setPersistence)
+  }, [])
 
   const active = activeHabits(state)
   const archived = archivedHabits(state)
@@ -282,8 +289,33 @@ export function Settings() {
       <section className="card p-4">
         <h2 className="text-sm font-semibold">Backup</h2>
         <p className="mt-0.5 text-xs text-muted">
-          One JSON file with every habit, tick and saved quote.
+          One JSON file with every habit, tick and setting on this device.
         </p>
+
+        {persistence && persistence !== 'persistent' && (
+          <div className="mt-3 rounded-xl border border-border p-3">
+            <p className="text-xs text-muted">
+              {persistence === 'best-effort'
+                ? 'This browser stores your habits on a best-effort basis: if the device runs short on space, it may clear them without asking.'
+                : 'This browser will not say whether it keeps your habits when space runs short.'}
+            </p>
+            {persistence === 'best-effort' && (
+              <button
+                type="button"
+                onClick={() => void requestPersistence().then(setPersistence)}
+                className="mt-2 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
+              >
+                Ask the browser to keep them
+              </button>
+            )}
+          </div>
+        )}
+
+        {persistence === 'persistent' && (
+          <p className="mt-2 text-[11px] text-success">
+            This browser has agreed to keep your habits rather than clearing them for space.
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -335,8 +367,7 @@ export function Settings() {
             style={{ background: 'color-mix(in oklab, var(--success) 14%, transparent)' }}
           >
             Imported a format-{report.sourceVersion} backup in {report.mode} mode:{' '}
-            {report.habits} habits, {report.entries} entries, {report.savedQuotes} saved quotes
-            applied
+            {report.habits} habits and {report.entries} entries applied
             {report.skipped > 0 && `, ${report.skipped} already up to date`}.
           </p>
         )}
@@ -354,8 +385,7 @@ export function Settings() {
       >
         <h2 className="text-sm font-semibold text-danger">Reset everything</h2>
         <p className="mt-0.5 text-xs text-muted">
-          Deletes every habit, tick and saved quote on this device. Export first if you want them
-          back.
+          Deletes every habit and tick on this device. Export first if you want them back.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input

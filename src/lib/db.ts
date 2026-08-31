@@ -12,11 +12,17 @@ import { DEFAULT_SETTINGS } from './types'
 import type { Entry, Habit, Meta, SavedQuote, Settings } from './types'
 
 const DB_NAME = 'openhabits'
-const DB_VERSION = 1
+
+/**
+ * Bump this when the schema changes, and add a matching `oldVersion < n` block
+ * to `upgradeSchema`. `db.test.ts` opens a version-1 database and reopens it at
+ * the next version, so the ladder is exercised before anyone's data meets it.
+ */
+export const DB_VERSION = 1
 
 export const SCHEMA_VERSION = 1
 
-interface OpenHabitsDB extends DBSchema {
+export interface OpenHabitsDB extends DBSchema {
   habits: { key: string; value: Habit }
   entries: {
     key: string
@@ -28,23 +34,36 @@ interface OpenHabitsDB extends DBSchema {
   kv: { key: string; value: unknown }
 }
 
+/**
+ * The schema ladder.
+ *
+ * Each version is a separate `oldVersion < n` block and none of them is an
+ * `else`, so a database at any age falls through every step it has not taken
+ * yet. A device that skipped three releases upgrades the same way as one that
+ * took them in order, and a brand-new install (oldVersion 0) runs the whole
+ * ladder from the top.
+ *
+ * The rule when adding version n: append a block, never edit an existing one.
+ * The old blocks describe what is already on people's disks, and rewriting
+ * history there is how an upgrade eats data.
+ *
+ * Exported so `db.test.ts` can run it against a throwaway database.
+ */
+export function upgradeSchema(db: IDBPDatabase<OpenHabitsDB>, oldVersion: number): void {
+  if (oldVersion < 1) {
+    db.createObjectStore('habits', { keyPath: 'id' })
+    const entries = db.createObjectStore('entries', { keyPath: 'id' })
+    entries.createIndex('habitId', 'habitId')
+    entries.createIndex('date', 'date')
+    db.createObjectStore('savedQuotes', { keyPath: 'id' })
+    db.createObjectStore('kv')
+  }
+}
+
 let dbPromise: Promise<IDBPDatabase<OpenHabitsDB>> | null = null
 
 export function getDB(): Promise<IDBPDatabase<OpenHabitsDB>> {
-  dbPromise ??= openDB<OpenHabitsDB>(DB_NAME, DB_VERSION, {
-    // Written as a fall-through ladder so a future version 2 is an added case,
-    // not a rewrite of what version 1 users already have on disk.
-    upgrade(db, oldVersion) {
-      if (oldVersion < 1) {
-        db.createObjectStore('habits', { keyPath: 'id' })
-        const entries = db.createObjectStore('entries', { keyPath: 'id' })
-        entries.createIndex('habitId', 'habitId')
-        entries.createIndex('date', 'date')
-        db.createObjectStore('savedQuotes', { keyPath: 'id' })
-        db.createObjectStore('kv')
-      }
-    },
-  })
+  dbPromise ??= openDB<OpenHabitsDB>(DB_NAME, DB_VERSION, { upgrade: upgradeSchema })
   return dbPromise
 }
 
@@ -154,3 +173,50 @@ export const clearAll = () =>
 
 /** Wait for every queued write to land. Tests and export use this. */
 export const flush = () => enqueue(async () => undefined)
+
+// ---------------------------------------------------------------------------
+// Durability
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether the browser has promised to keep this site's data.
+ *
+ * By default IndexedDB is *best-effort* storage: a browser short on disk space
+ * is allowed to clear it, and it does not ask first. For an app whose entire
+ * pitch is "your habits live on this device", that is the single most important
+ * fact about it — so Settings states it plainly rather than leaving people to
+ * assume a guarantee they do not have.
+ */
+export type StoragePersistence = 'persistent' | 'best-effort' | 'unsupported'
+
+function storageManager(): StorageManager | undefined {
+  return typeof navigator === 'undefined' ? undefined : navigator.storage
+}
+
+export async function storagePersistence(): Promise<StoragePersistence> {
+  const storage = storageManager()
+  if (!storage?.persisted) return 'unsupported'
+  try {
+    return (await storage.persisted()) ? 'persistent' : 'best-effort'
+  } catch {
+    return 'unsupported'
+  }
+}
+
+/**
+ * Ask the browser to stop treating this site's data as disposable.
+ *
+ * Only ever called from a button, never at boot. Chromium decides silently from
+ * engagement (installing the app is usually enough), but Firefox shows a
+ * permission prompt — and a permission prompt nobody asked for, on first load,
+ * for a reason the app has not explained yet, is how people decline.
+ */
+export async function requestPersistence(): Promise<StoragePersistence> {
+  const storage = storageManager()
+  if (!storage?.persist) return 'unsupported'
+  try {
+    return (await storage.persist()) ? 'persistent' : 'best-effort'
+  } catch {
+    return 'unsupported'
+  }
+}
