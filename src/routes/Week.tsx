@@ -37,7 +37,9 @@ function Cell({ habit, date, today }: CellProps) {
       type="button"
       onClick={() => cycleCount(habit, date, count)}
       disabled={future}
-      aria-label={`${habit.name}, ${formatShort(date)}: ${done ? 'done' : `${count} of ${habit.target}`}. Tap to change.`}
+      aria-label={`${habit.name}, ${formatShort(date)}: ${
+        done ? 'done' : `${count} of ${habit.target}`
+      }${scheduled ? '' : ', rest day'}. Tap to change.`}
       className={clsx(
         'grid aspect-square w-full place-items-center rounded-lg text-[11px] font-semibold tabular-nums transition-all',
         future && 'cursor-not-allowed opacity-25',
@@ -133,8 +135,15 @@ export function Week() {
                   <span className="sr-only">Habit</span>
                 </th>
                 {days.map((date) => (
-                  <th key={date} scope="col" className="text-center">
+                  <th
+                    key={date}
+                    scope="col"
+                    className="text-center"
+                    aria-current={date === today ? 'date' : undefined}
+                  >
+                    <span className="sr-only">{formatShort(date)}</span>
                     <span
+                      aria-hidden="true"
                       className={clsx(
                         'block text-[10px] leading-tight font-medium',
                         date === today ? 'text-secondary' : 'text-faint',
@@ -143,6 +152,7 @@ export function Week() {
                       {WEEKDAY_INITIALS[dayOfWeek(date)]}
                     </span>
                     <span
+                      aria-hidden="true"
                       className={clsx(
                         'block text-[11px] tabular-nums',
                         date === today ? 'font-bold text-secondary' : 'text-muted',
@@ -178,7 +188,9 @@ export function Week() {
 
             <tfoot>
               <tr>
-                <td className="pt-1 text-xs font-medium text-muted">Done</td>
+                <th scope="row" className="pt-1 text-left text-xs font-medium text-muted">
+                  Done
+                </th>
                 {days.map((date) => {
                   const { done, scheduled } = dayCompletion(state, date, habits)
                   const complete = scheduled > 0 && done === scheduled
