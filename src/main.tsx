@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { App } from './App'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { hydrate } from './lib/store'
 import { registerServiceWorker } from './sw-register'
 import './index.css'
@@ -31,9 +32,11 @@ async function start() {
   // does its job (instant paint, offline-ready) and React then replaces it.
   createRoot(container).render(
     <StrictMode>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <ErrorBoundary where="OpenHabits">
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ErrorBoundary>
     </StrictMode>,
   )
 

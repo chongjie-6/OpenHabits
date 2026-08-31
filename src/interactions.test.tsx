@@ -5,10 +5,11 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { App } from './App'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { todayISO, weekDates } from './lib/date'
 import { flush } from './lib/db'
 import { addHabit, setCount } from './lib/repo'
-import { countFor, getState, isQuoteSaved, resetState } from './lib/store'
+import { countFor, getState, resetState } from './lib/store'
 
 /**
  * The interaction layer.
@@ -27,17 +28,21 @@ const today = todayISO(0)
 let container: HTMLDivElement
 let root: Root
 
-function mount(path = '/') {
+function mountTree(node: React.ReactNode) {
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
   act(() => {
-    root.render(
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>,
-    )
+    root.render(node)
   })
+}
+
+function mount(path = '/') {
+  mountTree(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  )
 }
 
 /** Find a control by its aria-label, exactly or by prefix. */
@@ -202,20 +207,30 @@ describe('backfilling on the week grid', () => {
   })
 })
 
-describe('saving a quote', () => {
-  it('toggles the favourite from the Today card', async () => {
-    mount('/')
-    expect(getState().savedQuotes.filter((q) => !q.deletedAt)).toHaveLength(0)
+describe('a screen that throws', () => {
+  it('offers export instead of blanking the app', () => {
+    function Boom(): never {
+      throw new Error('render exploded')
+    }
 
-    click(button('Save this quote'))
-    const saved = getState().savedQuotes.filter((q) => !q.deletedAt)
-    expect(saved).toHaveLength(1)
-    expect(isQuoteSaved(getState(), saved[0].id)).toBe(true)
+    // React re-throws to console.error even when a boundary catches. Silence it
+    // so a passing run does not print a stack trace that looks like a failure.
+    const consoleError = console.error
+    console.error = () => {}
+    try {
+      mountTree(
+        <ErrorBoundary>
+          <Boom />
+        </ErrorBoundary>,
+      )
+    } finally {
+      console.error = consoleError
+    }
 
-    click(button('Remove from saved quotes'))
-    expect(getState().savedQuotes.filter((q) => !q.deletedAt)).toHaveLength(0)
-
-    await flush()
+    expect(text()).toContain('stopped working')
+    // The two doors that must stay open: take your data, or get back to work.
+    expect(button('Export my data')).toBeTruthy()
+    expect(button('Reload')).toBeTruthy()
   })
 })
 

@@ -1,6 +1,7 @@
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useLocation } from 'react-router'
 import clsx from 'clsx'
 import { useTheme } from '../lib/ui'
+import { ErrorBoundary } from './ErrorBoundary'
 
 const TABS = [
   { to: '/', label: 'Today', icon: '◎' },
@@ -23,6 +24,7 @@ function tabClass({ isActive }: { isActive: boolean }) {
  */
 export function AppShell() {
   useTheme()
+  const { pathname } = useLocation()
 
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -41,7 +43,9 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 pt-4 pb-24 sm:pb-10">
-        <Outlet />
+        <ErrorBoundary key={pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       <nav
