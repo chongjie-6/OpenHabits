@@ -191,10 +191,10 @@ export function DownloadAppButton({ className = "" }: { className?: string }) {
         ref={dialog}
         onClose={() => setSheetOpen(false)}
         aria-label="Add OpenHabits to your home screen"
-        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-6 text-foreground backdrop:bg-black/40"
+        className="m-auto w-[min(28rem,calc(100vw-2rem))] surface-card bg-surface p-6 text-foreground backdrop:bg-black/40"
       >
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-[15px] font-semibold tracking-tight">
+          <h2 className="display-type text-[15px]">
             Add OpenHabits to your home screen
           </h2>
           <button
@@ -251,7 +251,7 @@ export function InstallCard() {
   if (state === "hidden") return null;
 
   return (
-    <div className="rounded-card border border-border bg-surface-2 p-4">
+    <div className="surface-card bg-surface-2 p-4">
       <p className="text-[13px] font-medium">Add OpenHabits to your home screen</p>
       <p className="mt-1 text-[12px] leading-relaxed text-muted">
         It opens full screen, starts on Today, and works offline.

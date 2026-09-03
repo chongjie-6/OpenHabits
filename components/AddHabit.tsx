@@ -12,7 +12,7 @@ export function AddHabit() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-control border border-dashed border-border text-[14px] font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+        className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 control-dashed text-[14px] font-medium text-muted transition-colors hover:border-accent hover:text-accent"
       >
         <span aria-hidden="true" className="text-lg leading-none">
           +

@@ -6,6 +6,7 @@ import { AccountCard } from "@/components/AccountCard";
 import { InstallCard } from "@/components/DownloadAppButton";
 import { habitColor } from "@/lib/colors";
 import { QUOTE_COUNT } from "@/lib/quotes";
+import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
 import {
   exportBundle,
   importBundle,
@@ -18,6 +19,9 @@ import type { AnyExportBundle, Habit, Settings } from "@/lib/types";
 
 export default function SettingsPage() {
   const { hydrated, habits, settings } = useOpenHabits();
+  // Safe here for the same reason it is safe on Today: everything below sits
+  // behind the `hydrated` gate, so this has the real answer before it renders.
+  const skin = useSkin();
   const fileInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -56,7 +60,7 @@ export default function SettingsPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="text-[15px] font-semibold tracking-tight">Settings</h1>
+      <h1 className="display-type text-[15px]">Settings</h1>
 
       <InstallCard />
 
@@ -72,6 +76,13 @@ export default function SettingsPage() {
             { value: "dark", label: "Dark" },
           ]}
           onChange={(theme) => updateSettings({ theme })}
+        />
+        <Choice<Skin>
+          label="Design"
+          hint={`${SKINS.find((s) => s.value === skin)?.hint} This device only — unlike the theme, it is not part of a backup and does not sync.`}
+          value={skin}
+          options={SKINS.map(({ value, label }) => ({ value, label }))}
+          onChange={applySkin}
         />
       </Group>
 
@@ -240,7 +251,7 @@ function HabitLink({ habit }: { habit: Habit }) {
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-card border border-border bg-surface p-4">
+    <div className="surface-card bg-surface p-4">
       <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
         {title}
       </h2>

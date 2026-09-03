@@ -50,7 +50,7 @@ export default function WeekPage() {
   return (
     <section className="space-y-4">
       <header className="flex items-center justify-between gap-2">
-        <h1 className="text-[15px] font-semibold tracking-tight">
+        <h1 className="display-type text-[15px]">
           {offset === 0 ? "This week" : rangeLabel(weekStart)}
         </h1>
         <div className="flex items-center gap-1">
@@ -77,7 +77,7 @@ export default function WeekPage() {
       </header>
 
       {habits.length === 0 ? (
-        <p className="rounded-card border border-dashed border-border px-4 py-8 text-center text-[13px] text-muted">
+        <p className="surface-dashed px-4 py-8 text-center text-[13px] text-muted">
           Add a habit on the Today tab to start filling this in.
         </p>
       ) : (

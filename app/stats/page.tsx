@@ -56,10 +56,10 @@ export default function StatsPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="text-[15px] font-semibold tracking-tight">Your year</h1>
+      <h1 className="display-type text-[15px]">Your year</h1>
 
       {habits.length === 0 ? (
-        <p className="rounded-card border border-dashed border-border px-4 py-8 text-center text-[13px] text-muted">
+        <p className="surface-dashed px-4 py-8 text-center text-[13px] text-muted">
           Add a habit and this grid starts filling in.
         </p>
       ) : (
@@ -82,7 +82,7 @@ export default function StatsPage() {
             {streaks.longest > 0 && <> and a longest run of {streaks.longest}</>}.
           </p>
 
-          <div className="rounded-card border border-border bg-surface p-4">
+          <div className="surface-card bg-surface p-4">
             <Heatmap
               stats={stats}
               weekStartsOn={settings.weekStartsOn}
@@ -107,7 +107,7 @@ export default function StatsPage() {
           </div>
 
           {selected && selectedStates && (
-            <div className="rounded-card border border-border bg-surface p-4">
+            <div className="surface-card bg-surface p-4">
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="text-[13px] font-semibold">{formatDayFull(selected)}</h2>
                 <button
@@ -139,7 +139,7 @@ export default function StatsPage() {
             <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
               By habit
             </h2>
-            <ul className="divide-y divide-border rounded-card border border-border bg-surface">
+            <ul className="divide-y divide-border surface-card bg-surface">
               {habits.map((habit) => {
                 const total = totals.get(habit.id) ?? { scheduled: 0, completed: 0 };
                 const rate =
@@ -188,7 +188,7 @@ export default function StatsPage() {
 
 function Stat({ label, value, unit }: { label: string; value: number; unit: string }) {
   return (
-    <div className="rounded-card border border-border bg-surface px-3 py-3 text-center">
+    <div className="surface-card bg-surface px-3 py-3 text-center">
       <p className="font-mono text-[22px] font-semibold tabular-nums leading-none">
         {value}
       </p>

@@ -597,7 +597,7 @@ function Field({
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-card border border-border bg-surface p-4">
+    <div className="surface-card bg-surface p-4">
       <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
         Account
       </h2>

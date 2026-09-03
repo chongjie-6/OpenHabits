@@ -53,7 +53,7 @@ export default function QuotesPage() {
   return (
     <section className="space-y-4">
       <header className="flex items-baseline justify-between gap-3">
-        <h1 className="text-[15px] font-semibold tracking-tight">Collection</h1>
+        <h1 className="display-type text-[15px]">Collection</h1>
         <Link href="/" className="shrink-0 text-[12px] text-muted hover:text-foreground">
           Today&rsquo;s quote →
         </Link>
@@ -96,7 +96,7 @@ export default function QuotesPage() {
       </div>
 
       {results.length === 0 ? (
-        <p className="rounded-card border border-dashed border-border px-4 py-8 text-center text-[13px] leading-relaxed text-muted">
+        <p className="surface-dashed px-4 py-8 text-center text-[13px] leading-relaxed text-muted">
           {tab === "saved" && !query && !tag ? (
             <>
               Nothing saved yet. Tap the heart on a quote to keep it.
@@ -150,7 +150,7 @@ function QuoteRow({
   today: DayKey;
 }) {
   return (
-    <article className="rounded-card border border-border bg-surface p-4">
+    <article className="surface-card bg-surface p-4">
       <div className="flex items-start gap-3">
         <blockquote className="min-w-0 flex-1 font-serif text-[15px] leading-normal">
           {quote.text}

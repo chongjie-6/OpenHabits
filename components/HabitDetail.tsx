@@ -61,7 +61,7 @@ export function HabitDetail() {
   if (!habit) {
     return (
       <section className="space-y-4">
-        <p className="rounded-card border border-dashed border-border px-4 py-8 text-center text-[13px] text-muted">
+        <p className="surface-dashed px-4 py-8 text-center text-[13px] text-muted">
           That habit no longer exists.
         </p>
         <Link href="/settings" className="block text-center text-[13px] text-accent">
@@ -95,7 +95,7 @@ export function HabitDetail() {
             {habit.emoji}
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-[17px] font-semibold tracking-tight">
+            <h1 className="display-type truncate text-[17px]">
               {habit.name}
             </h1>
             <p className="text-[12px] text-muted">
@@ -107,7 +107,7 @@ export function HabitDetail() {
       </div>
 
       {archived && (
-        <p className="rounded-card border border-border bg-surface-2 px-4 py-3 text-[12px] leading-relaxed text-muted">
+        <p className="surface-card bg-surface-2 px-4 py-3 text-[12px] leading-relaxed text-muted">
           This habit is archived. Its history is kept and still shows here, but it
           no longer appears on Today or in your streaks.
         </p>
@@ -130,7 +130,7 @@ export function HabitDetail() {
             was scheduled in this window.
           </p>
 
-          <div className="rounded-card border border-border bg-surface p-4">
+          <div className="surface-card bg-surface p-4">
             <Heatmap
               stats={view.stats}
               weekStartsOn={settings.weekStartsOn}
@@ -238,7 +238,7 @@ function countLabel(count: number, target: number): string {
 
 function Stat({ label, value, unit }: { label: string; value: number; unit: string }) {
   return (
-    <div className="rounded-card border border-border bg-surface px-3 py-3 text-center">
+    <div className="surface-card bg-surface px-3 py-3 text-center">
       <p className="font-mono text-[22px] font-semibold tabular-nums leading-none">
         {value}
       </p>

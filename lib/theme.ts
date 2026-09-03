@@ -13,8 +13,26 @@ import type { Settings } from "./types";
  */
 export const THEME_KEY = "hapi-theme";
 
-/** Runs before paint, inlined into <head>. Keep it tiny and total-failure-safe. */
-export const THEME_SCRIPT = `try{var t=localStorage.getItem('${THEME_KEY}');if(t==='dark'||t==='light'){document.documentElement.dataset.theme=t}}catch(e){}`;
+/**
+ * The skin key lives here, beside the theme key, because both exist to be read
+ * by the one pre-paint script below. `lib/skin.ts` owns everything else about
+ * skins and imports this; the reverse would drag a `"use client"` module into
+ * the server graph for the sake of one string. See DESIGN.md §6.5.
+ */
+export const SKIN_KEY = "hapi-skin";
+
+/**
+ * Runs before paint, inlined into <head>. Keep it tiny and total-failure-safe.
+ *
+ * Both axes are read under one `try`: if `localStorage` throws — Safari in
+ * private mode does — neither attribute is set and the document renders as
+ * light/classic, which is exactly what the prerendered HTML already says.
+ *
+ * Only non-default values are written. An absent `data-theme` means "system"
+ * and an absent `data-skin` means "classic", so a default install produces a
+ * document element identical to the static build's.
+ */
+export const THEME_SCRIPT = `try{var d=document.documentElement,t=localStorage.getItem('${THEME_KEY}');if(t==='dark'||t==='light'){d.dataset.theme=t}var s=localStorage.getItem('${SKIN_KEY}');if(s==='grid'||s==='blocks'){d.dataset.skin=s}}catch(e){}`;
 
 export function applyTheme(theme: Settings["theme"]): void {
   if (typeof document === "undefined") return;

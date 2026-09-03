@@ -82,7 +82,7 @@ export function HabitForm({
   const names = weekdayShortNames(settings.weekStartsOn);
 
   return (
-    <form onSubmit={submit} className="space-y-4 rounded-card border border-border bg-surface p-4">
+    <form onSubmit={submit} className="space-y-4 surface-card bg-surface p-4">
       <div className="flex items-center gap-2">
         <select
           value={emoji}
