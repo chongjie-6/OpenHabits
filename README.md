@@ -23,7 +23,7 @@ npm run dev          # http://localhost:3000
 
 **No environment variables are required.** With none set, the app is fully functional: `/api/sync` and `/api/auth/*` answer 503, the client treats sync as switched off, and nothing else changes except the Account card, which explains itself.
 
-Node 22 (`.nvmrc`, and `engines` in `package.json`). CI runs on the same version.
+Node 24 (`.nvmrc`, and `engines` in `package.json`). CI runs on the same version.
 
 ## Screens
 
