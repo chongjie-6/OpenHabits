@@ -43,6 +43,12 @@
   --habit-rose: #d6336c;
   --habit-teal: #0c8599;
 
+  /* The oklch lightness band the palette above occupies. A user-picked hex is
+     clamped into it (lib/colors.ts) so any colour stays legible on this
+     theme's background; 0.64 is where a mid-chroma accent still clears 3:1. */
+  --habit-l-min: 0.40;
+  --habit-l-max: 0.64;
+
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
 }
 
@@ -71,6 +77,9 @@
     --habit-amber: #fbbf24;
     --habit-rose: #fb7185;
     --habit-teal: #2dd4bf;
+
+    --habit-l-min: 0.70;
+    --habit-l-max: 0.88;
   }
 }
 
@@ -98,6 +107,9 @@
   --habit-amber: #fbbf24;
   --habit-rose: #fb7185;
   --habit-teal: #2dd4bf;
+
+  --habit-l-min: 0.70;
+  --habit-l-max: 0.88;
 }
 
 @theme inline {

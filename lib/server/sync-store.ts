@@ -24,7 +24,7 @@ import {
   type SyncPull,
   type SyncPush,
 } from "../sync/protocol";
-import type { Entry, Habit, HabitColorKey } from "../types";
+import type { Entry, Habit, HabitColor } from "../types";
 import type { SyncUser } from "./auth-types";
 import type { Db } from "./db";
 import { entries, habits, settings, users } from "./schema";
@@ -343,7 +343,7 @@ function toHabit(row: typeof habits.$inferSelect): Habit {
     emoji: row.emoji,
     // Validated on the way in by `parseSyncPush`. The column is text so a new
     // palette entry does not need a migration to land.
-    color: row.color as HabitColorKey,
+    color: row.color as HabitColor,
     cadence: row.cadence,
     target: row.target,
     order: row.order,

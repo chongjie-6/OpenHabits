@@ -27,7 +27,7 @@ import {
   type Entry,
   type ExportBundle,
   type Habit,
-  type HabitColorKey,
+  type HabitColor,
   type Settings,
 } from "./types";
 
@@ -187,7 +187,7 @@ export function setCount(habitId: string, date: DayKey, count: number): void {
 export type NewHabit = {
   name: string;
   emoji: string;
-  color?: HabitColorKey;
+  color?: HabitColor;
   cadence?: Cadence;
   target?: number;
 };

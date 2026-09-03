@@ -12,11 +12,10 @@
  */
 
 import {
-  HABIT_COLORS,
+  normaliseHabitColor,
   type Cadence,
   type Entry,
   type Habit,
-  type HabitColorKey,
   type Settings,
 } from "../types";
 import { MAX_ROWS_PER_REQUEST, type SyncPush } from "./protocol";
@@ -100,9 +99,6 @@ function parseHabit(value: unknown): ParseResult<Habit> {
   if (typeof value.emoji !== "string" || value.emoji.length > MAX_EMOJI) {
     return fail("habit.emoji must be a short string");
   }
-  if (!HABIT_COLORS.includes(value.color as HabitColorKey)) {
-    return fail(`habit.color must be one of: ${HABIT_COLORS.join(", ")}`);
-  }
   if (!isCount(value.target, MAX_TARGET) || value.target < 1) {
     return fail(`habit.target must be 1–${MAX_TARGET}`);
   }
@@ -116,6 +112,13 @@ function parseHabit(value: unknown): ParseResult<Habit> {
     return fail("habit.deletedAt must be epoch ms or null");
   }
 
+  // A palette key or a #rrggbb the user picked from the wheel, lowercased here
+  // so two devices that spelled the same colour differently still fingerprint
+  // alike in `protocol.ts:wins`.
+  const color =
+    typeof value.color === "string" ? normaliseHabitColor(value.color) : null;
+  if (color === null) return fail("habit.color must be a palette key or a #rrggbb colour");
+
   const cadence = parseCadence(value.cadence);
   if (!cadence.ok) return cadence;
 
@@ -127,7 +130,7 @@ function parseHabit(value: unknown): ParseResult<Habit> {
       id: value.id,
       name: value.name,
       emoji: value.emoji,
-      color: value.color as HabitColorKey,
+      color,
       cadence: cadence.value,
       target: value.target,
       order: value.order,

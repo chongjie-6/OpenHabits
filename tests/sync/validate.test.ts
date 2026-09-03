@@ -61,8 +61,20 @@ describe("parseSyncPush", () => {
     expect(push({ accountId: 7 }).ok).toBe(false);
   });
 
-  it("rejects a colour outside the palette", () => {
+  it("rejects a colour that is neither a palette key nor a hex", () => {
     expect(push({ habits: [{ ...HABIT, color: "puce" }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, color: "#f0f" }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, color: "#ff00ff00" }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, color: "rgb(255,0,255)" }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, color: 0xff00ff }] }).ok).toBe(false);
+  });
+
+  it("accepts a picked hex and lowercases it", () => {
+    const parsed = push({ habits: [{ ...HABIT, color: "#FF00Ff" }] });
+    expect(parsed.ok).toBe(true);
+    // Case would otherwise reach `wins`, where two devices spelling the same
+    // colour differently would keep swapping the row on every tie.
+    expect(parsed.ok && parsed.value.habits[0].color).toBe("#ff00ff");
   });
 
   it("rejects a date that does not exist", () => {

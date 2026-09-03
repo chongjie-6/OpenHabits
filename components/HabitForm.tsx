@@ -4,7 +4,13 @@ import { useState } from "react";
 import { habitColor } from "@/lib/colors";
 import { weekdayShortNames } from "@/lib/dates";
 import { useOpenHabits } from "@/lib/store";
-import { HABIT_COLORS, type Cadence, type HabitColorKey } from "@/lib/types";
+import {
+  HABIT_COLORS,
+  isHexColor,
+  normaliseHabitColor,
+  type Cadence,
+  type HabitColor,
+} from "@/lib/types";
 
 /**
  * One form, used for both creating and editing a habit.
@@ -19,10 +25,13 @@ export const EMOJI = [
   "🚴", "🧠", "☎️", "🪥", "🐕", "🧊",
 ];
 
+/** Where the wheel opens when the habit is still on a palette key. */
+const CUSTOM_SEED = "#7c3aed";
+
 export type HabitFormValues = {
   name: string;
   emoji: string;
-  color: HabitColorKey;
+  color: HabitColor;
   cadence: Cadence;
   target: number;
 };
@@ -42,7 +51,7 @@ export function HabitForm({
 
   const [name, setName] = useState(initial?.name ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? EMOJI[0]);
-  const [color, setColor] = useState<HabitColorKey>(initial?.color ?? "green");
+  const [color, setColor] = useState<HabitColor>(initial?.color ?? "green");
   const [kind, setKind] = useState<Cadence["kind"]>(initial?.cadence?.kind ?? "daily");
   const [days, setDays] = useState<number[]>(
     initial?.cadence?.kind === "weekdays" ? initial.cadence.days : [1, 2, 3, 4, 5],
@@ -65,6 +74,8 @@ export function HabitForm({
 
     onSubmit({ name: name.trim(), emoji, color, cadence, target });
   }
+
+  const custom = isHexColor(color);
 
   // Weekday chips start from the user's chosen week start.
   const order = settings.weekStartsOn === 1 ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6];
@@ -97,7 +108,7 @@ export function HabitForm({
       </div>
 
       <Field label="Colour">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {HABIT_COLORS.map((key) => (
             <button
               key={key}
@@ -111,6 +122,29 @@ export function HabitForm({
               style={{ background: habitColor(key) }}
             />
           ))}
+
+          <span
+            className={`relative h-8 w-8 rounded-full border-2 transition-transform ${
+              custom ? "scale-110 border-foreground" : "border-transparent"
+            }`}
+            style={{
+              // The wheel is the fallback, so it advertises itself until picked from.
+              background: custom
+                ? habitColor(color)
+                : "conic-gradient(#e8590c, #f2c94c, #2f9e44, #0c8599, #1971c2, #6741d9, #d6336c, #e8590c)",
+            }}
+          >
+            <input
+              type="color"
+              value={custom ? color : CUSTOM_SEED}
+              onChange={(e) => {
+                const picked = normaliseHabitColor(e.target.value);
+                if (picked) setColor(picked);
+              }}
+              aria-label="Custom colour"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </span>
         </div>
       </Field>
 

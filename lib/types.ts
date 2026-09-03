@@ -26,6 +26,26 @@ export const HABIT_COLORS: HabitColorKey[] = [
   "teal",
 ];
 
+/** A user-picked colour, lowercase `#rrggbb`. */
+export type HexColor = `#${string}`;
+
+/**
+ * A palette key or any colour the user picked. Keys stay keys rather than being
+ * flattened to hex on save: each one resolves to a different value per theme
+ * (see `app/globals.css`), and a stored hex can only ever be one of the two.
+ */
+export type HabitColor = HabitColorKey | HexColor;
+
+export function isHexColor(value: unknown): value is HexColor {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+}
+
+/** Palette keys pass through; a hex is lowercased so the sync fingerprint is stable. */
+export function normaliseHabitColor(value: string): HabitColor | null {
+  if (HABIT_COLORS.includes(value as HabitColorKey)) return value as HabitColorKey;
+  return isHexColor(value) ? (value.toLowerCase() as HexColor) : null;
+}
+
 export type Cadence =
   /** Every day. */
   | { kind: "daily" }
@@ -57,7 +77,7 @@ export type Habit = Synced & {
   id: string;
   name: string;
   emoji: string;
-  color: HabitColorKey;
+  color: HabitColor;
   cadence: Cadence;
   /** 1 for a simple tick; >1 for counted habits ("Water × 8"). */
   target: number;

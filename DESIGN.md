@@ -130,7 +130,7 @@ type Habit = {
   id: string;              // crypto.randomUUID()
   name: string;
   emoji: string;
-  color: HabitColorKey;    // key into the palette in §6.2
+  color: HabitColor;       // a palette key from §6.2, or a picked #rrggbb
   cadence: Cadence;
   target: number;          // 1 for a simple tick; >1 for counted habits
   order: number;           // manual sort position
@@ -334,7 +334,13 @@ level 4   #216e39 / dark #39d353
 rest      transparent + 1px border in --border
 ```
 
-Per-habit views recolor the ramp using the habit's `color` key. Six habit colors ship (green, blue, violet, amber, rose, teal), each with a validated 5-step ramp in both themes. Level 1 must clear 3:1 contrast against the page background in both themes — the palest step is where these ramps normally fail.
+Per-habit views recolor the ramp using the habit's `color`. Six habit colors ship (green, blue, violet, amber, rose, teal), each with a validated 5-step ramp in both themes. Level 1 must clear 3:1 contrast against the page background in both themes — the palest step is where these ramps normally fail.
+
+**Any other color is pickable too**, from an `<input type="color">` sitting after the six swatches — a native wheel rather than a bundled picker, so it costs nothing and is the control the platform already taught the user. It stores the raw `#rrggbb`, and that is the whole of the difference: a palette key resolves through a custom property and so has a light value and a dark one, while a picked hex has only itself.
+
+That is what `lib/colors.ts:habitColor` reconciles. A hex is emitted as `oklch(from <hex> clamp(var(--habit-l-min), l, var(--habit-l-max)) c h)` — hue and chroma exactly as picked, lightness pulled into the band the shipped palette occupies in the active theme (0.40–0.64 light, 0.70–0.88 dark). The clamp is what keeps the 3:1 floor above true for colors nobody validated: without it "any color you like" includes navy on the dark background and yellow on the light one. Both bounds are theme tokens rather than JS, because the theme is not known at prerender (§7.1) and a picked color must not be a reason for a screen to render differently on the server.
+
+The form previews the resolved color, not the raw one, so the swatch and the habit agree.
 
 ### 6.3 Motion
 
