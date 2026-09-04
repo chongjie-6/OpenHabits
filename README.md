@@ -151,6 +151,8 @@ CRON_SECRET=                 # Vercel sends this as the cron's Authorization hea
 
 **Migrations do not run on deploy.** `npm run db:migrate` against the production `DATABASE_URL`, before promoting a build that needs it — the alternative is a build step with authority over tables holding history that exists nowhere else. Give previews their own Neon branch unless you want them writing to real accounts.
 
+**`DATABASE_URL` must not be a superuser.** Every table is under row-level security, so no query can reach an account it did not name (§13.15) — and a role with `BYPASSRLS` ignores the lot, with no error to notice. Neon's default role is an ordinary one and is fine; `postgres` on a local install is not. `db:migrate` warns when the role applying it is a superuser.
+
 **Production is deployed from CI, not from the Git integration.** `vercel.json` sets `git.deploymentEnabled.master` to `false`, because Vercel and GitHub Actions subscribe to the same push webhook independently — left on, Vercel ships a build whose tests are still running, or have already failed. The `deploy` job in `.github/workflows/ci.yml` runs `needs: verify` and does the same thing the integration did:
 
 ```bash

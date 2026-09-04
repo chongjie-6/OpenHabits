@@ -29,11 +29,10 @@ import type { Entry, Habit, HabitColor } from "../types";
 import type { SyncUser } from "./auth-types";
 import type { Db } from "./db";
 import { entries, habits, settings, users } from "./schema";
+import { asUser, type Tx } from "./scope";
 
 /** A fresh cursor value. See `syncSeq` in `schema.ts`. */
 const NEXT_SEQ = sql`nextval('hapi_sync_seq')`;
-
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 /**
  * Raised when the client's stated account is not the authenticated one. A
@@ -54,7 +53,10 @@ export async function runSync(db: Db, user: SyncUser, push: SyncPush): Promise<S
     throw new AccountMismatchError(user.id);
   }
 
-  return db.transaction(async (tx) => {
+  // `asUser` rather than `db.transaction`: every statement below is under the
+  // row-level security policies in `schema.ts`, and outside a scope they match
+  // nothing. See DESIGN.md §13.15.
+  return asUser(db, user.id, async (tx) => {
     await lockUser(tx, user.id);
     await ensureUser(tx, user);
 

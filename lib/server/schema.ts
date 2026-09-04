@@ -12,14 +12,19 @@
  *
  * 3. Each row carries `seq` alongside `updatedAt` — the server cursor next to
  *    the client merge stamp. See `lib/sync/protocol.ts` for why both exist.
+ *
+ * Every table here is under row-level security, described below and opened by
+ * `lib/server/scope.ts`. See DESIGN.md §13.15.
  */
 
+import { sql } from "drizzle-orm";
 import {
   bigint,
   foreignKey,
   index,
   integer,
   jsonb,
+  pgPolicy,
   pgSequence,
   pgTable,
   primaryKey,
@@ -27,6 +32,33 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 import type { Cadence, Settings } from "../types";
+
+/**
+ * The account this transaction is allowed to touch, or NULL when nobody opened a
+ * scope. `user_id = NULL` is NULL, and a policy that is not *true* denies the
+ * row — so a statement that forgets to say who it is for reads nothing rather
+ * than everything. That is the whole reason the check is written this way round
+ * instead of as `coalesce(…)` against a sentinel.
+ *
+ * The setting is written per transaction by `lib/server/scope.ts:asUser`; the
+ * missing-ok second argument to `current_setting` is what makes an unset one
+ * NULL instead of an error.
+ */
+const owner = () => sql`user_id = current_setting('openhabits.user_id', true)`;
+
+/**
+ * The escape hatch for the two operations that genuinely are not on behalf of
+ * one account: the hourly reminder sweep, which must look at every device, and
+ * the subscribe upsert, which takes an endpoint over from whichever account
+ * held it last (see `pushSubscriptions` below).
+ *
+ * **It is deliberately not granted on `habits`, `entries` or `users`.** Habit
+ * content has no bypass anywhere in this codebase — the only way to read a
+ * habit is to name the account it belongs to. What this opens is one blob of
+ * preferences and a table of device handles, and `scope.ts:asServer` is the
+ * only thing that opens it.
+ */
+const server = () => sql`current_setting('openhabits.scope', true) = 'server'`;
 
 /**
  * The single source of `seq` for every row of every account. One global sequence
@@ -40,12 +72,23 @@ import type { Cadence, Settings } from "../types";
  */
 export const syncSeq = pgSequence("hapi_sync_seq");
 
-export const users = pgTable("users", {
-  /** Opaque id from whatever identity provider is wired up. See `lib/server/auth.ts`. */
-  id: text("id").primaryKey(),
-  email: text("email").notNull().unique(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    /** Opaque id from whatever identity provider is wired up. See `lib/server/auth.ts`. */
+    id: text("id").primaryKey(),
+    email: text("email").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  () => [
+    // The only table whose owning column is `id` rather than `user_id`.
+    pgPolicy("users_owner", {
+      for: "all",
+      using: sql`id = current_setting('openhabits.user_id', true)`,
+      withCheck: sql`id = current_setting('openhabits.user_id', true)`,
+    }),
+  ],
+).enableRLS();
 
 export const habits = pgTable(
   "habits",
@@ -74,8 +117,9 @@ export const habits = pgTable(
     // The one index the pull query needs: every read is
     // "this user's rows past this cursor, in cursor order".
     index("habits_user_seq_idx").on(t.userId, t.seq),
+    pgPolicy("habits_owner", { for: "all", using: owner(), withCheck: owner() }),
   ],
-);
+).enableRLS();
 
 export const entries = pgTable(
   "entries",
@@ -100,17 +144,30 @@ export const entries = pgTable(
       foreignColumns: [habits.userId, habits.id],
       name: "entries_habit_fk",
     }).onDelete("cascade"),
+    pgPolicy("entries_owner", { for: "all", using: owner(), withCheck: owner() }),
   ],
-);
+).enableRLS();
 
-export const settings = pgTable("settings", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
-  value: jsonb("value").$type<Settings>().notNull(),
-  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
-  seq: bigint("seq", { mode: "number" }).notNull(),
-});
+export const settings = pgTable(
+  "settings",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    value: jsonb("value").$type<Settings>().notNull(),
+    updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+    seq: bigint("seq", { mode: "number" }).notNull(),
+  },
+  () => [
+    pgPolicy("settings_owner", { for: "all", using: owner(), withCheck: owner() }),
+    // Read-only, and the sweep is the only reader: it needs `reminderHour`,
+    // `dayStartHour` and `weekStartsOn` for every device it is considering, in
+    // the one pass that decides which of them are due. Nothing under this scope
+    // may write a preference, and the habits the reminder counts are still read
+    // under the account's own scope.
+    pgPolicy("settings_server", { for: "select", using: server() }),
+  ],
+).enableRLS();
 
 /**
  * Web Push subscriptions — one row per browser that asked for reminders. See
@@ -170,5 +227,13 @@ export const pushSubscriptions = pgTable(
     // Every read is "this account's devices", either to send to them or to
     // clear them out.
     index("push_subscriptions_user_idx").on(t.userId),
+    pgPolicy("push_subscriptions_owner", { for: "all", using: owner(), withCheck: owner() }),
+    // Two callers, both in `asServer` and both unavoidable. The sweep scans
+    // every account's devices by definition. And the subscribe upsert conflicts
+    // on the endpoint alone — point 1 above — which means writing over a row
+    // belonging to the account that held the device before. RLS cannot express
+    // "you may take over a row you are not allowed to see", so that write says
+    // out loud that it is not acting for one account.
+    pgPolicy("push_subscriptions_server", { for: "all", using: server(), withCheck: server() }),
   ],
-);
+).enableRLS();

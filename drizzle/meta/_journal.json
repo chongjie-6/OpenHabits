@@ -43,6 +43,13 @@
       "when": 1788508287968,
       "tag": "0005_move_auth_tables_to_auth_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788510631772,
+      "tag": "0006_row_level_security",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,7 @@ import { resolveUser } from "@/lib/server/auth";
 import { getDb, syncConfigured } from "@/lib/server/db";
 import { applicationServerKey, pushConfigured } from "@/lib/server/push";
 import { pushSubscriptions, users } from "@/lib/server/schema";
+import { asServer, asUser } from "@/lib/server/scope";
 import { and, eq } from "drizzle-orm";
 
 /** postgres.js opens a TCP socket, and `web-push` needs Node crypto. */
@@ -125,15 +126,19 @@ export async function POST(request: Request): Promise<Response> {
 
   if (command.action === "unsubscribe") {
     // Scoped to the account: an endpoint is a device handle anyone holding it
-    // could send, and deleting it must be the owner's call.
-    await db
-      .delete(pushSubscriptions)
-      .where(
-        and(
-          eq(pushSubscriptions.endpoint, command.endpoint),
-          eq(pushSubscriptions.userId, user.id),
+    // could send, and deleting it must be the owner's call. The `user_id`
+    // clause is now said twice — here and by the RLS policy — which is the
+    // arrangement §13.15 is after rather than a redundancy to tidy up.
+    await asUser(db, user.id, (tx) =>
+      tx
+        .delete(pushSubscriptions)
+        .where(
+          and(
+            eq(pushSubscriptions.endpoint, command.endpoint),
+            eq(pushSubscriptions.userId, user.id),
+          ),
         ),
-      );
+    );
     return Response.json({ subscribed: false }, { headers: NO_STORE });
   }
 
@@ -146,38 +151,49 @@ export async function POST(request: Request): Promise<Response> {
 
   // The same upsert `runSync` opens with — a device can subscribe before it has
   // ever synced, and the foreign key needs the account row to exist.
-  await db.insert(users).values({ id: user.id, email: user.email }).onConflictDoNothing({
-    target: users.id,
-  });
+  await asUser(db, user.id, (tx) =>
+    tx.insert(users).values({ id: user.id, email: user.email }).onConflictDoNothing({
+      target: users.id,
+    }),
+  );
 
-  await db
-    .insert(pushSubscriptions)
-    .values({
-      endpoint: command.endpoint,
-      userId: user.id,
-      p256dh: command.keys.p256dh,
-      auth: command.keys.auth,
-      timeZone: command.timeZone,
-      lastSeenAt: new Date(),
-    })
-    // Conflict on the endpoint alone, which is how a device that changed hands
-    // stops belonging to the previous account (see `schema.ts`). `lastSentDay`
-    // is deliberately left as it was: resubscribing after this morning's
-    // reminder should not produce a second one.
-    .onConflictDoUpdate({
-      target: pushSubscriptions.endpoint,
-      set: {
+  // `asServer`, and it has to be: the upsert below conflicts on the endpoint
+  // alone, so on a device that has changed hands it writes over a row belonging
+  // to the previous account — a row this account's own scope cannot see, and
+  // `on conflict do update` against an invisible row is an error rather than a
+  // no-op. Postgres has no way to say "you may take over a row you may not
+  // read", so the takeover is done in the scope that admits what it is. The
+  // `userId` written is the session's, never the caller's to choose.
+  await asServer(db, (tx) =>
+    tx
+      .insert(pushSubscriptions)
+      .values({
+        endpoint: command.endpoint,
         userId: user.id,
         p256dh: command.keys.p256dh,
         auth: command.keys.auth,
         timeZone: command.timeZone,
-        // This upsert is the heartbeat the sweep ages a device against: the
-        // client re-sends it on app start and whenever the settings card is
-        // opened. Without it a browser that stopped visiting is indistinguishable
-        // from one being used daily, and neither is ever collected.
         lastSeenAt: new Date(),
-      },
-    });
+      })
+      // Conflict on the endpoint alone, which is how a device that changed hands
+      // stops belonging to the previous account (see `schema.ts`). `lastSentDay`
+      // is deliberately left as it was: resubscribing after this morning's
+      // reminder should not produce a second one.
+      .onConflictDoUpdate({
+        target: pushSubscriptions.endpoint,
+        set: {
+          userId: user.id,
+          p256dh: command.keys.p256dh,
+          auth: command.keys.auth,
+          timeZone: command.timeZone,
+          // This upsert is the heartbeat the sweep ages a device against: the
+          // client re-sends it on app start and whenever the settings card is
+          // opened. Without it a browser that stopped visiting is indistinguishable
+          // from one being used daily, and neither is ever collected.
+          lastSeenAt: new Date(),
+        },
+      }),
+  );
 
   return Response.json({ subscribed: true }, { headers: NO_STORE });
 }

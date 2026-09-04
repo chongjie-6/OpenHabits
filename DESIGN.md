@@ -680,6 +680,7 @@ lib/
   server/                 the only server-side code in the app
     schema.ts             Drizzle/Postgres tables
     db.ts                 lazily built, globally cached connection
+    scope.ts              opens an RLS scope; the only way in to a table (§13.15)
     auth.ts               the identity seam — see §13.6
     auth-types.ts         SyncUser alone, so sync-store imports no auth
     better-auth.ts        what fills the seam: config + lazy instance
@@ -892,6 +893,8 @@ The client states which account its data belongs to on every request, and the se
 Covered: convergence, stale-write rejection, tombstone propagation and cascade, resurrection attempts by a lagging peer, orphan entries, account isolation under colliding client-generated ids, mismatch refusal, idempotent replay, and a 600-entry history pulled across multiple trips with no gaps or repeats.
 
 `tests/sync/merge.test.ts` covers the merge rules as pure functions, including the tie-symmetry case that caught the `>=` bug during the build. `tests/sync/validate.test.ts` covers the endpoint's input validation.
+
+`tests/server/rls.test.ts` covers §13.15, and is the one file here that does not run as PGlite's default role — a superuser, which ignores every policy in the database without saying so. It creates an ordinary role, grants it what the app needs and `SET ROLE`s into it first, because a test of row-level security run as a superuser passes just as happily against a schema that has none.
 
 ### 13.8 Open questions
 
@@ -1163,3 +1166,85 @@ Four decisions worth stating.
 **What the hook actually replaced is `navigator.onLine`,** which the client used to gate `run()` on, and which answers a question nobody asked: it reports whether a network interface is up. A device on café wifi behind a captive portal, or on a connection whose upstream is dead, reports `true` and every sync fails. The framework polls the origin with a `HEAD` request instead, so the answer means "can reach the server".
 
 The value reaches `run()` through a module-level mirror, because `useOffline` is a hook and `syncNow()` is callable from anywhere. It defaults to *online*, which is the honest answer before anything has mounted, and the worst case is one request that fails and is retried.
+
+---
+
+### 13.15 Row-level security
+
+Every query in `lib/server/` already carries `where user_id = …`. That is where
+the isolation *came* from, and it is one keystroke deep: a filter dropped in a
+refactor, a join written against the wrong side, a new query copied from an
+older one — none of it fails a test, and all of it reads as somebody else's
+habits. So the same rule is now stated a second time, in the one place the
+application cannot forget it, and Postgres refuses the query rather than
+answering it wrongly.
+
+**Each table has a policy comparing its rows to a transaction-local setting.**
+`current_setting('openhabits.user_id')` is written by `lib/server/scope.ts:asUser`
+and by nothing else. `sync-store.ts`, the reminder sweep and the subscribe route
+all open a scope; nothing reaches a table outside one.
+
+**Unset reads as NULL, and NULL is not true.** `user_id = NULL` is NULL, a
+policy that is not true denies the row, so a statement that never said who it
+was for reads nothing and writes nothing. Written the other way round — a
+sentinel meaning "no restriction" — the same forgetfulness would return
+everybody. This is the only property here worth arguing about, and it is the
+reason the check is not `coalesce`.
+
+**Transaction-local is not a detail.** `db.ts` runs a pool of one connection
+across a serverless instance's requests. A session-scoped `SET` left behind on
+that connection is not stale state; it is the *next request's* identity. Hence
+the third argument to `set_config`, and hence scopes being functions that own a
+transaction rather than something a caller can set and forget.
+
+#### FORCE, and the role in DATABASE_URL
+
+**RLS does not apply to a table's owner**, and the role in `DATABASE_URL` is
+normally the role that ran the migrations that created these tables. Without
+`ALTER TABLE … FORCE ROW LEVEL SECURITY` the whole of `0006` is decorative — no
+error, no wrong-looking query, just policies that never fire. drizzle-kit cannot
+generate `FORCE`, so those five statements are hand-appended to the generated
+migration, and `tests/server/rls.test.ts` asserts `relforcerowsecurity` on every
+table rather than trusting that a future regeneration keeps them.
+
+The same hole one level up: **a superuser, or any role with `BYPASSRLS`, ignores
+all of it.** Nothing the app can check at runtime distinguishes that from
+working correctly, so the migration raises a `WARNING` when the role applying it
+is a superuser — the one moment a human is reading the output. Point
+`DATABASE_URL` at an ordinary role. Neon's default role is one.
+
+#### The one scope that is not an account
+
+The hourly sweep asks "which devices are due", which is a question about every
+device there is, and no per-account scope can answer it. `asServer` opens
+`openhabits.scope = 'server'`, and the policies granting anything to it are
+deliberately only on `push_subscriptions` (all of it) and `settings` (`select`
+only — the sweep needs `reminderHour`, `dayStartHour` and `weekStartsOn` to
+decide who is due).
+
+**`habits`, `entries` and `users` have no bypass at all.** There is no scope in
+this codebase, and no setting a caller could name, under which habit content is
+readable without saying whose it is — which is why the sweep drops back into
+`asUser` for each due account before it reads a single habit, and why the
+reminder it composes is assembled inside that account's scope.
+
+The second `asServer` caller is the subscribe upsert, and it is the one place
+the design bends. `push_subscriptions` is keyed on endpoint alone (§8.5), so a
+device that changes hands is a row overwritten across accounts — and
+`on conflict do update` against a row the policy hides is an *error*, not a
+no-op. Postgres cannot express "you may take over a row you may not read", so
+the takeover says out loud that it is not acting for one account. The `user_id`
+it writes is the session's; the caller supplies an endpoint and nothing else.
+
+#### What it does not cover
+
+**Better Auth's four tables are outside this**, in the `auth` schema, and stay
+there. Every query against them happens *before* there is an account to scope
+to: a sign-in looks a user up by email, a session lookup by token. A policy over
+that is a policy every statement would need a bypass for, which is a policy that
+does nothing but suggest otherwise.
+
+And it does not replace the `where` clauses. Both halves are load-bearing: the
+clauses are what makes the queries correct and fast — the policy is not a
+substitute for an index — and the policy is what makes them safe on the day one
+of the clauses is wrong. The redundancy is the design, not something to tidy up.
