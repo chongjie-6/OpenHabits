@@ -417,6 +417,27 @@ Two rows are not WCAG. There is no standard for "a filled heatmap cell should be
 
 The editor previews the half being edited rather than the half on screen, since editing dark colours on a device in light mode otherwise repaints nothing visible. `viewport.themeColor` ships two media-scoped `theme-color` metas and both are rewritten in place rather than a third appended, because the browser honours the first tag whose media matches.
 
+### 6.7 The habit form, on touch, is a bottom sheet
+
+Creating and editing a habit opens `components/Sheet.tsx` **on a touch device**. Inline on a phone, the add form grew the page by its own height under the "New habit" button, so the act of starting a habit scrolled the list you were adding to; on the detail screen the edit form *replaced* the actions and the note under them, and the page changed length twice per edit. A sheet leaves the screen behind it exactly where it was.
+
+**It is a real `<dialog>`, opened with `showModal()`.** That is the whole reason to prefer it to a positioned div: the focus trap, Escape, the inert background and the top layer are the browser's problem, and the hand-rolled version is usually missing the ones a screen reader depends on. It is the same mechanism §8.4's install instructions already use — that one is a centred card, this one is anchored to the bottom edge, and the difference is CSS.
+
+**A pointer keeps the inline form**, unchanged: the card takes the place of whatever opened it, with its own Cancel button and focus in the name field. The reasons above are all about a phone. A desktop page has the height to grow into, nothing is scrolled out from under the cursor, and a sheet clamped to the bottom edge of a 1400px window is a phone idiom in the wrong room. `HabitFormPanel` holds the two presentations so the choice is made once; the sheet itself is capped at 32rem and centred, for a tablet.
+
+**The axis is `(pointer: coarse), (max-width: 639px)`** (`lib/use-media-query.ts:MOBILE`), and the union is deliberate. Pointer type is the honest question — a phone rotated to landscape is past every sensible width while still being the device a sheet exists for, and a width-only test would swap presentation, and throw the draft away with it, halfway through typing a habit name. But the pointer half is not always told the truth: a desktop browser's device emulation reports a *fine* pointer unless touch emulation is switched on separately, which makes the phone layout unreachable from the machine it is being built on. The width clause only ever adds the sheet, never removes one, so it cannot reintroduce the rotation problem. §4.4's objection to two mechanisms was about offering hover *and* touch paths to the same user; this offers each user one.
+
+Motion lives in `globals.css`, not in React, because the exit half cannot be expressed in React at all: the browser drops a dialog out of the top layer the instant `close()` runs, so the sheet is gone before a transition could play. `transition-behavior: allow-discrete` on `display` and `overlay`, plus `@starting-style` for the entry, is what holds it on screen for both directions. An engine that does not know those keywords ignores the declarations and the sheet arrives and leaves instantly — which is what the reduced-motion block asks for anyway, so there is no separate fallback to maintain.
+
+Two details that are not decoration:
+
+- **In the sheet, focus starts on the close button rather than the first field.** The dialog's own focusing steps would land on the habit name input, and on touch that raises the keyboard over a sheet pinned to the bottom edge — the sheet opens and is immediately covered. `autoFocus` is therefore a prop the inline form sets and the sheet does not, rather than something the form decides for itself.
+- **`html:has(dialog[open])` locks the page scroll.** A modal dialog makes the page behind it inert but not unscrollable, and a drag over the backdrop otherwise scrolls Today underneath the sheet. It cannot shift the layout sideways, because `scrollbar-gutter: stable` keeps the gutter reserved while the scrollbar goes.
+
+`HabitForm` renders bare — no card, no heading. `onCancel` and `autoFocus` are the only two props that differ between the frames, and both are absent in the sheet: it owns dismissal through Escape, the backdrop and its close button, and a fourth way out is clutter rather than safety.
+
+The inline form resets by unmounting, as it always did. The sheet cannot — it stays mounted while it animates out — so the call sites remount it with a `key` bumped **on open only**, which leaves the copy sliding away with its contents and still starts the next one clean.
+
 ---
 
 ## 7. Architecture
@@ -646,6 +667,8 @@ components/
   TodayList.tsx
   HabitRow.tsx            the tick target
   HabitForm.tsx           shared by create and edit, plus describeCadence
+  Sheet.tsx               bottom sheet over <dialog>, touch only (§6.7)
+  HabitFormPanel.tsx      picks the sheet or the inline card (§6.7)
   AddHabit.tsx            thin wrapper over HabitForm
   HabitDetail.tsx         per-habit grid, editing, archive, delete
   Heatmap.tsx             SVG, delegated events, both orientations, legend

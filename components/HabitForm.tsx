@@ -17,6 +17,12 @@ import {
  *
  * Two forms over the same fields drift apart — the edit screen gains a cadence
  * option the add screen never got, and the two disagree about defaults.
+ *
+ * It carries no chrome of its own — no card, no heading. `HabitFormPanel` puts
+ * it in one of two frames (§6.7), and the two props below are where those
+ * frames differ. Both are absent in the sheet, which owns dismissal through
+ * Escape, the backdrop and its close button, and which must not raise the
+ * keyboard over itself the moment it opens.
  */
 
 export const EMOJI = [
@@ -41,11 +47,13 @@ export function HabitForm({
   submitLabel,
   onSubmit,
   onCancel,
+  autoFocus = false,
 }: {
   initial?: Partial<HabitFormValues>;
   submitLabel: string;
   onSubmit: (values: HabitFormValues) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
+  autoFocus?: boolean;
 }) {
   const { settings } = useOpenHabits();
 
@@ -82,7 +90,7 @@ export function HabitForm({
   const names = weekdayShortNames(settings.weekStartsOn);
 
   return (
-    <form onSubmit={submit} className="space-y-4 surface-card bg-surface p-4">
+    <form onSubmit={submit} className="space-y-4 pb-1">
       <div className="flex items-center gap-2">
         <select
           value={emoji}
@@ -97,7 +105,7 @@ export function HabitForm({
           ))}
         </select>
         <input
-          autoFocus
+          autoFocus={autoFocus}
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Read 20 pages"
@@ -231,13 +239,15 @@ export function HabitForm({
         >
           {submitLabel}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="h-11 rounded-control border border-border px-4 text-[14px] text-muted"
-        >
-          Cancel
-        </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-11 rounded-control border border-border px-4 text-[14px] text-muted"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </form>
   );

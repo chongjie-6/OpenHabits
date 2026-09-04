@@ -4,13 +4,14 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Heatmap, HeatmapLegend } from "@/components/Heatmap";
-import { describeCadence, HabitForm } from "@/components/HabitForm";
+import { describeCadence } from "@/components/HabitForm";
+import { HabitFormPanel } from "@/components/HabitFormPanel";
 import { habitColor } from "@/lib/colors";
 import { addDays, formatDayFull, startOfWeek } from "@/lib/dates";
 import { buildHabitHistory } from "@/lib/history";
 import { deleteHabit, toggleEntry, updateHabit, useOpenHabits } from "@/lib/store";
 import { computeStreaks } from "@/lib/streaks";
-import { useMediaQuery, WIDE } from "@/lib/use-media-query";
+import { MOBILE, useMediaQuery, WIDE } from "@/lib/use-media-query";
 import { useToday } from "@/lib/use-today";
 import type { DayKey } from "@/lib/types";
 
@@ -23,8 +24,12 @@ export function HabitDetail() {
   const { hydrated, habits, entries, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
   const wide = useMediaQuery(WIDE);
+  const sheet = useMediaQuery(MOBILE);
 
   const [editing, setEditing] = useState(false);
+  // See AddHabit: bumped on open only, so reopening starts from the habit as
+  // stored rather than from a discarded edit.
+  const [instance, setInstance] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [selected, setSelected] = useState<DayKey | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -179,54 +184,67 @@ export function HabitDetail() {
         </>
       )}
 
-      {editing ? (
-        <HabitForm
-          initial={habit}
-          submitLabel="Save changes"
-          onCancel={() => setEditing(false)}
-          onSubmit={(values) => {
-            updateHabit(habit.id, values);
-            setEditing(false);
-          }}
-        />
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          <Action onClick={() => setEditing(true)}>Edit habit</Action>
-          <Action
-            onClick={() =>
-              updateHabit(habit.id, { archivedAt: archived ? null : today })
-            }
-          >
-            {archived ? "Unarchive" : "Archive"}
-          </Action>
-          {confirmDelete ? (
-            <>
-              <Action
-                danger
-                onClick={() => {
-                  deleteHabit(habit.id);
-                  router.push("/settings");
-                }}
-              >
-                Delete forever
-              </Action>
-              <Action onClick={() => setConfirmDelete(false)}>Cancel</Action>
-            </>
-          ) : (
-            <Action danger onClick={() => setConfirmDelete(true)}>
-              Delete
+      {/* The inline form replaces the actions and the note under them, as it
+          always has; the sheet floats over both, so they stay. */}
+      {(sheet || !editing) && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <Action
+              onClick={() => {
+                setInstance((n) => n + 1);
+                setEditing(true);
+              }}
+            >
+              Edit habit
             </Action>
-          )}
-        </div>
+            <Action
+              onClick={() =>
+                updateHabit(habit.id, { archivedAt: archived ? null : today })
+              }
+            >
+              {archived ? "Unarchive" : "Archive"}
+            </Action>
+            {confirmDelete ? (
+              <>
+                <Action
+                  danger
+                  onClick={() => {
+                    deleteHabit(habit.id);
+                    router.push("/settings");
+                  }}
+                >
+                  Delete forever
+                </Action>
+                <Action onClick={() => setConfirmDelete(false)}>Cancel</Action>
+              </>
+            ) : (
+              <Action danger onClick={() => setConfirmDelete(true)}>
+                Delete
+              </Action>
+            )}
+          </div>
+
+          <p className="pb-2 text-[11px] leading-relaxed text-muted">
+            Archiving keeps the history and stops the habit appearing on Today.
+            Deleting removes the habit and every entry it ever had, and cannot
+            be undone.
+          </p>
+        </>
       )}
 
-      {!editing && (
-        <p className="pb-2 text-[11px] leading-relaxed text-muted">
-          Archiving keeps the history and stops the habit appearing on Today.
-          Deleting removes the habit and every entry it ever had, and cannot be
-          undone.
-        </p>
-      )}
+      <HabitFormPanel
+        sheet={sheet}
+        open={editing}
+        onClose={() => setEditing(false)}
+        title="Edit habit"
+        instance={instance}
+        initial={habit}
+        submitLabel="Save changes"
+        onSubmit={(values) => {
+          updateHabit(habit.id, values);
+          setEditing(false);
+        }}
+      />
     </section>
   );
 }

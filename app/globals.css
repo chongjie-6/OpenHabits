@@ -492,6 +492,19 @@ body {
   border-radius: var(--card-radius);
 }
 
+/**
+ * The bottom sheet's own surface (§6.7). It is flush with the bottom edge, so
+ * only the top corners are rounded and the bottom border is dropped rather than
+ * left to draw a hairline off-screen. No shadow either: `--shadow-card` is a
+ * downward offset in every skin, which under a sheet falls outside the viewport
+ * and in `blocks` would be a hard black bar. The backdrop does that job here.
+ */
+@utility surface-sheet {
+  border: var(--border-w) solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+}
+
 @utility control-dashed {
   border: var(--border-w) dashed var(--border);
   border-radius: var(--control-radius);
@@ -606,4 +619,65 @@ body {
 :root[data-skin="blocks"] [data-slot="tab"][data-active="true"] {
   background: var(--accent);
   color: var(--accent-fg);
+}
+
+/* ---------------------------------------------------------------------------
+   Bottom sheet — DESIGN.md §6.7
+
+   `components/Sheet.tsx` is a real `<dialog>` opened with `showModal()`, so the
+   focus trap, Escape, the inert background and the top layer are the platform's
+   problem. What is left is shape and motion, and both live here rather than in
+   the component because the exit half cannot be expressed in React at all: the
+   browser drops a dialog out of the top layer the instant `close()` runs, so
+   without `allow-discrete` on `display` and `overlay` there is nothing left on
+   screen to transition. An engine that does not know those keywords ignores all
+   three declarations and the sheet arrives and leaves instantly — which is what
+   the reduced-motion block below already asks for anyway.
+   --------------------------------------------------------------------------- */
+
+[data-slot="sheet"] {
+  transform: translateY(100%);
+  transition:
+    transform 260ms cubic-bezier(0.32, 0.72, 0, 1),
+    overlay 260ms allow-discrete,
+    display 260ms allow-discrete;
+}
+
+[data-slot="sheet"][open] {
+  transform: translateY(0);
+}
+
+@starting-style {
+  [data-slot="sheet"][open] {
+    transform: translateY(100%);
+  }
+}
+
+[data-slot="sheet"]::backdrop {
+  background: rgb(0 0 0 / 0.45);
+  opacity: 0;
+  transition:
+    opacity 260ms ease,
+    overlay 260ms allow-discrete,
+    display 260ms allow-discrete;
+}
+
+[data-slot="sheet"][open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  [data-slot="sheet"][open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/**
+ * A modal dialog makes the page behind it inert, but not unscrollable — a drag
+ * over the backdrop still scrolls Today underneath the sheet. Safe against the
+ * sideways lurch the `scrollbar-gutter` rule above exists to prevent, because
+ * the gutter stays reserved while the scrollbar goes.
+ */
+html:has(dialog[open]) {
+  overflow: hidden;
 }
