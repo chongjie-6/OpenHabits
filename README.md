@@ -218,3 +218,7 @@ public/sw.js    runtime-caching service worker (no build-time precache)
 - Comments explain the non-obvious — an invariant, a workaround, a reason the straightforward version is wrong. If a comment would only paraphrase the line under it, delete it.
 - Components are PascalCase (file and export); `lib/` modules stay kebab-case.
 - `--muted` passes WCAG AA with no headroom. Never apply an opacity modifier to it — if something needs to recede further, give it a smaller role, not a thinner colour.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
