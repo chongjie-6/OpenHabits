@@ -27,10 +27,18 @@ import type { NextConfig } from "next";
  * style attribute. This app's own seven pages prerender with neither — the
  * palette writes custom properties through CSSOM (`applyPaletteVars`), which CSP
  * does not govern.
+ *
+ * `'unsafe-eval'` is added **only under `next dev`**: React's development build
+ * evaluates source text to rebuild callstacks across the server/client boundary,
+ * and without it the console fills with `eval() is not supported`. It must never
+ * reach a production header, which is why it is keyed off `NODE_ENV` here rather
+ * than being written into the constant.
  */
+const dev = process.env.NODE_ENV !== "production";
+
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",
