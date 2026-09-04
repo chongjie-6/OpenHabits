@@ -169,10 +169,11 @@ function Body({
             Your local time. Unlike the switch above, this is part of your account
             — change it here and your other devices follow.
           </span>
+          {/* 16px, like every text field: below it a tap zooms iOS in for good. */}
           <select
             value={hour}
             onChange={(event) => updateSettings({ reminderHour: Number(event.target.value) })}
-            className="mt-2 h-10 rounded-control border border-border bg-surface-2 px-3 text-[14px] outline-none focus:border-accent"
+            className="mt-2 h-10 rounded-control border border-border bg-surface-2 px-3 text-[16px] outline-none focus:border-accent"
           >
             {HOURS.map((value) => (
               <option key={value} value={value}>

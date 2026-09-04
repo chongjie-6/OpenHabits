@@ -317,6 +317,17 @@ Two tests guard the corpus: ids are unique, and no two entries share the same op
 | Radius | `8px` controls, `16px` cards, `2px` heatmap cells | |
 | Spacing | 4px base scale: 4 · 8 · 12 · 16 · 24 · 32 · 48 | |
 | Min hit target | 44 × 44px | Non-negotiable on touch |
+| Min field type | `16px` | Text fields and selects, touch only — see below |
+
+Both minimums are platform rules rather than taste. Under 16px, a touch browser
+zooms the viewport in when a field takes focus and does not zoom back out — the
+add-habit form autofocuses, so every new habit left the app scaled up. The floor
+lives in `app/globals.css` as an unlayered `@media (pointer: coarse)` rule over
+text inputs, so the designed scale is unchanged on a pointer device and a size
+utility cannot quietly reintroduce the bug; selects are outside it (their own
+sizes vary) and carry the floor themselves. The one-line alternative,
+`maximum-scale=1` on the viewport, fixes it by taking pinch-zoom away from
+everyone — a worse trade than a 1px type change on a phone.
 
 The serif for quotes is deliberate — it separates "something to think about" from "something to do" without needing a border or a label.
 
@@ -601,6 +612,8 @@ Until now `next.config.ts` gave a CSP to `/sw.js` and nothing else. The app rout
 - **Hashes** would have to cover Next's flight scripts, which are per-page and per-build. A static header cannot name them.
 
 That is a real limit and it is worth being plain about: against an injected-script attack, this policy is not the control that saves you. What it does buy is still worth having, and `connect-src 'self'` is the line that matters most — injected script can run, but it cannot post a year of habits to an origin the user has never heard of. `base-uri`, `form-action`, `object-src 'none'` and the ban on external script origins close the rest of the usual escalation paths.
+
+`'unsafe-eval'` is in the policy under `next dev` and only there. React's development build evaluates source text to reconstruct callstacks across the server/client boundary, and a policy without it turns every such attempt into a console error telling you to add it. The production header is unchanged: the directive is appended from `NODE_ENV` in `next.config.ts` rather than written into the constant, so there is no build that ships it.
 
 `style-src` keeps `'unsafe-inline'` for a smaller reason: this app's own seven pages prerender with no `<style>` block and no style attribute, but Next's built-in error and not-found documents ship both, and a strict policy would leave the 404 unstyled. Nothing in the app itself needs it — the palette writes custom properties through CSSOM (`applyPaletteVars`), which CSP does not govern.
 

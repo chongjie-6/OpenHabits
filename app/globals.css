@@ -416,6 +416,27 @@ body {
   overscroll-behavior-y: none;
 }
 
+/**
+ * Touch keyboards zoom the viewport in on any text field smaller than 16px and
+ * never zoom back out, so the add-habit form — which autofocuses — left the
+ * whole app scaled up after every new habit. The floor is a platform rule, not
+ * a type choice: it applies on touch only, so the designed scale is untouched
+ * on a pointer device, and the alternative (`maximum-scale=1`) buys the same
+ * fix by taking pinch-zoom away from everyone.
+ *
+ * Unlayered, so it outranks the Tailwind size utility in `@layer utilities`
+ * regardless of specificity — a field that genuinely wants to be larger on
+ * touch has to say so here rather than in a class.
+ */
+@media (pointer: coarse) {
+  :where(
+      textarea,
+      input:not([type="range"]):not([type="color"]):not([type="checkbox"]):not([type="radio"]):not([type="file"])
+    ) {
+    font-size: 16px;
+  }
+}
+
 /* One visible focus treatment everywhere. Never `outline: none` on its own. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--ring);
