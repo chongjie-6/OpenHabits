@@ -170,6 +170,12 @@ function parseSettings(value: unknown): ParseResult<Settings> {
     return fail("settings.weekStartsOn must be 0 or 1");
   }
   if (!isCount(value.dayStartHour, 6)) return fail("settings.dayStartHour must be 0–6");
+  // Optional for the reason `haptics` is: a device on a build from before
+  // reminders existed pushes a blob without it, and refusing that would stop it
+  // syncing habits too.
+  if (value.reminderHour !== undefined && !isCount(value.reminderHour, 23)) {
+    return fail("settings.reminderHour must be 0–23");
+  }
   // Optional, unlike its neighbours: a device still on a build from before
   // haptics existed pushes a blob without the field, and rejecting that would
   // stop it syncing anything at all until it updated.
@@ -186,6 +192,7 @@ function parseSettings(value: unknown): ParseResult<Settings> {
       theme: value.theme,
       weekStartsOn: value.weekStartsOn,
       dayStartHour: value.dayStartHour,
+      reminderHour: value.reminderHour ?? DEFAULT_SETTINGS.reminderHour,
       haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
       favourites: value.favourites as string[],
     },

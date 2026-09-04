@@ -45,7 +45,7 @@ Accounts and sync: Better Auth + Postgres + Drizzle, two endpoints, PGlite (Post
 
 ## How it works
 
-**IndexedDB is the source of truth.** Every route prerenders to static HTML; the only dynamic routes in the build are `POST /api/sync` and Better Auth's `/api/auth/[...all]`. Neither sits on the path of a habit tick. Data flows one way:
+**IndexedDB is the source of truth.** Every route prerenders to static HTML; the only dynamic routes in the build are `POST /api/sync`, Better Auth's `/api/auth/[...all]`, and the two reminder routes (§8.5), none of which sit on the path of a habit tick. Data flows one way:
 
 ```
 React client components
@@ -89,9 +89,15 @@ BETTER_AUTH_URL=            # the app's public origin; required in production
 BETTER_AUTH_ALLOWED_HOSTS=  # instead of the above, for a multi-host deployment
 SMTP_USER=                  # a Gmail app password, not the account password
 SMTP_PASSWORD=
+VAPID_PUBLIC_KEY=           # npx web-push generate-vapid-keys
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=              # mailto: or https: contact; falls back to BETTER_AUTH_URL
+CRON_SECRET=                # authenticates the hourly reminder sweep
 
 npm run db:migrate
 ```
+
+**Daily reminders are hourly cron plus a per-device timezone.** "9am" is a wall clock, so one daily invocation would only ever be nine o'clock in a single timezone; `vercel.json` schedules `/api/cron/reminders` every hour and the sweep asks each subscription whether it is that user's hour *there*. Without the VAPID pair the Settings card says the deployment cannot send rather than offering a switch, and without `CRON_SECRET` the cron route refuses to run at all — it reads every account's habits, so unset means disabled, not open. See DESIGN.md §8.5.
 
 **The app is told its own origin rather than working it out.** Inferring it means reading the request's `Host` header, and that origin is what verification links are built from — while `/api/auth/send-verification-email` takes any address and no session. A forged `Host` would have this app mail a genuine link into an attacker's server, carrying a token that `autoSignInAfterVerification` turns into a session. Development still infers; production fails to start accounts until `BETTER_AUTH_URL` (or `BETTER_AUTH_ALLOWED_HOSTS`, for several hosts) is set. See DESIGN.md §13.11.
 
@@ -118,7 +124,13 @@ BETTER_AUTH_SECRET=          # a different value per environment
 BETTER_AUTH_ALLOWED_HOSTS=openhabits.example,*.vercel.app
 SMTP_USER=
 SMTP_PASSWORD=
+VAPID_PUBLIC_KEY=            # omit the pair to ship with reminders switched off
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com
+CRON_SECRET=                 # Vercel sends this as the cron's Authorization header
 ```
+
+**One cron job, scheduled hourly.** `vercel.json` declares a single entry — the fan-out across timezones happens inside the sweep, not by adding jobs. What it does need is a plan allowing a sub-daily schedule: a daily-only cron delivers at the right hour for one timezone and the wrong one for everybody else.
 
 **`BETTER_AUTH_ALLOWED_HOSTS`, not `BETTER_AUTH_URL`.** Every preview deployment answers on its own `*.vercel.app` host, and one pinned origin would mail a preview's visitors a verification link into production. The list is resolved per request and every host outside it is refused, which is the property that matters (§13.11).
 
@@ -193,7 +205,8 @@ public/sw.js    runtime-caching service worker (no build-time precache)
 - **No password reset.** A confirmed address was the prerequisite and now exists; the flow does not. Until it does, a forgotten password means the habits on that device are reachable only through Export backup — which the sign-up form says out loud rather than leaving to be discovered.
 - **Signing in merges whatever is on the device into the account** (§13.8 #8). Right for the common case — someone who used the app signed out and then made an account — and wrong for a borrowed phone.
 - **Settings sync as one blob, `theme` included**, so a device-local look becomes a global one.
-- Reminders, conflict surfacing and tombstone collection are absent by decision, not oversight. DESIGN.md §12 and §13.8 hold the reasoning.
+- **Reminders need a deployment that can send them** — a database, a VAPID keypair and a `CRON_SECRET` (see `.env.example`). Without them the Settings card says so plainly rather than offering a switch, and on iOS they arrive only for a home-screen-installed app. Nothing prunes a subscription for a device that has simply stopped visiting; only `410 Gone` and signing out remove one.
+- Conflict surfacing and tombstone collection are absent by decision, not oversight. DESIGN.md §12 and §13.8 hold the reasoning.
 
 `ROADMAP.md` sequences all of the above — what is worth doing, in what order, and which of these gaps are decisions to leave alone rather than work to pick up.
 

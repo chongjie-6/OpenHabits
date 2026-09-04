@@ -149,6 +149,17 @@ describe("parseSyncPush", () => {
     expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, haptics: "yes" } } }).ok).toBe(false);
   });
 
+  it("treats a missing reminderHour as the default, not as malformed", () => {
+    const result = push({ settings: SETTINGS });
+    expect(result.ok).toBe(true);
+    expect(result.ok === true && result.value.settings?.value.reminderHour).toBe(9);
+
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: 0 } } }).ok).toBe(true);
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: 23 } } }).ok).toBe(true);
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: 24 } } }).ok).toBe(false);
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: -1 } } }).ok).toBe(false);
+  });
+
   it("accepts a tombstone", () => {
     expect(push({ habits: [{ ...HABIT, deletedAt: 2000 }] }).ok).toBe(true);
     expect(push({ habits: [{ ...HABIT, deletedAt: -5 }] }).ok).toBe(false);

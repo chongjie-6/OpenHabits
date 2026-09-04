@@ -9,6 +9,7 @@
  */
 
 import { useState, useSyncExternalStore } from "react";
+import { disableReminders } from "@/lib/reminders";
 import { authClient, markSignedIn, markSignedOut } from "@/lib/session";
 import { adoptAccount, useOpenHabits, type SyncStatus } from "@/lib/store";
 import { syncNow } from "@/lib/sync/client";
@@ -423,6 +424,13 @@ function SignedIn({
   async function finish() {
     setBusy(true);
     setFailed(false);
+
+    // Before the cookie goes: unsubscribing proves this device's push endpoint
+    // belongs to the account, and only the session can. A row left behind keeps
+    // the cron pushing these habits into the tray of whoever holds the device
+    // next. Done ahead of a sign-out that may fail, because the safe direction
+    // for a reminder is off.
+    await disableReminders();
 
     // Unguarded, a dead network leaves the button on "Saving…" for good. The
     // wipe waits on success because the cookie survives a failed sign-out —

@@ -114,3 +114,65 @@ export function weekdayShortNames(weekStartsOn: 0 | 1): string[] {
 export function weekdayIndex(key: DayKey, weekStartsOn: 0 | 1): number {
   return (weekdayOf(key) - weekStartsOn + 7) % 7;
 }
+
+/**
+ * Formatters are cached because the reminder cron builds one per subscription
+ * and constructing an `Intl.DateTimeFormat` is the expensive half.
+ */
+const zoneFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function zoneFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = zoneFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      // Without this the hour comes back as "24" at midnight under some
+      // locales' default cycle, and `Number("24")` is a day that never matches.
+      hourCycle: "h23",
+    });
+    zoneFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+/** Does the runtime's ICU know this zone? Anything else is client-supplied junk. */
+export function isTimeZone(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The civil day and the wall-clock hour at `at`, in someone else's timezone.
+ *
+ * The reminder cron needs this and `todayKey` cannot give it: the server's own
+ * clock is UTC, and nine in the morning is a fact about where the user is. Parts
+ * are read by name rather than off a formatted string, so no locale's ordering
+ * or separators can change the answer.
+ *
+ * `hour` is the real wall-clock hour — it is what a reminder time is compared
+ * against. `day` honours `dayStartHour` the way `todayKey` does, so the tasks
+ * listed in the notification are the ones the app would show at that moment.
+ */
+export function civilInZone(
+  timeZone: string,
+  at: Date = new Date(),
+  dayStartHour = 0,
+): { day: DayKey; hour: number } {
+  const parts = zoneFormatter(timeZone).formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((p) => p.type === type)?.value ?? "";
+
+  const hour = Number(part("hour"));
+  const day = `${part("year")}-${part("month")}-${part("day")}`;
+
+  return { day: hour < dayStartHour ? addDays(day, -1) : day, hour };
+}

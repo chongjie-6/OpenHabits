@@ -336,7 +336,8 @@ function resumePoint(
   return complete === Infinity ? highest : Math.min(complete, highest);
 }
 
-function toHabit(row: typeof habits.$inferSelect): Habit {
+/** Row → domain habit. Exported for `reminders.ts`, which reads the same rows. */
+export function toHabit(row: typeof habits.$inferSelect): Habit {
   return {
     id: row.id,
     name: row.name,
@@ -354,7 +355,7 @@ function toHabit(row: typeof habits.$inferSelect): Habit {
   };
 }
 
-function toEntry(row: typeof entries.$inferSelect): Entry {
+export function toEntry(row: typeof entries.$inferSelect): Entry {
   return {
     habitId: row.habitId,
     date: row.date,

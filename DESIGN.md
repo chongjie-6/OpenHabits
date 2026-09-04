@@ -159,6 +159,7 @@ type Settings = {
   theme: "system" | "light" | "dark";
   weekStartsOn: 0 | 1;     // Sunday or Monday
   dayStartHour: number;    // 0–6; 4 means "the day rolls over at 4am"
+  reminderHour: number;    // 0–23; when the daily reminder is due (§8.5)
   favourites: string[];    // saved quote ids
 };
 ```
@@ -533,14 +534,37 @@ That reasoning holds only if the second tier is *nothing*. `components/DownloadA
 
 Install state is exposed through `useSyncExternalStore` over `matchMedia("(display-mode: standalone)")` plus iOS Safari's older `navigator.standalone`. **The server snapshot claims "already installed"**, so no install UI is in the prerendered HTML — it only ever appears, never disappears, which keeps §2's static-prerender rule intact. `InstallCard` (same module) is the Settings-screen presentation and is gated on the same state, so the card never wraps a button that rendered null.
 
-### 8.5 Reminders — a known limitation
+### 8.5 Reminders — a known limitation, since lifted
 
 **The web cannot reliably schedule a purely local notification.** The Notification Triggers API never shipped broadly, and a service worker cannot wake itself on a timer. There are two honest options:
 
 1. **v1 — in-app only.** A gentle "you haven't logged today" banner when the app is opened after the reminder time. Zero infrastructure, zero permissions, no false promises.
 2. **v2 — real push.** Web Push with VAPID keys, `web-push` on the server, and a stored subscription per device. Works on iOS 16.4+ *only for home-screen-installed apps*. This requires a server and a scheduler, which pulls the app out of its zero-backend posture — hence v2.
 
-**Shipped:** neither, and the Settings screen says so in plain words. The Today tab already surfaces what is outstanding the moment the app opens, which is option 1 without pretending it is a reminder. A "Daily reminder at 8:00" toggle that silently doesn't fire would be the worst available outcome.
+**Originally shipped:** neither, and the Settings screen said so in plain words. The Today tab already surfaces what is outstanding the moment the app opens, which is option 1 without pretending it is a reminder. A "Daily reminder at 8:00" toggle that silently doesn't fire would be the worst available outcome.
+
+#### Reversed: option 2 shipped
+
+The objection to v2 was that push "pulls the app out of its zero-backend posture". §13 has since given the app a server, a database and accounts, so that objection is spent — and it was the *only* objection. **The warning underneath it is not, and it shapes everything below: a toggle that silently doesn't fire is still the worst available outcome.**
+
+The scheduler is a **cron running hourly**, not daily. "9am" is a wall clock, and one daily invocation can only ever be nine o'clock in a single timezone; it would reach Sydney at dinner. So every subscription stores the **IANA zone of its browser**, and `lib/server/reminders.ts` asks per device whether it is that user's `reminderHour` *there*. `lib/dates.ts:civilInZone` is the one place that reads a clock in somebody else's zone, and it honours `dayStartHour` — so the habits the notification lists are exactly the ones the Today tab would show if the app were opened as it landed.
+
+**When, and whether, are stored in different places, because they are different kinds of fact.**
+
+| | Lives in | Scope |
+|---|---|---|
+| **Whether** this device is reminded | `push_subscriptions`, keyed by endpoint | One browser |
+| **When** the reminder is due | `Settings.reminderHour`, the synced blob | The account |
+
+The subscription table is the only one here not keyed by `(userId, …)` — see `lib/server/schema.ts`. A push endpoint is the push service's global handle for one browser, so keying it per user would let two accounts hold live rows for the same device, and signing out would leave the previous owner's habits arriving in somebody else's tray. Signing out unsubscribes for the same reason.
+
+**Delivery is claimed before it is attempted.** `last_sent_day` is written by the same `UPDATE … RETURNING` that selects which devices to send to, so an at-least-once cron delivers once; the payload's fixed `tag` is the second line of defence, in the tray. A day on which everything was already done is claimed and left silent — finishing before nine should mean quiet, not a reminder held back until the hour ticks over.
+
+**Two new endpoints**, which is the first time §7.1's "`POST /api/sync` is the only one" has bent. Neither carries user data in the sync sense: `/api/reminders` registers a device fact that is deliberately *not* replicated (every device would otherwise hold a copy of every other device's push endpoint, for nothing), and `/api/cron/reminders` is the scheduler's entry point. The cron route fails closed — with no `CRON_SECRET` it refuses to run at all, because it reads every account's habits and sends to every registered device.
+
+**What the honesty requirement bought.** `GET /api/reminders` is asked *before* `Notification.requestPermission()`: a browser grants that prompt once, and spending it on a deployment with no VAPID keypair leaves the user with a permission given for nothing. `lib/reminders.ts` names every way a reminder cannot arrive as its own status — no Push API (Safari on iOS until the app is installed), no service worker (a development build never registers one), deployment not configured, not signed in, notifications blocked — and `components/ReminderCard.tsx` says which one out loud instead of showing a switch over it. Six branches for what is nominally a checkbox, and that is the point.
+
+**Still true, and still a limitation:** on iOS this works only for a home-screen-installed app, and a reminder cannot be scheduled locally at all. Nothing here changes that; it routes around it with a server.
 
 ### 8.6 Page metadata
 
@@ -588,12 +612,13 @@ components/
   HabitDetail.tsx         per-habit grid, editing, archive, delete
   Heatmap.tsx             SVG, delegated events, both orientations, legend
   DownloadAppButton.tsx   install prompt, per-browser instructions sheet, InstallCard
+  ReminderCard.tsx        the six honest states of a reminder switch (§8.5)
 
 lib/
   types.ts                domain types + DEFAULT_SETTINGS + Synced metadata
   store.ts                in-memory cache + useSyncExternalStore + mutations
   db.ts                   IndexedDB, migrations, requestPersistence
-  dates.ts                DayKey maths, week bounds, dayStartHour, formatting
+  dates.ts                DayKey maths, week bounds, dayStartHour, civilInZone
   history.ts              cadence evaluation, day rollups, per-habit history
   streaks.ts
   quotes.ts               deck algorithm, seam repair, upcoming schedule
@@ -601,6 +626,7 @@ lib/
   haptics.ts              tick/completion vibration patterns (§6.4)
   theme.ts                pre-paint script + localStorage mirror
   session.ts              the auth client + the local signed-in hint (§13.6)
+  reminders.ts            subscribe/unsubscribe, and why a switch is not offered
   email.ts                nodemailer SMTP transport, built per send (§13.9)
   verification-email.ts   the verification mail: tables, inline styles, no images
   use-today.ts            the clock as external state
@@ -621,9 +647,13 @@ lib/
     better-auth.ts        what fills the seam: config + lazy instance
     auth-schema.ts        Better Auth's tables, kept apart from `users`
     sync-store.ts         push/pull inside one locked transaction
+    push.ts               VAPID + web-push, kept apart so the sweep is testable
+    reminders.ts          who is due, in their own timezone, claimed once (§8.5)
 
 app/api/sync/route.ts     replication — the only endpoint touching user data
 app/api/auth/[...all]/    sign-up, sign-in, sign-out, session
+app/api/reminders/        push subscriptions — a device fact, never replicated
+app/api/cron/reminders/   the hourly sweep; fails closed without CRON_SECRET
 
 drizzle/                  generated, reviewed, committed migrations
 data/quotes.ts            168 attributed quotes
@@ -635,7 +665,7 @@ public/sw.js
 
 **Reordering respects the visible list.** Active and archived habits render as separate lists, so `moveHabit` swaps `order` values within a habit's own group. Stepping over an archived neighbour would look like the button had done nothing.
 
-`lib/dates.ts` is the file most likely to harbour bugs. It is pure, is the **only** place `new Date()` is called with the intent of producing a `DayKey`, and carries the largest share of the test suite: month and year boundaries, leap years, DST transitions in both directions, and the `dayStartHour` rollover under fake timers.
+`lib/dates.ts` is the file most likely to harbour bugs. It is pure, is the **only** place `new Date()` is called with the intent of producing a `DayKey`, and carries the largest share of the test suite: month and year boundaries, leap years, DST transitions in both directions, the `dayStartHour` rollover under fake timers, and — since §8.5 — reading a wall clock in a timezone that is not this machine's.
 
 Two design decisions turned out to be load-bearing and are pinned by tests: the weekly-quota cadence (§12, question 1) and the streak rules (rest days stepped over, the final day forgiven while it is still in progress).
 

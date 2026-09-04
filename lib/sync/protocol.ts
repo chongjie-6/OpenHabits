@@ -139,6 +139,7 @@ export function fingerprintSettings(s: { value: Settings }): string {
     s.value.theme,
     s.value.weekStartsOn,
     s.value.dayStartHour,
+    s.value.reminderHour,
     s.value.haptics,
     // Sorted, so two devices that favourited the same quotes in a different
     // order still fingerprint identically and neither write wins spuriously.

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { AccountCard } from "@/components/AccountCard";
 import { InstallCard } from "@/components/DownloadAppButton";
+import { ReminderCard } from "@/components/ReminderCard";
 import { habitColor } from "@/lib/colors";
 import { HAPTIC_DONE, vibrate } from "@/lib/haptics";
 import { QUOTE_COUNT } from "@/lib/quotes";
@@ -229,16 +230,7 @@ export default function SettingsPage() {
         )}
       </Group>
 
-      <Group title="Reminders">
-        <p className="text-[13px] leading-relaxed text-muted">
-          There are none yet, and that is deliberate. The web cannot reliably
-          schedule a local notification — a service worker has no way to wake
-          itself on a timer — so a &ldquo;remind me at 8:00&rdquo; toggle here
-          would silently do nothing. Real push reminders need a server. Until
-          then, the Today tab shows what is still outstanding the moment you
-          open it.
-        </p>
-      </Group>
+      <ReminderCard />
 
       <Group title="Danger zone">
         {confirmReset ? (

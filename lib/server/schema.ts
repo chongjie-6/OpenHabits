@@ -111,3 +111,53 @@ export const settings = pgTable("settings", {
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
   seq: bigint("seq", { mode: "number" }).notNull(),
 });
+
+/**
+ * Web Push subscriptions — one row per browser that asked for reminders. See
+ * DESIGN.md §8.5.
+ *
+ * Three deliberate differences from every other table here.
+ *
+ * 1. **The key is the endpoint alone**, not `(userId, …)`. An endpoint is the
+ *    push service's globally unique handle for one browser, and keying it per
+ *    user would let two accounts on the same device each hold a live row —
+ *    signing out and back in as somebody else would then deliver that person's
+ *    habits to the previous owner's notification tray. Overwriting on endpoint
+ *    is what makes handing a device over safe.
+ *
+ * 2. **No `seq`, and no tombstone.** These rows are not replicated: they are
+ *    device facts the client can rebuild from `PushManager` at any time, so an
+ *    unsubscribe is a delete. Nothing pulls them.
+ *
+ * 3. `timeZone` is stored rather than derived. The reminder is due at nine in
+ *    the morning *where the browser is*, and the server's clock is UTC; the
+ *    zone is a property of the device, not of the account, so it cannot live in
+ *    the synced settings blob beside `reminderHour`.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    endpoint: text("endpoint").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** The two keys from `PushSubscription.toJSON().keys`, base64url. */
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    /** IANA zone name, validated against ICU before it is stored. */
+    timeZone: text("time_zone").notNull(),
+    /**
+     * The last civil day a reminder went to this device, or null for never.
+     * The cron runs hourly and this is what keeps it from sending twice — a
+     * user who changes `reminderHour` from 9 to 10 at 09:30 gets one reminder
+     * that day, not two.
+     */
+    lastSentDay: text("last_sent_day"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Every read is "this account's devices", either to send to them or to
+    // clear them out.
+    index("push_subscriptions_user_idx").on(t.userId),
+  ],
+);

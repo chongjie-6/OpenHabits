@@ -94,3 +94,86 @@ self.addEventListener("fetch", (event) => {
     })(),
   );
 });
+
+/**
+ * Reminders — DESIGN.md §8.5.
+ *
+ * The worker cannot schedule these itself; that is the whole reason a server and
+ * an hourly cron exist. Its job here is only to render what arrives and to put
+ * the user back in the app when they tap it.
+ */
+
+const FALLBACK_TITLE = "OpenHabits";
+
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    (async () => {
+      let payload = {};
+      try {
+        payload = event.data ? event.data.json() : {};
+      } catch {
+        // Not our payload, or not JSON. A notification is shown regardless:
+        // every push a browser delivers must produce one, and staying silent
+        // costs the app its push permission on Chrome.
+      }
+
+      const title = typeof payload.title === "string" ? payload.title : FALLBACK_TITLE;
+      const body =
+        typeof payload.body === "string" ? payload.body : "You have habits left today.";
+
+      await self.registration.showNotification(title, {
+        body,
+        // Same tag every day, so a missed morning is replaced rather than
+        // stacked. `renotify` is off for the same reason — a replacement is not
+        // news.
+        tag: typeof payload.tag === "string" ? payload.tag : "openhabits-daily",
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        data: { url: safePath(payload.url) },
+      });
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const path = safePath(event.notification.data && event.notification.data.url);
+
+  event.waitUntil(
+    (async () => {
+      const target = new URL(path, self.location.origin);
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      // Focus a tab that is already open rather than stacking another copy of a
+      // standalone app on top of itself.
+      for (const client of clients) {
+        if (new URL(client.url).origin !== target.origin) continue;
+        await client.focus();
+        // Best effort: `navigate` rejects on a client this worker does not
+        // control, and the focus above has already done the useful half.
+        if ("navigate" in client && client.url !== target.href) {
+          await client.navigate(target.href).catch(() => null);
+        }
+        return;
+      }
+
+      await self.clients.openWindow(target.href);
+    })(),
+  );
+});
+
+/**
+ * The payload is server-authored, but it arrives over a third-party push service
+ * and ends up in `openWindow` — so it is treated as a same-origin path or not at
+ * all. A leading `//` is rejected because `new URL("//evil.example", origin)`
+ * resolves to another origin entirely.
+ */
+function safePath(value) {
+  if (typeof value !== "string") return "/";
+  if (!value.startsWith("/") || value.startsWith("//")) return "/";
+  return value;
+}

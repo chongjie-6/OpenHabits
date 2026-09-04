@@ -134,6 +134,14 @@ export type Settings = {
   /** 0–6. `4` means "the day rolls over at 4am" for night owls. */
   dayStartHour: number;
   /**
+   * Wall-clock hour, 0–23, at which the daily reminder is sent. A preference
+   * rather than a switch: whether a reminder arrives at all is whether *this
+   * device* holds a push subscription, which is per device and lives on the
+   * server (see DESIGN.md §8.5). The hour rides in the synced blob so a phone
+   * and a laptop cannot disagree about when morning is.
+   */
+  reminderHour: number;
+  /**
    * Buzz on a tick, where the device has a motor. Inert rather than hidden on
    * hardware that cannot vibrate: the toggle would otherwise vanish from the
    * one screen — a desktop — where a user is most likely to be configuring the
@@ -148,6 +156,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   weekStartsOn: 1,
   dayStartHour: 0,
+  reminderHour: 9,
   haptics: true,
   favourites: [],
 };
