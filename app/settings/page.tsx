@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AccountCard } from "@/components/AccountCard";
 import { InstallCard } from "@/components/DownloadAppButton";
 import { habitColor } from "@/lib/colors";
+import { HAPTIC_DONE, vibrate } from "@/lib/haptics";
 import { QUOTE_COUNT } from "@/lib/quotes";
 import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
 import { usePalette } from "@/lib/use-palette";
@@ -106,6 +107,24 @@ export default function SettingsPage() {
             </span>
           </Link>
         </div>
+      </Group>
+
+      <Group title="Feedback">
+        <Choice<Settings["haptics"]>
+          label="Vibrate on a tick"
+          hint="A short buzz when you tick a habit, and a double one when it hits its target. Phones and tablets only — desktops and iPhones have no vibration to give."
+          value={settings.haptics}
+          options={[
+            { value: true, label: "On" },
+            { value: false, label: "Off" },
+          ]}
+          onChange={(haptics) => {
+            updateSettings({ haptics });
+            // Switching it on should demonstrate what was switched on — the
+            // alternative is going to Today and ticking something to find out.
+            if (haptics) vibrate(HAPTIC_DONE);
+          }}
+        />
       </Group>
 
       <Group title="Your week">
@@ -282,7 +301,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Choice<T extends string | number>({
+function Choice<T extends string | number | boolean>({
   label,
   hint,
   value,

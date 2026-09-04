@@ -355,6 +355,26 @@ Motion exists to confirm the tick and to reward the streak. Everything else is i
 
 All of the above is wrapped in `@media (prefers-reduced-motion: reduce)` → duration 0, state change only. The reduced-motion path must still *confirm* the action; it just does it without animating.
 
+### 6.4 Haptics
+
+The other half of confirming a tick, for the case §6.3 cannot reach: on a phone the thumb is over the target it just pressed, so the checkbox pop is the confirmation most likely to be hidden under the hand that caused it. `lib/haptics.ts` buzzes instead.
+
+| Event | Pattern (ms) |
+|---|---|
+| A step towards the target | `12` |
+| The tick that reaches the target | `[12, 45, 26]` |
+| Wrapping back to zero | *nothing* |
+
+Two rules. The patterns are **short** — a tick is an acknowledgement, not an alert, and anything long enough to register as a *buzz* is long enough to be irritating by the fifth habit of the morning. And completion differs **structurally**, not by length: a gap is recognisable through a pocket where 12ms against 20ms is not.
+
+Silence on the wrap to zero is deliberate. That press is a correction, and confirming it the same way as a tick makes undoing feel like recording.
+
+It lives in `store.toggleEntry`, which every tick target in the app funnels through — three call sites (`HabitRow`, the week grid, `HabitDetail`) that would otherwise each have to remember. `navigator.vibrate` is absent on iOS and on any browser without a motor, so it is feature-detected and wrapped: the entry is already written by the time it runs, and a device that cannot buzz loses nothing else.
+
+**Not gated on `prefers-reduced-motion`.** That setting is about visual motion and the vestibular symptoms it provokes; a vibration provokes none of them. Overriding an explicit "haptics: on" from a preference the user set for an unrelated reason reads as a bug, so `settings.haptics` is the only authority.
+
+`haptics` rides the synced settings blob rather than sitting device-local beside `skin` (§6.5). The distinction is that a skin is a *look* — picking one on a phone silently repaints a laptop, which §13.8 #1 already records as a wart for `theme`. Haptics is inert on hardware that cannot vibrate, so propagating it costs a desktop nothing, and someone who turns the buzz off on one phone means it on the other. The toggle stays visible everywhere for the same reason: hiding it on a desktop removes it from the screen a user is most likely to be configuring their phone from.
+
 ### 6.6 Custom palettes
 
 The third appearance axis. `theme` is light or dark, `skin` is which design, and a palette is which **colours** — all three compose. A custom palette under `blocks` is still hard-edged, uppercase and 2px-bordered; only the hexes change.
@@ -578,6 +598,7 @@ lib/
   streaks.ts
   quotes.ts               deck algorithm, seam repair, upcoming schedule
   colors.ts               ramp lookups, neutral and per-habit
+  haptics.ts              tick/completion vibration patterns (§6.4)
   theme.ts                pre-paint script + localStorage mirror
   session.ts              the auth client + the local signed-in hint (§13.6)
   email.ts                nodemailer SMTP transport, built per send (§13.9)

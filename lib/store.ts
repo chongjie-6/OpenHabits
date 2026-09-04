@@ -14,6 +14,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import * as db from "./db";
 import { todayKey } from "./dates";
+import { HAPTIC_DONE, HAPTIC_TICK, vibrate } from "./haptics";
 import type { LocalSnapshot, MergeResult } from "./sync/merge";
 import { applyTheme } from "./theme";
 import {
@@ -164,6 +165,14 @@ export function toggleEntry(habitId: string, date: DayKey): void {
 
   const current = countFor(habitId, date);
   const next = current >= habit.target ? 0 : current + 1;
+
+  // Every tick in the app funnels through here, so the buzz lives here too
+  // rather than on each of the three tick targets. Silent on the wrap back to
+  // zero: that is a correction, and confirming it feels like having recorded
+  // something.
+  if (state.settings.haptics && next > 0) {
+    vibrate(next >= habit.target ? HAPTIC_DONE : HAPTIC_TICK);
+  }
 
   setCount(habitId, date, next);
 }

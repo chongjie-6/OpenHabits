@@ -133,6 +133,13 @@ export type Settings = {
   weekStartsOn: 0 | 1;
   /** 0–6. `4` means "the day rolls over at 4am" for night owls. */
   dayStartHour: number;
+  /**
+   * Buzz on a tick, where the device has a motor. Inert rather than hidden on
+   * hardware that cannot vibrate: the toggle would otherwise vanish from the
+   * one screen — a desktop — where a user is most likely to be configuring the
+   * phone they carry.
+   */
+  haptics: boolean;
   /** Saved quote ids. */
   favourites: string[];
 };
@@ -141,6 +148,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   weekStartsOn: 1,
   dayStartHour: 0,
+  haptics: true,
   favourites: [],
 };
 

@@ -12,6 +12,7 @@
  */
 
 import {
+  DEFAULT_SETTINGS,
   normaliseHabitColor,
   type Cadence,
   type Entry,
@@ -169,6 +170,12 @@ function parseSettings(value: unknown): ParseResult<Settings> {
     return fail("settings.weekStartsOn must be 0 or 1");
   }
   if (!isCount(value.dayStartHour, 6)) return fail("settings.dayStartHour must be 0–6");
+  // Optional, unlike its neighbours: a device still on a build from before
+  // haptics existed pushes a blob without the field, and rejecting that would
+  // stop it syncing anything at all until it updated.
+  if (value.haptics !== undefined && typeof value.haptics !== "boolean") {
+    return fail("settings.haptics must be a boolean");
+  }
   if (!Array.isArray(value.favourites)) return fail("settings.favourites must be an array");
   if (value.favourites.length > MAX_FAVOURITES) return fail("settings.favourites is too long");
   if (!value.favourites.every(isId)) return fail("settings.favourites must be quote ids");
@@ -179,6 +186,7 @@ function parseSettings(value: unknown): ParseResult<Settings> {
       theme: value.theme,
       weekStartsOn: value.weekStartsOn,
       dayStartHour: value.dayStartHour,
+      haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
       favourites: value.favourites as string[],
     },
   };

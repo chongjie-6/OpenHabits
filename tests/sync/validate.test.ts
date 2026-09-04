@@ -139,6 +139,16 @@ describe("parseSyncPush", () => {
     expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, weekStartsOn: 2 } } }).ok).toBe(false);
   });
 
+  it("treats a missing haptics flag as the default, not as malformed", () => {
+    // A device on a build from before the field existed still has to sync.
+    const result = push({ settings: SETTINGS });
+    expect(result.ok).toBe(true);
+    expect(result.ok === true && result.value.settings?.value.haptics).toBe(true);
+
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, haptics: false } } }).ok).toBe(true);
+    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, haptics: "yes" } } }).ok).toBe(false);
+  });
+
   it("accepts a tombstone", () => {
     expect(push({ habits: [{ ...HABIT, deletedAt: 2000 }] }).ok).toBe(true);
     expect(push({ habits: [{ ...HABIT, deletedAt: -5 }] }).ok).toBe(false);
