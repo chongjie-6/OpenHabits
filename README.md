@@ -76,7 +76,13 @@ Sync is **replication between copies of the local store**, not a move to server-
 
 **Whether a client syncs is "is someone signed in"**, answered per device from a localStorage hint in `lib/session.ts`. The hint has no authority — it only buys permission to make a request the server may still 401, and the 401 path clears it. Never gate anything security-relevant on it.
 
-**Two clocks drive replication, and they are never compared:** `updatedAt` (client epoch ms) decides merge conflicts; `seq` (one Postgres sequence) drives the pull cursor. Conflicts are last-write-wins per record, with ties broken on a content fingerprint so two devices converge instead of swapping values forever — one function, `lib/sync/protocol.ts:wins`, called by the server and the client alike. Deletes write tombstones rather than removing rows. Signing out wipes the device, having synced first. See DESIGN.md §13.
+**Two clocks drive replication, and they are never compared:** `updatedAt` (client epoch ms) decides merge conflicts; `seq` (one Postgres sequence) drives the pull cursor. Conflicts are last-write-wins per record, with ties broken on a content fingerprint so two devices converge instead of swapping values forever — one function, `lib/sync/protocol.ts:wins`, called by the server and the client alike. Deletes write tombstones rather than removing rows, and both halves collect one after six months — the window bounds *resurrection*, not storage, since a device offline longer than that would bring a deleted habit back. Signing out wipes the device, having synced first. See DESIGN.md §13.
+
+**Signing in on a device that already has habits asks first.** The common case — you used the app signed out, then made an account — wants those habits in the account, and that is one button. A borrowed phone does not, and until it is answered nothing has been uploaded: the session cookie exists, but sync is gated on the local hint and the hint is withheld. Neither answer deletes anything (§13.8 #8).
+
+**Appearance never syncs.** Theme, design and palette are all device-local, in `localStorage`, read by one blocking script before first paint. Only behaviour — week start, day rollover, reminder hour, haptics, saved quotes — rides the synced settings blob (§13.8 #1).
+
+**Passwords can be reset** where a mailer is configured, and the link is good for one hour and one use. Setting a new one signs out every device that was signed in; none of them loses a habit, because signing out never deletes what is on a device (§13.13).
 
 ### Configuration
 
@@ -99,7 +105,7 @@ npm run db:migrate
 
 **Daily reminders are hourly cron plus a per-device timezone.** "9am" is a wall clock, so one daily invocation would only ever be nine o'clock in a single timezone; `vercel.json` schedules `/api/cron/reminders` every hour and the sweep asks each subscription whether it is that user's hour *there*. Without the VAPID pair the Settings card says the deployment cannot send rather than offering a switch, and without `CRON_SECRET` the cron route refuses to run at all — it reads every account's habits, so unset means disabled, not open. See DESIGN.md §8.5.
 
-**The app is told its own origin rather than working it out.** Inferring it means reading the request's `Host` header, and that origin is what verification links are built from — while `/api/auth/send-verification-email` takes any address and no session. A forged `Host` would have this app mail a genuine link into an attacker's server, carrying a token that `autoSignInAfterVerification` turns into a session. Development still infers; production fails to start accounts until `BETTER_AUTH_URL` (or `BETTER_AUTH_ALLOWED_HOSTS`, for several hosts) is set. See DESIGN.md §13.11.
+**The app is told its own origin rather than working it out.** Inferring it means reading the request's `Host` header, and that origin is what verification links are built from — while `/api/auth/send-verification-email` takes any address and no session. A forged `Host` would have this app mail a genuine link into an attacker's server, carrying a token that `autoSignInAfterVerification` turns into a session. Development still infers; production fails to start accounts until `BETTER_AUTH_URL` (or `BETTER_AUTH_ALLOWED_HOSTS`, for several hosts) is set. See DESIGN.md §13.12.
 
 **Email verification follows the mailer, not a flag.** With SMTP credentials set, sign-up creates no session — the link in the mail does (`autoSignInAfterVerification`), an unverified sign-in 403s and resends on the way out, and a failed send fails the sign-up so the address is not held hostage against a retry. With no credentials, requiring a click that no mail can deliver would break sign-up entirely, so verification is off and a send error is logged and swallowed.
 
@@ -122,6 +128,7 @@ Set these on the project, for Production **and** Preview:
 DATABASE_URL=                # Neon's *pooled* connection string, ?sslmode=require
 BETTER_AUTH_SECRET=          # a different value per environment
 BETTER_AUTH_ALLOWED_HOSTS=openhabits.example,*.vercel.app
+SITE_URL=https://openhabits.example   # link previews only; Production, not Preview
 SMTP_USER=
 SMTP_PASSWORD=
 VAPID_PUBLIC_KEY=            # omit the pair to ship with reminders switched off
@@ -132,7 +139,11 @@ CRON_SECRET=                 # Vercel sends this as the cron's Authorization hea
 
 **One cron job, scheduled hourly.** `vercel.json` declares a single entry — the fan-out across timezones happens inside the sweep, not by adding jobs. What it does need is a plan allowing a sub-daily schedule: a daily-only cron delivers at the right hour for one timezone and the wrong one for everybody else.
 
-**`BETTER_AUTH_ALLOWED_HOSTS`, not `BETTER_AUTH_URL`.** Every preview deployment answers on its own `*.vercel.app` host, and one pinned origin would mail a preview's visitors a verification link into production. The list is resolved per request and every host outside it is refused, which is the property that matters (§13.11).
+**`BETTER_AUTH_ALLOWED_HOSTS`, not `BETTER_AUTH_URL`.** Every preview deployment answers on its own `*.vercel.app` host, and one pinned origin would mail a preview's visitors a verification link into production. The list is resolved per request and every host outside it is refused, which is the property that matters (§13.12).
+
+**`regions` in `vercel.json` must match the Neon region.** It is pinned to `iad1` — every sync request is several round trips to Postgres inside one advisory-locked transaction, so a function in Virginia talking to a database in Frankfurt pays that latency several times over. Change it to sit beside whichever region the database was created in; the value is a guess until the database exists.
+
+**`SITE_URL` is Production-only.** It decides what a link preview's image URL says, and a preview deployment stamping its own `*.vercel.app` host into a card that gets shared outlives the deployment it names. Left unset it falls back to `BETTER_AUTH_URL`, then Vercel's production domain, then localhost — see DESIGN.md §8.6.
 
 **Pool through Neon's `-pooler` host.** `lib/server/db.ts` opens one connection per instance with `prepare: false` precisely so a pooler can hand out a different backend per checkout; a direct endpoint runs out of connections long before the functions run out of work.
 
@@ -174,16 +185,22 @@ npx vitest run -t "takes the later write"
 
 ## Tests
 
-117 tests across 10 files, covering pure logic only — there are no component or E2E tests.
+261 tests across 21 files. No component or E2E tests — everything here is logic, reached through its own exports.
 
 Tests live under `tests/`, mirroring the `lib/` tree they cover (`lib/sync/merge.ts` → `tests/sync/merge.test.ts`), and reach their subjects through the `@/` alias. `tests/server/sync-store.test.ts` boots a real Postgres in-process per case (PGlite) and applies the committed `drizzle/` migrations verbatim — hence the 30s timeout. The delicate parts of sync are all SQL-level (a sequence assigned inside `ON CONFLICT DO UPDATE`, a row-value `IN`, a composite foreign key, an advisory lock), and a test double would check none of them.
+
+`tests/store.test.ts` covers the file most able to lose a year of habits. `lib/store.ts` is nearly pure — a module-level object plus `useSyncExternalStore` — so each case re-imports the module for a fresh store and stands a fake in for `lib/db.ts`; no React, and no jsdom anywhere in the suite.
+
+**Still uncovered: `lib/db.ts`.** Testing it means a fake IndexedDB, and the only practical one is a dependency — in a module that was hand-rolled specifically so the persistence layer would not have one. That trade is worth making deliberately rather than in passing, so it has not been made.
 
 ## Layout
 
 ```
-app/            routes (all static) + the two endpoints:
+app/            routes (all static) + the four endpoints:
                   api/sync/route.ts    replication — the only one touching user data
-                  api/auth/[...all]/   sign-up, sign-in, sign-out, session
+                  api/auth/[...all]/   sign-up, sign-in, sign-out, reset, session
+                  api/reminders/       this device's push subscription
+                  api/cron/reminders/  the hourly sweep
 components/     PascalCase files exporting PascalCase components
 lib/            kebab-case modules — the domain logic
   sync/         wire protocol, merge rules, client runner
@@ -202,11 +219,14 @@ public/sw.js    runtime-caching service worker (no build-time precache)
 
 ## Known gaps
 
-- **No password reset.** A confirmed address was the prerequisite and now exists; the flow does not. Until it does, a forgotten password means the habits on that device are reachable only through Export backup — which the sign-up form says out loud rather than leaving to be discovered.
-- **Signing in merges whatever is on the device into the account** (§13.8 #8). Right for the common case — someone who used the app signed out and then made an account — and wrong for a borrowed phone.
-- **Settings sync as one blob, `theme` included**, so a device-local look becomes a global one.
-- **Reminders need a deployment that can send them** — a database, a VAPID keypair and a `CRON_SECRET` (see `.env.example`). Without them the Settings card says so plainly rather than offering a switch, and on iOS they arrive only for a home-screen-installed app. Nothing prunes a subscription for a device that has simply stopped visiting; only `410 Gone` and signing out remove one.
-- Conflict surfacing and tombstone collection are absent by decision, not oversight. DESIGN.md §12 and §13.8 hold the reasoning.
+- **Reminders need a deployment that can send them** — a database, a VAPID keypair and a `CRON_SECRET` (see `.env.example`). Without them the Settings card says so plainly rather than offering a switch, and on iOS they arrive only for a home-screen-installed app.
+- **The CSP on app routes cannot drop `'unsafe-inline'` from `script-src`.** Every route is static and the service worker caches that HTML, so a per-request nonce would be cached with it and mismatch on the next load; hashes cannot name Next's per-build flight scripts. `connect-src 'self'` is what the policy actually buys — injected script can run, but it cannot post a year of habits somewhere else. DESIGN.md §8.7 is explicit about the limit.
+- **Phase 7 of DESIGN.md §11 is unfinished, and needs hardware.** Every Lighthouse run so far was against an empty IndexedDB, because the CLI cannot seed one — so the two budgets that bear directly on the goals, INP on a tick and the paint cost of a full year of heatmap cells, are both unmeasured.
+- **`lib/db.ts` has no tests**, for the dependency reason under *Tests* above.
+- **The quote corpus is 168 against a target of ~400.** Purely additive and slow on purpose: every entry needs a traceable attribution before it ships, and the app's promise — no repeat within 21 days — is already true at this size.
+- Conflict surfacing is absent by decision, not oversight. DESIGN.md §12 and §13.8 hold the reasoning.
+
+**Recently closed**, and listed because DESIGN.md still carries the entries that describe them as open: password reset (§13.13), appearance leaving the synced settings blob (§13.8 #1), consent before a first sign-in merges a device into an account (#8), tombstone collection (#3), the `auth` schema namespace (#9), and ageing out a push subscription for a device that stopped visiting (§8.5).
 
 `ROADMAP.md` sequences all of the above — what is worth doing, in what order, and which of these gaps are decisions to leave alone rather than work to pick up.
 

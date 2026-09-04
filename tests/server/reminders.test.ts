@@ -17,7 +17,7 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@/lib/server/db";
 import type { PushPayload, PushResult, PushTarget } from "@/lib/server/push";
-import { runReminderSweep } from "@/lib/server/reminders";
+import { runReminderSweep, SUBSCRIPTION_TTL_MS } from "@/lib/server/reminders";
 import * as schema from "@/lib/server/schema";
 import { DEFAULT_SETTINGS, type Habit, type Settings } from "@/lib/types";
 
@@ -77,6 +77,7 @@ async function addDevice(
   endpoint: string,
   timeZone: string,
   lastSentDay: string | null = null,
+  lastSeenAt: Date = new Date(),
 ): Promise<void> {
   await db.insert(schema.pushSubscriptions).values({
     endpoint,
@@ -85,7 +86,15 @@ async function addDevice(
     auth: "a",
     timeZone,
     lastSentDay,
+    lastSeenAt,
   });
+}
+
+async function endpoints(): Promise<string[]> {
+  const rows = await db
+    .select({ endpoint: schema.pushSubscriptions.endpoint })
+    .from(schema.pushSubscriptions);
+  return rows.map((row) => row.endpoint).sort();
 }
 
 async function setSettings(over: Partial<Settings>): Promise<void> {
@@ -119,6 +128,31 @@ async function lastSentDay(endpoint: string): Promise<string | null> {
 }
 
 describe("runReminderSweep", () => {
+  it("drops a device that has not opened the app in longer than the window", async () => {
+    await addHabit("read");
+    const dormant = new Date(NINE_IN_SYDNEY.getTime() - SUBSCRIPTION_TTL_MS - 1000);
+    await addDevice("https://push.example/dormant", "Australia/Sydney", null, dormant);
+    await addDevice("https://push.example/live", "Australia/Sydney");
+
+    const push = recorder();
+    const summary = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
+
+    // Collected before it was ever considered, so it neither counts as a device
+    // nor takes a slot from one that is still in use.
+    expect(summary).toMatchObject({ expired: 1, considered: 1, sent: 1 });
+    expect(await endpoints()).toEqual(["https://push.example/live"]);
+    expect(push.sent.map((d) => d.endpoint)).toEqual(["https://push.example/live"]);
+  });
+
+  it("keeps a device that has been quiet but not for long enough", async () => {
+    await addHabit("read");
+    const recent = new Date(NINE_IN_SYDNEY.getTime() - SUBSCRIPTION_TTL_MS + 60_000);
+    await addDevice("https://push.example/sydney", "Australia/Sydney", null, recent);
+
+    const summary = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: recorder().send });
+    expect(summary).toMatchObject({ expired: 0, considered: 1, sent: 1 });
+  });
+
   it("reminds a device for which it is nine in the morning, listing what is left", async () => {
     await addHabit("read");
     await addHabit("run", { id: "run", order: 1 });

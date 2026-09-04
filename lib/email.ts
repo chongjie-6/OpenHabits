@@ -1,3 +1,4 @@
+import { resetEmail } from "./reset-email";
 import { verificationEmail } from "./verification-email";
 import nodemailer from "nodemailer";
 
@@ -58,5 +59,16 @@ export async function sendVerificationEmail({
   url: string;
 }): Promise<void> {
   const { subject, html, text } = verificationEmail(url);
+  await sendEmail({ to, subject, html, text });
+}
+
+export async function sendResetPasswordEmail({
+  to,
+  url,
+}: {
+  to: string;
+  url: string;
+}): Promise<void> {
+  const { subject, html, text } = resetEmail(url);
   await sendEmail({ to, subject, html, text });
 }

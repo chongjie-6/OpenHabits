@@ -109,10 +109,6 @@ export function quoteForDay(day: DayKey, deck: Quote[] = QUOTES): Quote {
   return deckForCycle(deck, cycle)[position];
 }
 
-export function quoteById(id: string): Quote | undefined {
-  return QUOTES.find((q) => q.id === id);
-}
-
 /**
  * When each quote next comes up, as `quoteId → DayKey` of its first appearance.
  *

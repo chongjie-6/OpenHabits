@@ -126,6 +126,31 @@ async function announce(subscription: PushSubscription): Promise<boolean> {
 }
 
 /**
+ * Tell the server this browser is still here, if it holds a subscription at all.
+ *
+ * The heartbeat `SUBSCRIPTION_TTL_MS` ages a device against. Without it
+ * `last_seen_at` would only move when someone opened the settings card, and a
+ * daily user who never does would have their reminders collected out from under
+ * them at six months.
+ *
+ * Cheap by construction: `getSubscription()` is local, and a browser with
+ * reminders switched off returns null and makes no request at all. Failures are
+ * swallowed — this is bookkeeping, and the app has no business reporting a
+ * network error nobody asked for. Called once per app start from `Hydrator`.
+ */
+export async function touchReminders(): Promise<void> {
+  if (!supported()) return;
+
+  try {
+    const registered = await registration();
+    const subscription = await registered?.pushManager.getSubscription();
+    if (subscription) await announce(subscription);
+  } catch {
+    // Offline, or storage unavailable. The row keeps the timestamp it had.
+  }
+}
+
+/**
  * Drop this browser's subscription, locally and on the server. Called from the
  * settings card and from signing out — a row left behind after a sign-out would
  * deliver the previous account's habits into the tray of whoever has the device

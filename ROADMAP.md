@@ -3,118 +3,101 @@
 What is left, in the order it is worth doing. `DESIGN.md` holds the reasoning; this file holds the sequence.
 
 - **Status:** phases 0–6 of §11 built and passing. Phase 7 (Field) is the only unfinished one, and it needs hardware.
-- **CI landed 2026-08-25**, along with the pins it needed; that phase is off this list. Tests for `lib/store.ts` and the rest of the stateful half are next.
-- **Last updated:** 2026-08-25
+- **Phases 1–3 of the previous edition of this file are done.** The test hole is filled apart from `lib/db.ts`, the shipping blockers are closed, and §13.8's actionable open questions are closed in the doc as well as the code.
+- **Last updated:** 2026-09-04.
 
 ---
 
 ## 1. Where the tree actually stands
 
-Verified 2026-08-25.
+Verified 2026-09-04.
 
 | Check | Result |
 |---|---|
-| `npm test` | **124 passed / 124**, 11 files, ~18s |
+| `npm test` | **261 passed / 261**, 21 files, ~21s |
 | `npm run lint` | clean |
 | `npm run typecheck` | clean |
-| `npm run build` | clean, with no environment set |
+| `npm run build` | clean, with no environment set; every route still static |
+| `npm run db:generate` | no changes — the committed snapshot matches the schema |
 | `TODO` / `FIXME` / `HACK` | 0 |
-| `@ts-ignore` / `@ts-expect-error` / `eslint-disable` | 0 |
-| `.github/workflows/` | `ci.yml` — the four checks above, on push and PR |
+| `@ts-ignore` / `@ts-expect-error` | 0 |
+| `eslint-disable` | 1, in `components/PaletteEditor.tsx` — a DOM read the exhaustive-deps rule cannot see through, argued at length in place |
 
-**All four now run on every push and pull request.** Before CI they ran only when a human remembered to type them, so a green suite was only ever as current as the last time someone did. The build step is given no environment on purpose: every variable in `.env.example` is optional, so a build that needs one has broken that promise and CI is the thing that should say so.
-
----
-
-## 2. Phase 1 — Test what can lose data
-
-124 tests is a good number attached to an uneven distribution. Everything **pure** is well covered, and `tests/server/sync-store.test.ts` is genuinely strong — it boots PGlite per case and applies every `.sql` in `drizzle/` verbatim, so the SQL-level subtleties (a sequence assigned inside `ON CONFLICT DO UPDATE`, a composite foreign key, the advisory lock) are all exercised for real.
-
-The hole is everything **stateful**.
-
-| Untested | Lines | Why it matters |
-|---|---|---|
-| `lib/store.ts` | **523** | Every mutation in the app. `importBundle` (both modes), `applyPulled`, `adoptAccount`, `resetEverything`. **The file most able to lose a year of habits has no tests at all.** |
-| `lib/db.ts` | 300 | All IndexedDB access, `applyMerge`, `clearAll` |
-| `lib/sync/client.ts` | 249 | `syncNow`, the status-code mapping, retry |
-| `lib/session.ts` | 107 | The signed-in hint and the 401 path that clears it |
-| `lib/types.ts:normaliseHabit` | — | The legacy-import migration |
-| `lib/sync/protocol.ts:wins` | 146 | The LWW tiebreak, reached only through its callers |
-
-In order:
-
-1. **`lib/store.ts`.** It is *nearly* pure — a module-level object plus `useSyncExternalStore` — so it can be driven directly through its exported functions with a small in-memory fake for `persist()`. Cover `moveHabit` reordering, `toggleEntry`/`setCount`, and above all `importBundle` in **both** merge and replace modes, `applyPulled`, and `adoptAccount`.
-2. **`normaliseHabit`.** Untested code that runs against data written by an older version of the app is the definition of a trap.
-3. **`wins`.** `CLAUDE.md` names it an invariant and says the rule lives in exactly one place. It deserves direct tests rather than inference through two callers.
-4. **`lib/session.ts`** — specifically that a 401 clears the hint, since the hint has no authority and that path is what enforces it.
-5. **A coverage provider**, and a recorded baseline. A number to watch, not a gate.
-
-None of this needs jsdom; it all runs in the existing node environment. Component and E2E tests remain out of scope — that is a larger decision than this phase.
+CI (`.github/workflows/ci.yml`) runs the first four on every push and pull request. The build step is given no environment on purpose: every variable in `.env.example` is optional, so a build that needs one has broken that promise and CI is the thing that should say so.
 
 ---
 
-## 3. Phase 2 — Close the shipping blockers
+## 2. What is left
 
-What stands between this and a real domain with real users.
+### Blocked on hardware — §11 Phase 7
 
-1. **Password reset.** The one gap `README.md`, `CLAUDE.md`, §13.8 #7 and §13.10 all name; §13.10 closes by saying #7 is "only half closed". The prerequisite is now met — the mailer exists (`lib/email.ts`), verification works, and Better Auth supports the flow. Reuse `lib/verification-email.ts`'s markup pattern: table cells, no `<img>`, escaped attributes, a plain-text alternative. Highest-value user-facing item in this document.
-2. **`metadataBase` and an OG image.** §8.6 calls this "the first thing to do when a domain exists". Nothing sets `metadataBase` today, so link previews are broken everywhere.
-3. **A Content-Security-Policy on app routes.** `next.config.ts` gives one to `/sw.js` and nothing else. **Note the constraint**: `lib/theme.ts:THEME_SCRIPT` is a blocking inline script by design (§7.1 — it must read `localStorage` pre-paint), so this needs a nonce or a hash. A naive `script-src 'self'` will break the theme.
-4. **A favicon.** The only PWA gap. `app/apple-icon.png` already covers apple-touch and the manifest is complete, but there is no `favicon.ico`, `icon.png` or `icon.svg` in `app/` or `public/`, so Next emits no `<link rel="icon">` and `/favicon.ico` 404s. `scripts/generate-icons.mjs` already exists to extend.
-5. **Deployment config.** The target is Vercel + Neon and `README.md` now says so — env vars per environment, `BETTER_AUTH_ALLOWED_HOSTS` rather than a pinned origin because previews each get their own host, migrations run out of band. What is still unpinned: the domain (which item 2 needs anyway), and a `vercel.json` `regions` entry putting `/api/sync` next to the Neon region rather than wherever the default lands.
-6. **Decide `importBundle`'s `"replace"` mode.** It is implemented in full — `db.clearAll()`, tombstone discard, all of it — and **unreachable from the UI**: `app/settings/page.tsx` only ever passes `"merge"`. Either surface an import-mode picker or delete the branch. A complete destructive path with no caller is the kind of thing that gets wired up wrongly later. Do this after phase 1 covers it either way.
+**The only unfinished phase, and the only item here that cannot be done at a desk.** §10 records why it matters: every Lighthouse run was against an *empty* IndexedDB, because the CLI cannot seed one. The heatmap rendered zero cells and no habit was ever ticked, so **the two budgets that bear directly on G1 and G2 — INP on a tick, and the paint cost of ~371 SVG cells — are both unmeasured.**
 
----
+§11 already prescribes the test: install to a home screen, add five habits, backfill a month, tick something, and watch. Decide §10's LCP question at the same time; the doc argues (a) *move the budget* is probably right, and explicitly records (c) as rejected rather than available.
 
-## 4. Phase 3 — Decide the open questions
+### `lib/db.ts` has no tests
 
-§12 and §13.8 are a list of decisions, not a backlog. This phase *closes* them, and for several the right close is "leave it, and say so in the doc".
+The last file from the old phase 1 list. It is not an oversight and it is not free: testing IndexedDB means a fake, and the only practical fake is a dependency — in the one module that was hand-rolled specifically so the persistence layer would not have one (`lib/db.ts`'s own header says so).
 
-**Act on these:**
+Three things in it are worth covering and are not: `readSettings` (which is what stops a removed field riding a push), `applyMerge`'s request ordering (the purge must precede the puts), and `backfillSyncMetadata` (the v1→v2 upgrade, which runs exactly once per device and can never be re-run to fix). Decide the dependency question deliberately; `fake-indexeddb` is the candidate.
 
-- **§13.8 #1 — settings sync as one blob, `theme` included.** The open question most likely to be noticed by a real person, because it is visible the instant a second device syncs: a device-local look becomes a global one. The fix is splitting device-local fields from account fields, at the cost of dividing one type in two.
-- **§13.8 #8 — signing in merges the device into the account.** Right for the common case, wrong for a borrowed phone, where it silently donates one person's habits to another's account. The 409 path covers a device *changing* accounts; it does not cover the first one. At minimum, prompt before the first merge.
-- **§13.8 #3 — tombstones accumulate forever.** Cheap to close: collect anything older than any plausible offline device.
-- **§13.8 #5 — `experimental.useOffline`.** Confirmed still absent from `next.config.ts`. It would replace the hand-rolled online/visibility triggers in `lib/sync/client.ts` with connectivity-aware retry for free.
-- **§13.8 #9 — `user` and `users`, one letter apart.** §13.6 argues the separation is right and it is; the *names* are still confusing at 2am. A `schemaName: "auth"` namespace separates them properly, at the cost of a `pgSchema` in the migrations. Worth doing before anyone else reads this code.
+### Grow the quote corpus toward §12's ~400
 
-**Decide and leave:** §12 #2 (deck size — closes slowly by design), #3 (confetti), #5 (the forgiven final day), #7 (immediate archiving), #8 (Today → detail link), and §13.8 #2 (silent conflicts), #4 (the advisory lock), #6 (the five-minute poll). Record the decision; do not reopen the reasoning.
+At 168. Purely additive, and slow on purpose — §5.2's verification bar matters more than the number, and at this size the app's promise ("once per pass, no repeat within 21 days") is already true. `tests/quotes.test.ts` guards uniqueness, attribution, and the Durant/Aristotle misattribution.
 
-**Blocked on hardware — §11 Phase 7.** The last unfinished phase, and §10 records exactly why it matters: every Lighthouse run was against an *empty* IndexedDB, because the CLI cannot seed it. The heatmap rendered zero cells and no habit was ever ticked, so **the two budgets that bear directly on G1 and G2 — INP on a tick, and the paint cost of ~371 SVG cells — are both unmeasured.** §11 already prescribes the test: install to a home screen, add five habits, backfill a month, tick something, and watch. Decide §10's LCP question at the same time; the doc argues (a) *move the budget* is probably right, and explicitly records (c) as rejected rather than available.
+**This is the one item that cannot be bulk-produced.** Every entry needs a traceable attribution, and the failure mode of the genre is exactly the confident-sounding quote that Einstein never said. Adding 230 unverified lines would break §5.2's bar and the corpus's whole claim to be worth reading.
 
----
+### Pin the deployment specifics
 
-## 5. Phase 4 — Product depth
+- **The domain.** `SITE_URL` and `BETTER_AUTH_ALLOWED_HOSTS` both want it.
+- **The region.** `vercel.json` pins functions to `iad1`, which is a *guess* until the Neon database exists. Every sync is several round trips inside one advisory-locked transaction, so a mismatch is paid several times per request.
 
-Only after the above.
+### Richer stats, more habit types
 
-1. ~~**Reminders.**~~ **Done.** Web Push with VAPID, an hourly cron, and a subscription per device — §8.5 records the reversal, and the zero-backend objection that blocked it went when §13 landed a server. Two things to know before touching it. The cron is **hourly, not daily**, because a daily one can only be nine o'clock in a single timezone; each subscription carries its browser's IANA zone and `lib/dates.ts:civilInZone` reads the clock there. And §8.5's warning was honoured rather than argued with: `lib/reminders.ts` names every way a reminder cannot arrive as its own status, and `ReminderCard` shows a switch in exactly one of them.
-
-   **What is left, and it is a real gap:** nothing prunes a subscription belonging to a device that has simply stopped visiting. `410 Gone` from the push service deletes a row, and signing out deletes one, but a browser that keeps its subscription alive while the person has moved on stays in the sweep forever. The same shape of problem as the tombstones in §13.8 #3, and the same cheap fix — age them out.
-2. **A dark variant for the verification email.** §13.9: "worth doing, not done." Needs class hooks in a `<style>` block, which Gmail keeps for `<head>` media queries.
-3. **Grow the quote corpus toward §12's ~400.** Purely additive, and slow on purpose — §5.2's verification bar matters more than the number, and at 168 the app's promise ("once per pass, no repeat within 21 days") is already true. `tests/quotes.test.ts` guards uniqueness, attribution, and the Durant/Aristotle misattribution.
-4. **Richer stats, more habit types.** Genuinely new scope. Specify against §1's goals before building — G5 and the v1 non-goals rule out more than they look like they do.
+Genuinely new scope. Specify against §1's goals before building — G5 and the v1 non-goals rule out more than they look like they do.
 
 ---
 
-## 6. Documentation debt
+## 3. Decisions, not work
 
-`DESIGN.md` is authoritative and is cited by § number from module headers, so drift in it is a real cost.
+§12 and §13.8 are a list of decisions. These are the ones whose right close is "leave it, and it is now said so in the doc":
 
-1. **There are two sections numbered §13.11** — "Saying whether it worked" and "The origin is configured, not inferred". `README.md` and `CLAUDE.md` both cite §13.11 meaning the *origin* one, so renumber the other and every existing citation stays correct.
-2. **§13.6 has been reversed three times** — by §13.9, §13.10, and §13.11-origin — with the original wording still standing, per the doc's own convention. That convention is right, but §13.8 #7 currently opens "There is no password reset, **and no verification**", and verification has been mandatory since §13.10. Add the forward pointer without rewriting the entry.
-3. **Stale counts.** §11's build-order table says "58 tests green"; `README.md` says "117 tests across 10 files". It is **124 across 11** — the README is stale by exactly `tests/server/base-url.test.ts`.
-4. **§2.2** carries a "Revised during build" note saying habit detail is `/habit?id=`, and the paragraph immediately below it still says `/habit/[id]`.
-5. **§12's risk table still reads as a proposal** on storage eviction. `navigator.storage.persist()` shipped — `lib/db.ts` calls `persisted()` then `persist()`. Mark it done.
+§12 #2 (deck size — closes slowly by design), #3 (confetti), #5 (the forgiven final day), #7 (immediate archiving), #8 (Today → detail link), and §13.8 #2 (silent conflicts), #4 (the advisory lock), #6 (the five-minute poll).
+
+Record the decision; do not reopen the reasoning.
+
+**One genuinely narrow gap is noted rather than fixed** (§13.8 #8): a verification link opened on a *different* device that already holds habits sets the signed-in hint through `useSessionSync`, without passing the consent step the sign-in form now imposes.
 
 ---
 
-## 7. Housekeeping
+## 4. Housekeeping
 
-- **Dead exports:** `lib/db.ts:deleteEntriesFor` (`applyMerge` inlines the same `IDBKeyRange.bound` purge instead) and `lib/quotes.ts:quoteById`. Neither is referenced anywhere, tests included.
-- **Test-only exports:** `lib/dates.ts:weekdayIndex` and `lib/quotes.ts:deckFor` are used by `tests/` and by no application code. Fine, but worth knowing before someone "cleans them up".
-- **Prettier, alone and on its own commit.** It would reformat the whole tree at once and bury the history of a codebase whose prose is load-bearing. Deliberately left out of the CI work; now safe to do, because CI can prove it changed nothing.
-- **`@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0**, and all three carry either the schema or the suite that validates it. Only the lockfile pins them — `npm ci` is what makes CI honour it, so a drifting install now shows up there rather than on one laptop.
-- **`@types/nodemailer` stays at `^8` against nodemailer `^9`.** nodemailer 9 ships no `.d.ts` of its own and 8.0.1 *is* the newest `@types/nodemailer`; the mismatch is DefinitelyTyped's numbering, not staleness. Revisit only if nodemailer starts publishing types.
+- **Prettier, alone and on its own commit.** It would reformat the whole tree at once and bury the history of a codebase whose prose is load-bearing. Safe to do, because CI can prove it changed nothing.
+- **Test-only exports:** `lib/dates.ts:weekdayIndex` and `lib/quotes.ts:deckFor` are used by `tests/` and by no application code. `lib/store.ts:hydrate` is exported for the same reason and says so. Fine, but worth knowing before someone "cleans them up".
+- **`@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0**, and all three carry either the schema or the suite that validates it. Only the lockfile pins them — `npm ci` is what makes CI honour it.
+- **`@types/nodemailer` stays at `^8` against nodemailer `^9`.** nodemailer 9 ships no `.d.ts` of its own and 8.0.1 *is* the newest `@types/nodemailer`; the mismatch is DefinitelyTyped's numbering, not staleness.
+- **The `drizzle/meta/` snapshot for `0005` was hand-edited**, because drizzle-kit cannot generate a schema move without an interactive answer and the answer it assumes is destructive. The check that it is right is `npm run db:generate` reporting no changes — run it after any schema edit, and treat output where you expected none as a real finding.
 - **Leave `AGENTS.md` alone.** It is regenerated by `next dev`; removing it from a diff only re-creates the change.
-- **Leave the four `hapi`-named storage keys alone** — `lib/db.ts:DB_NAME`, `lib/theme.ts:THEME_KEY`, `lib/session.ts:HINT_KEY`, and the `hapi_sync_seq` sequence. Each names data that already exists on a device or in Postgres. They are not leftovers to tidy up, and both `README.md` and `CLAUDE.md` say so.
+- **Leave the four `hapi`-named storage keys alone** — `lib/db.ts:DB_NAME`, `lib/theme.ts:THEME_KEY`, `lib/session.ts:HINT_KEY`, and the `hapi_sync_seq` sequence. Each names data that already exists on a device or in Postgres. `lib/theme.ts:SKIN_KEY` and `PALETTE_KEY` share the prefix by choice rather than by history, which their headers explain.
+
+---
+
+## 5. Recently closed
+
+Kept as a list because `DESIGN.md` records reversals rather than overwriting them, so the entries describing these as open are still there — with the closure appended beneath each.
+
+| Was | Now |
+|---|---|
+| No password reset (§13.8 #7, §13.10) | §13.13 — one-hour single-use link, all sessions revoked, no account-enumeration oracle |
+| `theme` rode the synced settings blob (§13.8 #1) | Device-local, beside `skin` and `palette`; the validator accepts and drops the field an older device still sends |
+| Signing in silently merged a device into an account (#8) | A consent step in front of the first upload; both answers non-destructive |
+| Tombstones accumulated forever (#3) | `TOMBSTONE_TTL_MS`, applied by client and server from one constant |
+| `experimental.useOffline` unused (#5) | Adopted — for honest connectivity detection, *not* the free retry the entry predicted (§13.14) |
+| `user` beside `users` (#9) | Better Auth's tables moved to a `pgSchema("auth")`, by hand-written `SET SCHEMA` |
+| Nothing pruned a dormant push subscription (§8.5) | `SUBSCRIPTION_TTL_MS`, against a `last_seen_at` the client refreshes on app start |
+| No `metadataBase`, no OG image, no favicon (§8.6) | All three; the build stays warning-free with no environment set |
+| No CSP on app routes | §8.7 — and explicit about the `'unsafe-inline'` that static prerendering plus a caching service worker make unavoidable |
+| Verification email was light-only (§13.9) | Dark variant, and a shell shared with the reset mail |
+| `importBundle`'s `"replace"` mode was unreachable | An import-mode picker, with the destructive branch behind a second confirmation |
+| Two sections numbered §13.11 | The origin section is §13.12; every citation moved with it |
+| `deleteEntriesFor`, `quoteById` unreferenced | Deleted |

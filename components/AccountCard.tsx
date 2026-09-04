@@ -11,7 +11,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { disableReminders } from "@/lib/reminders";
 import { authClient, markSignedIn, markSignedOut } from "@/lib/session";
-import { adoptAccount, useOpenHabits, type SyncStatus } from "@/lib/store";
+import { adoptAccount, syncMeta, useOpenHabits, type SyncStatus } from "@/lib/store";
 import { syncNow } from "@/lib/sync/client";
 
 type Mode = "sign-in" | "sign-up";
@@ -36,7 +36,14 @@ type Mode = "sign-in" | "sign-up";
  */
 type Outcome =
   | { kind: "verify"; email: string; origin: Mode }
-  | { kind: "created"; email: string; habits: number; session: string };
+  | { kind: "created"; email: string; habits: number; session: string }
+  /** A reset was asked for. Says "sent" whether or not the address exists. */
+  | { kind: "reset-sent"; email: string }
+  /**
+   * Signed in, but sync is held until the habits already on this device are
+   * either claimed or abandoned. See DESIGN.md §13.8 #8 and `ConfirmMerge`.
+   */
+  | { kind: "confirm-merge"; email: string; habits: number };
 
 /**
  * False on the server and through hydration, true afterwards. The server snapshot
@@ -83,6 +90,29 @@ export function AccountCard() {
             setResumeEmail(outcome.email);
             setOutcome(null);
           }}
+        />
+      </Card>
+    );
+  }
+
+  if (outcome?.kind === "reset-sent") {
+    return (
+      <Card>
+        <ResetRequested email={outcome.email} onDone={() => setOutcome(null)} />
+      </Card>
+    );
+  }
+
+  // Ahead of the session check, like the verification wait: a session exists,
+  // but until this is answered the device is not syncing and the card must not
+  // present itself as settled.
+  if (outcome?.kind === "confirm-merge") {
+    return (
+      <Card>
+        <ConfirmMerge
+          email={outcome.email}
+          habits={outcome.habits}
+          onDone={() => setOutcome(null)}
         />
       </Card>
     );
@@ -177,6 +207,30 @@ function SignedOut({
       return;
     }
 
+    /**
+     * The first sync from a device that has never been attached to an account
+     * uploads whatever is already on it (§13.8 #8). For the common case — your
+     * own phone, your own account — that is exactly right, and it is why the
+     * copy above promises it. On a borrowed one it silently donates the owner's
+     * habits to the guest's account, and neither of them is ever told.
+     *
+     * So the merge is consented to rather than assumed. Nothing has been
+     * uploaded at this point: the session cookie exists, but `syncEnabled()`
+     * reads the local hint, and withholding it is what holds the push.
+     *
+     * A sign-*up* is exempt. The account it just made is empty and belongs to
+     * whoever is holding the device, so there is no second person's data for the
+     * habits to land in.
+     */
+    if (mode === "sign-in" && habits.length > 0 && syncMeta().accountId === null) {
+      onOutcome({
+        kind: "confirm-merge",
+        email: credentials.email,
+        habits: habits.length,
+      });
+      return;
+    }
+
     // Set here rather than waiting for `useSessionSync` to notice, so the first
     // sync starts on this tick instead of the next fetch.
     markSignedIn();
@@ -194,13 +248,49 @@ function SignedOut({
     }
   }
 
+  /**
+   * Ask for a reset link. The endpoint answers the same way for an address it
+   * has never seen (`lib/server/better-auth.ts`), so there is nothing to report
+   * but "sent" — branching on the response would build the account-enumeration
+   * oracle the server is careful not to be.
+   *
+   * `RESET_PASSWORD_DISABLED` is the one answer worth surfacing: it means this
+   * deployment has no mailer at all, which is a fact about the server rather
+   * than about the address, and the person otherwise waits for mail that was
+   * never going to come.
+   */
+  async function forgot() {
+    const address = email.trim();
+    if (address === "") {
+      setError({ text: "Fill in the address on the account first." });
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    const result = await authClient.requestPasswordReset({
+      email: address,
+      redirectTo: "/reset-password",
+    });
+    setBusy(false);
+
+    if (result.error?.code === "RESET_PASSWORD_DISABLED") {
+      setError({
+        text: "This deployment cannot send mail, so passwords cannot be reset here.",
+      });
+      return;
+    }
+
+    onOutcome({ kind: "reset-sent", email: address });
+  }
+
   return (
     <>
       <p className="text-[13px] leading-relaxed text-muted">
         An account keeps your habits on your other devices. It is entirely
         optional — everything works signed out, and nothing leaves this device
-        until you sign in. Habits already here are added to the account when you
-        do.
+        until you sign in. If habits are already here, you are asked before any
+        of them go into the account.
       </p>
 
       <form onSubmit={submit} className="mt-3 space-y-2">
@@ -249,9 +339,8 @@ function SignedOut({
         {mode === "sign-up" && (
           <p className="text-[11px] leading-relaxed text-muted">
             At least 10 characters. We send a link to confirm the address before
-            the account can be used, so use one you can open. There is no
-            password reset yet — if you lose it your habits are still on this
-            device, and Export backup below is how you move them.
+            the account can be used, so use one you can open — it is also where
+            a password reset would go.
           </p>
         )}
 
@@ -274,6 +363,20 @@ function SignedOut({
             {mode === "sign-up" ? "I already have an account" : "Create an account"}
           </button>
         </div>
+
+        {mode === "sign-in" && (
+          <p className="pt-1 text-[12px] text-muted">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void forgot()}
+              className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+            >
+              Forgotten your password?
+            </button>{" "}
+            {email.trim() === "" && "Fill in your address first."}
+          </p>
+        )}
       </form>
     </>
   );
@@ -380,6 +483,141 @@ function AwaitingVerification({
           className="h-10 rounded-control px-2 text-[13px] text-muted underline underline-offset-4 hover:text-foreground"
         >
           I have confirmed it — sign in
+        </button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * The consent step in front of the first upload. See DESIGN.md §13.8 #8.
+ *
+ * Both answers are non-destructive, and that is the whole design. "Add them"
+ * does what signing in always did. "Not mine" does **not** wipe the device to
+ * make room for the account — on the borrowed phone this exists to protect,
+ * the habits on it belong to the person who lent it, and deleting them to
+ * resolve the ambiguity would be a worse outcome than the one being avoided.
+ * It signs out instead, leaving the device exactly as it was found.
+ */
+function ConfirmMerge({
+  email,
+  habits,
+  onDone,
+}: {
+  email: string;
+  habits: number;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  function accept() {
+    markSignedIn();
+    void syncNow();
+    onDone();
+  }
+
+  async function decline() {
+    setBusy(true);
+    setFailed(false);
+
+    let ok = false;
+    try {
+      ok = (await authClient.signOut()).error == null;
+    } catch {
+      ok = false;
+    }
+
+    setBusy(false);
+    if (!ok) {
+      setFailed(true);
+      return;
+    }
+
+    // The hint was never set, so nothing was ever pushed and there is no
+    // account state to reset — the store is untouched and stays that way.
+    markSignedOut();
+    onDone();
+  }
+
+  const count = `${habits} habit${habits === 1 ? "" : "s"}`;
+
+  return (
+    <>
+      <p className="text-[13px] leading-relaxed">
+        You signed in as <span className="font-medium">{email}</span>, and there
+        {habits === 1 ? " is " : " are "}
+        already <span className="font-medium">{count}</span> on this device.
+      </p>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted">
+        Adding {habits === 1 ? "it" : "them"} copies{" "}
+        {habits === 1 ? "it" : "them"} into the account, where your other devices
+        will pick {habits === 1 ? "it" : "them"} up. If this is someone else&rsquo;s
+        device, or {habits === 1 ? "that habit is" : "those habits are"} not
+        yours, sign out instead — nothing has been uploaded yet, and nothing here
+        will be changed.
+      </p>
+
+      {failed && (
+        <div className="mt-2">
+          <Banner tone="error">
+            Could not sign out — the server did not answer. Nothing has been
+            uploaded; try again in a moment.
+          </Banner>
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={accept}
+          className="h-10 rounded-control border border-accent bg-accent px-3 text-[13px] font-medium text-accent-fg transition-opacity disabled:opacity-50"
+        >
+          Add {habits === 1 ? "it" : "them"} to this account
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void decline()}
+          className="h-10 rounded-control border border-border px-3 text-[13px] font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
+        >
+          {busy ? "Signing out…" : "Not mine — sign out"}
+        </button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * After a reset link has been asked for.
+ *
+ * Deliberately says nothing about whether that address has an account. The
+ * server answers identically either way, and a screen that said "check your
+ * email" only for real accounts would undo that in the UI.
+ */
+function ResetRequested({ email, onDone }: { email: string; onDone: () => void }) {
+  return (
+    <>
+      <Banner tone="ok">
+        If <span className="font-medium">{email}</span> has an account, a link to
+        set a new password is on its way.
+      </Banner>
+      <p className="mt-2 text-[13px] leading-relaxed">
+        Open it within the hour — the link works once, and expires after that.
+      </p>
+      <p className="mt-1 text-[12px] leading-relaxed text-muted">
+        We answer the same way for an address with no account, so this form
+        cannot be used to find out who has one. Nothing on this device has
+        changed, and the current password still works until a new one is set.
+      </p>
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={onDone}
+          className="h-10 rounded-control border border-border px-3 text-[13px] font-medium text-muted transition-colors hover:text-foreground"
+        >
+          Back to sign in
         </button>
       </div>
     </>

@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSessionSync } from "@/lib/session";
+import { touchReminders } from "@/lib/reminders";
+import { useSignedIn, useSessionSync } from "@/lib/session";
 import { useHydrate } from "@/lib/store";
 import { useSync } from "@/lib/sync/client";
 import { watchPaletteMode } from "@/lib/use-palette";
@@ -25,6 +26,15 @@ export function Hydrator() {
   // cannot hold a media query — so the swap CSS does for free is done here.
   // Inert when no palette is set.
   useEffect(watchPaletteMode, []);
+
+  // Keeps this device out of the reminder sweep's dormant pile — see
+  // `SUBSCRIPTION_TTL_MS`. Makes no request for a browser with reminders off,
+  // which is why it can sit on the app-start path at all, and none while signed
+  // out, when the endpoint would only answer 401.
+  const signedIn = useSignedIn();
+  useEffect(() => {
+    if (signedIn) void touchReminders();
+  }, [signedIn]);
 
   useEffect(() => {
     // Skipped in development: a caching worker turns every HMR update into a

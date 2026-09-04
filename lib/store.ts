@@ -16,7 +16,7 @@ import * as db from "./db";
 import { todayKey } from "./dates";
 import { HAPTIC_DONE, HAPTIC_TICK, vibrate } from "./haptics";
 import type { LocalSnapshot, MergeResult } from "./sync/merge";
-import { applyTheme } from "./theme";
+import { TOMBSTONE_TTL_MS } from "./sync/protocol";
 import {
   DEFAULT_SETTINGS,
   entryKey,
@@ -87,12 +87,24 @@ const getSnapshot = () => version;
 const getServerSnapshot = () => 0;
 
 /**
+ * The state as it stands, read without subscribing.
+ *
+ * For the callers that are not components — `lib/sync/client.ts` reaching for
+ * `syncMeta()`, the consent step in `AccountCard` counting habits — and for the
+ * tests, which drive the store through its functions rather than through React.
+ * A component wants `useOpenHabits`, or it will not re-render.
+ */
+export function currentState(): State {
+  return state;
+}
+
+/**
  * Subscribe to the store. `EMPTY` with `hydrated: false` on the server and the
  * first client render, which is what keeps SSR and hydration in agreement.
  */
 export function useOpenHabits(): State {
   useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  return state;
+  return currentState();
 }
 
 /** Mount once, high in the tree, to read IndexedDB into memory. */
@@ -104,7 +116,11 @@ export function useHydrate(): void {
 
 let hydrating: Promise<void> | null = null;
 
-function hydrate(): Promise<void> {
+/**
+ * Exported for `tests/store.test.ts`, which drives the store through its own
+ * functions rather than through React. The app should call `useHydrate`.
+ */
+export function hydrate(): Promise<void> {
   if (state.hydrated) return Promise.resolve();
   if (hydrating) return hydrating;
 
@@ -115,19 +131,24 @@ function hydrate(): Promise<void> {
       for (const entry of snapshot.entries) {
         entries.set(entryKey(entry.habitId, entry.date), entry);
       }
+
+      const { kept, expired } = collectTombstones(snapshot.tombstones);
+
       state = {
         ...state,
         hydrated: true,
         habits: snapshot.habits,
         entries,
         settings: snapshot.settings,
-        tombstones: snapshot.tombstones,
+        tombstones: kept,
         settingsUpdatedAt: snapshot.settingsUpdatedAt,
         sync: snapshot.sync,
       };
-      // Reconcile the pre-paint localStorage guess with what was actually saved.
-      applyTheme(snapshot.settings.theme);
       emit();
+
+      // After the emit: the app is already usable, and a tidy-up has no business
+      // sitting in front of the first paint.
+      if (expired.length > 0) persist(() => db.forgetHabits(expired));
     })
     .catch((error) => {
       // Private-mode Safari and similar. Run in memory rather than showing a
@@ -138,6 +159,32 @@ function hydrate(): Promise<void> {
     });
 
   return hydrating;
+}
+
+/**
+ * Split tombstones into the ones still worth keeping and the ones to forget.
+ *
+ * Done on hydrate rather than on a timer: the collection is only interesting
+ * once per session, and doing it here means it happens on exactly the devices
+ * that are being used. A device that is never opened keeps its tombstones,
+ * which costs nothing and is the safe direction anyway.
+ *
+ * `deletedAt` rather than `updatedAt`, which a merge can move without the
+ * deletion getting any newer. See `TOMBSTONE_TTL_MS` for what the window bounds.
+ */
+function collectTombstones(tombstones: Habit[]): { kept: Habit[]; expired: string[] } {
+  const cutoff = Date.now() - TOMBSTONE_TTL_MS;
+  const kept: Habit[] = [];
+  const expired: string[] = [];
+
+  for (const habit of tombstones) {
+    // A clock far enough ahead could have stamped a deletion in the future;
+    // keeping such a row is the harmless direction.
+    if (habit.deletedAt !== null && habit.deletedAt < cutoff) expired.push(habit.id);
+    else kept.push(habit);
+  }
+
+  return { kept, expired };
 }
 
 function persist(run: () => Promise<unknown>): void {
@@ -305,7 +352,6 @@ export function updateSettings(patch: Partial<Settings>): void {
   const settings = { ...state.settings, ...patch };
   const settingsUpdatedAt = Date.now();
   state = { ...state, settings, settingsUpdatedAt };
-  if (patch.theme !== undefined) applyTheme(patch.theme);
   emit();
   persist(() => db.putSettings(settings, settingsUpdatedAt));
 }
@@ -443,9 +489,6 @@ export function applyPulled(merged: MergeResult, meta: db.SyncMeta): void {
   const live = snapshot.habits.filter((h) => h.deletedAt === null);
   const tombstones = snapshot.habits.filter((h) => h.deletedAt !== null);
 
-  const themeChanged =
-    merged.settingsChanged && snapshot.settings.value.theme !== state.settings.theme;
-
   state = {
     ...state,
     habits: live,
@@ -455,9 +498,6 @@ export function applyPulled(merged: MergeResult, meta: db.SyncMeta): void {
     settingsUpdatedAt: snapshot.settings.updatedAt,
     sync: meta,
   };
-  // The pre-paint script in `<head>` reads `localStorage`, so a theme from
-  // another device has to be mirrored there to survive the next reload.
-  if (themeChanged) applyTheme(snapshot.settings.value.theme);
   emit();
 
   persist(() =>
@@ -489,7 +529,6 @@ export function adoptAccount(accountId: string | null): void {
     settingsUpdatedAt: 0,
     sync: meta,
   };
-  applyTheme(DEFAULT_SETTINGS.theme);
   emit();
 
   persist(async () => {

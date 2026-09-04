@@ -1,6 +1,6 @@
 /**
  * The rule in `lib/server/base-url.ts`, which decides the origin every
- * verification link is built from. See DESIGN.md §13.11.
+ * verification link is built from. See DESIGN.md §13.12.
  */
 
 import { describe, expect, it } from "vitest";

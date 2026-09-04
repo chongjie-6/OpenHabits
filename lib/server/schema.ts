@@ -153,6 +153,17 @@ export const pushSubscriptions = pgTable(
      * that day, not two.
      */
     lastSentDay: text("last_sent_day"),
+    /**
+     * The last time this browser opened the app and said it still wanted
+     * reminders. See `SUBSCRIPTION_TTL_MS` — the sweep drops a row that has gone
+     * quiet for longer than that.
+     *
+     * Refreshed by the subscribe upsert, which the client re-sends on app start
+     * and on every visit to the settings card. Not `createdAt`: a device that
+     * has been getting reminders happily for a year has an old `createdAt` and
+     * is exactly the row that must not be collected.
+     */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

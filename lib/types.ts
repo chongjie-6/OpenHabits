@@ -127,8 +127,13 @@ export type Quote = {
   tags: QuoteTag[];
 };
 
+/**
+ * The synced half of a user's preferences. Appearance is **not** in here —
+ * `theme`, `skin` and `palette` are all device-local (`lib/theme.ts`,
+ * `lib/skin.ts`), because a look chosen on a phone has no business repainting a
+ * laptop. See DESIGN.md §13.8 #1.
+ */
 export type Settings = {
-  theme: "system" | "light" | "dark";
   /** 0 = Sunday, 1 = Monday. */
   weekStartsOn: 0 | 1;
   /** 0–6. `4` means "the day rolls over at 4am" for night owls. */
@@ -153,7 +158,6 @@ export type Settings = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  theme: "system",
   weekStartsOn: 1,
   dayStartHour: 0,
   reminderHour: 9,
@@ -164,8 +168,9 @@ export const DEFAULT_SETTINGS: Settings = {
 /**
  * Settings sync as a single last-write-wins blob rather than per field. A
  * conflict means one person edited two devices between syncs, and the losing
- * edit is a toggle they can flip back. `theme` riding along is the one wart — a
- * device-local look becomes a global one.
+ * edit is a toggle they can flip back — every field left in here is a decision
+ * about *behaviour*, which should be the same everywhere the account is signed
+ * in. Appearance was the exception that made the blob wrong, and it left.
  */
 export type SyncedSettings = {
   value: Settings;

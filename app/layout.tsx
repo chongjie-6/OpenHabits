@@ -8,6 +8,7 @@ import {
   Space_Grotesk,
 } from "next/font/google";
 import { BottomNav, Hydrator } from "@/components/AppChrome";
+import { siteURL } from "@/lib/site-url";
 import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -76,6 +77,13 @@ const DESCRIPTION =
   "A daily quote, and a habit tracker that shows you the year you had. Local-first, offline, no account.";
 
 export const metadata: Metadata = {
+  /**
+   * Every URL-based metadata field resolves against this, `opengraph-image`
+   * included. §8.6 deferred it until a canonical origin existed; `siteURL()` is
+   * that origin, and it falls back to the localhost Next would have inferred
+   * anyway, so a build with no environment set stays warning-free.
+   */
+  metadataBase: siteURL(),
   title: { default: "OpenHabits — daily quotes & habits", template: "%s · OpenHabits" },
   description: DESCRIPTION,
   applicationName: "OpenHabits",

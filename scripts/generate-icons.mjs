@@ -179,6 +179,86 @@ function encodePng(size, pixels) {
   ]);
 }
 
+// --- ICO encoding ----------------------------------------------------------
+
+/**
+ * An .ico carrying PNG payloads rather than the older BMP-with-AND-mask form.
+ * Every browser that still asks for `/favicon.ico` understands it, and the
+ * alternative is a second rasteriser for a format nothing else here needs.
+ */
+function encodeIco(entries) {
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0); // reserved
+  header.writeUInt16LE(1, 2); // 1 = icon
+  header.writeUInt16LE(entries.length, 4);
+
+  const directory = Buffer.alloc(entries.length * 16);
+  let offset = header.length + directory.length;
+
+  entries.forEach(({ size, png }, index) => {
+    const at = index * 16;
+    // 0 means 256 in this field; nothing here is that large, but the encoding
+    // is the format's, not ours to reinterpret.
+    directory[at] = size >= 256 ? 0 : size;
+    directory[at + 1] = size >= 256 ? 0 : size;
+    directory[at + 2] = 0; // palette size
+    directory[at + 3] = 0; // reserved
+    directory.writeUInt16LE(1, at + 4); // colour planes
+    directory.writeUInt16LE(32, at + 6); // bits per pixel
+    directory.writeUInt32LE(png.length, at + 8);
+    directory.writeUInt32LE(offset, at + 12);
+    offset += png.length;
+  });
+
+  return Buffer.concat([header, directory, ...entries.map((e) => e.png)]);
+}
+
+// --- SVG -------------------------------------------------------------------
+
+function hex(colour) {
+  return `#${colour
+    .slice(0, 3)
+    .map((c) => c.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+/**
+ * The same artwork as `render`, described rather than rasterised.
+ *
+ * A tab favicon is drawn at 16px on one screen and 32 on the next, and the
+ * rasteriser above supersamples at a fixed size; the vector is simply correct
+ * at both. Geometry is duplicated from `render` deliberately — factoring it out
+ * would mean an abstraction over "a rounded rect in pixels" and "a rounded rect
+ * in user units" that is longer than either.
+ */
+function renderSvg(size) {
+  const grid = size * GRID_SCALE;
+  const gap = grid * 0.08;
+  const cell = (grid - gap * 2) / 3;
+  const radius = cell * 0.18;
+  const origin = (size - grid) / 2;
+
+  const round = (n) => Number(n.toFixed(3));
+  const squares = [];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      squares.push(
+        `<rect x="${round(origin + col * (cell + gap))}" y="${round(
+          origin + row * (cell + gap),
+        )}" width="${round(cell)}" height="${round(cell)}" rx="${round(radius)}" fill="${hex(
+          SHADES[PATTERN[row][col]],
+        )}"/>`,
+      );
+    }
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="OpenHabits">
+  <rect width="${size}" height="${size}" rx="${round(size * 0.22)}" fill="${hex(BACKGROUND)}"/>
+  ${squares.join("\n  ")}
+</svg>
+`;
+}
+
 // --- Output ----------------------------------------------------------------
 
 const targets = [
@@ -188,9 +268,29 @@ const targets = [
   { path: "app/apple-icon.png", size: 180, fullBleed: true },
 ];
 
-for (const { path, size, fullBleed } of targets) {
+function write(path, data) {
   const file = join(root, path);
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, encodePng(size, render(size, { fullBleed })));
-  console.log(`wrote ${path} (${size}×${size})`);
+  writeFileSync(file, data);
+  return file;
 }
+
+for (const { path, size, fullBleed } of targets) {
+  write(path, encodePng(size, render(size, { fullBleed })));
+  console.log(`wrote ${path} (${size}\u00d7${size})`);
+}
+
+// `app/icon.svg` is what Next turns into `<link rel="icon">`; `app/favicon.ico`
+// is for the browsers and feed readers that request the well-known path
+// directly and never read the markup.
+write("app/icon.svg", renderSvg(512));
+console.log("wrote app/icon.svg (vector)");
+
+const ICO_SIZES = [16, 32, 48];
+write(
+  "app/favicon.ico",
+  encodeIco(
+    ICO_SIZES.map((size) => ({ size, png: encodePng(size, render(size, { fullBleed: false })) })),
+  ),
+);
+console.log(`wrote app/favicon.ico (${ICO_SIZES.join(", ")})`);

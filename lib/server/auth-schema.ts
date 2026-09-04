@@ -15,7 +15,23 @@
  * did, in 1.7).
  */
 
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, pgSchema, text, timestamp } from "drizzle-orm/pg-core";
+
+/**
+ * Better Auth's tables live in their own Postgres schema. See DESIGN.md §13.8 #9.
+ *
+ * §13.6 argues the *separation* of `user` and `users` is right, and it is. The
+ * argument it never made is that one letter is enough to carry it: at 2am, in a
+ * `psql` prompt, `user` and `users` are one typo apart and the wrong one is the
+ * table every habit cascades from. A namespace states the boundary in the name
+ * — `auth.user` is visibly a dependency's table, `public.users` visibly ours —
+ * and it is the boundary that matters, not the plural.
+ *
+ * `pgSchema` rather than a prefix because the ownership is real: everything in
+ * here is Better Auth's to migrate, and nothing in `schema.ts` is.
+ */
+const authSchema = pgSchema("auth");
+const pgTable = authSchema.table;
 
 const createdAt = timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 const updatedAt = timestamp("updated_at", { withTimezone: true }).notNull().defaultNow();

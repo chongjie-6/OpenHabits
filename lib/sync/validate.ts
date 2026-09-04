@@ -163,9 +163,11 @@ function parseEntry(value: unknown): ParseResult<Entry> {
 
 function parseSettings(value: unknown): ParseResult<Settings> {
   if (!isObject(value)) return fail("settings must be an object");
-  if (value.theme !== "system" && value.theme !== "light" && value.theme !== "dark") {
-    return fail("settings.theme must be system, light or dark");
-  }
+  // `theme` is deliberately not read. It was a synced field until §13.8 #1 made
+  // appearance device-local, and a device still on the older build pushes a blob
+  // carrying it. Rejecting that would stop such a device syncing its habits over
+  // a preference this build no longer stores; the field is accepted and dropped
+  // by the field-by-field construction below.
   if (value.weekStartsOn !== 0 && value.weekStartsOn !== 1) {
     return fail("settings.weekStartsOn must be 0 or 1");
   }
@@ -189,7 +191,6 @@ function parseSettings(value: unknown): ParseResult<Settings> {
   return {
     ok: true,
     value: {
-      theme: value.theme,
       weekStartsOn: value.weekStartsOn,
       dayStartHour: value.dayStartHour,
       reminderHour: value.reminderHour ?? DEFAULT_SETTINGS.reminderHour,

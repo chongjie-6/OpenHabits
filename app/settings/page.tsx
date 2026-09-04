@@ -10,6 +10,7 @@ import { HAPTIC_DONE, vibrate } from "@/lib/haptics";
 import { QUOTE_COUNT } from "@/lib/quotes";
 import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
 import { usePalette } from "@/lib/use-palette";
+import { changeTheme, useTheme } from "@/lib/use-theme";
 import {
   exportBundle,
   importBundle,
@@ -17,7 +18,9 @@ import {
   resetEverything,
   updateSettings,
   useOpenHabits,
+  type ImportMode,
 } from "@/lib/store";
+import type { Theme } from "@/lib/theme";
 import type { AnyExportBundle, Habit, Settings } from "@/lib/types";
 
 export default function SettingsPage() {
@@ -27,9 +30,13 @@ export default function SettingsPage() {
   const skin = useSkin();
   // Same gating rule as `useSkin` — behind `hydrated`, this has the real answer.
   const palette = usePalette();
+  // And again. All three appearance axes are device-local and read the same way.
+  const theme = useTheme();
   const fileInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [pending, setPending] = useState<AnyExportBundle | null>(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
 
   function download() {
     const bundle = exportBundle();
@@ -45,16 +52,48 @@ export default function SettingsPage() {
     setNotice("Backup downloaded.");
   }
 
-  async function upload(file: File) {
+  /**
+   * Parse and hold, rather than import on sight. `importBundle` has always had
+   * a "replace" mode that wipes the device first, and until now nothing could
+   * reach it — the file picker hard-coded "merge". A complete destructive path
+   * with no caller is worse than either having it or not, so the choice is put
+   * to the user at the one moment they have the context to answer it.
+   */
+  async function choose(file: File) {
     try {
       // v1 and v2 files are both accepted; `importBundle` normalises the older one.
       const bundle = JSON.parse(await file.text()) as AnyExportBundle;
-      importBundle(bundle, "merge");
+      if (bundle.version !== 1 && bundle.version !== 2) {
+        // Cast for the reason `importBundle` casts: both arms of the union are
+        // eliminated by the guard, so the value is `never` to the compiler and
+        // a real number at runtime.
+        throw new Error(
+          `unsupported backup version ${(bundle as { version: number }).version}`,
+        );
+      }
+      setNotice(null);
+      setPending(bundle);
+    } catch (error) {
+      setPending(null);
       setNotice(
-        `Merged ${bundle.habits.length} habits and ${bundle.entries.length} entries.`,
+        error instanceof Error ? `Could not read that file: ${error.message}` : "Import failed.",
+      );
+    }
+  }
+
+  function run(bundle: AnyExportBundle, mode: ImportMode) {
+    try {
+      importBundle(bundle, mode);
+      setNotice(
+        mode === "replace"
+          ? `Replaced everything with ${bundle.habits.length} habits and ${bundle.entries.length} entries.`
+          : `Merged ${bundle.habits.length} habits and ${bundle.entries.length} entries.`,
       );
     } catch (error) {
       setNotice(error instanceof Error ? `Import failed: ${error.message}` : "Import failed.");
+    } finally {
+      setPending(null);
+      setConfirmReplace(false);
     }
   }
 
@@ -72,19 +111,19 @@ export default function SettingsPage() {
       <AccountCard />
 
       <Group title="Appearance">
-        <Choice<Settings["theme"]>
+        <Choice<Theme>
           label="Theme"
-          value={settings.theme}
+          value={theme}
           options={[
             { value: "system", label: "System" },
             { value: "light", label: "Light" },
             { value: "dark", label: "Dark" },
           ]}
-          onChange={(theme) => updateSettings({ theme })}
+          onChange={changeTheme}
         />
         <Choice<Skin>
           label="Design"
-          hint={`${SKINS.find((s) => s.value === skin)?.hint} This device only — unlike the theme, it is not part of a backup and does not sync.`}
+          hint={SKINS.find((s) => s.value === skin)?.hint}
           value={skin}
           options={SKINS.map(({ value, label }) => ({ value, label }))}
           onChange={applySkin}
@@ -218,11 +257,46 @@ export default function SettingsPage() {
             className="sr-only"
             onChange={(event) => {
               const file = event.target.files?.[0];
-              if (file) void upload(file);
+              if (file) void choose(file);
               event.target.value = "";
             }}
           />
         </div>
+        {pending && (
+          <div className="mt-3 rounded-control border border-border p-3">
+            <p className="text-[13px] font-medium">
+              {pending.habits.length} habits and {pending.entries.length} entries in that
+              file.
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">
+              <strong className="font-medium text-foreground">Merge</strong> keeps what is
+              on this device and adds anything the file has that it does not; where both
+              have the same day, the newer one wins.{" "}
+              <strong className="font-medium text-foreground">Replace</strong> deletes
+              everything here first, including habits the backup never had.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={() => run(pending, "merge")}>Merge</Button>
+              {confirmReplace ? (
+                <Button danger onClick={() => run(pending, "replace")}>
+                  Yes, replace everything
+                </Button>
+              ) : (
+                <Button danger onClick={() => setConfirmReplace(true)}>
+                  Replace
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  setPending(null);
+                  setConfirmReplace(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
         {notice && (
           <p role="status" className="mt-3 text-[12px] text-accent">
             {notice}

@@ -158,6 +158,7 @@ export async function POST(request: Request): Promise<Response> {
       p256dh: command.keys.p256dh,
       auth: command.keys.auth,
       timeZone: command.timeZone,
+      lastSeenAt: new Date(),
     })
     // Conflict on the endpoint alone, which is how a device that changed hands
     // stops belonging to the previous account (see `schema.ts`). `lastSentDay`
@@ -170,6 +171,11 @@ export async function POST(request: Request): Promise<Response> {
         p256dh: command.keys.p256dh,
         auth: command.keys.auth,
         timeZone: command.timeZone,
+        // This upsert is the heartbeat the sweep ages a device against: the
+        // client re-sends it on app start and whenever the settings card is
+        // opened. Without it a browser that stopped visiting is indistinguishable
+        // from one being used daily, and neither is ever collected.
+        lastSeenAt: new Date(),
       },
     });
 

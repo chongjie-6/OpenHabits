@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Where Better Auth believes it is hosted. See DESIGN.md §13.11.
+ * Where Better Auth believes it is hosted. See DESIGN.md §13.12.
  *
  * Alone in a file with no imports, for the reason `auth-types.ts` is: the rule
  * is testable without booting an auth stack.

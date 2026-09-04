@@ -87,6 +87,28 @@ export const MAX_ROWS_PER_REQUEST = 500;
 export const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 /**
+ * How long a tombstone is kept before it is collected. See DESIGN.md §13.8 #3.
+ *
+ * Tombstones exist because a missing row and a row a peer has not seen yet are
+ * the same observation, so a delete has to be stated rather than implied. The
+ * cost is that they accumulate for the life of an account, on every device.
+ *
+ * **What the window actually bounds is resurrection.** A device that has been
+ * offline for longer than this comes back holding a live copy of a habit whose
+ * tombstone both it and the server have since forgotten. Nothing then
+ * contradicts its copy, so it wins by default and the habit returns from the
+ * dead — with its history, which was purged everywhere else. Six months is
+ * chosen against that single failure, not against storage: a phone in a drawer
+ * for half a year is a plausible device, one gone longer is a restored backup,
+ * and the row it protects costs a few hundred bytes.
+ *
+ * Both halves of the system apply it — `lib/store.ts` on hydrate and
+ * `lib/server/sync-store.ts` inside the sync transaction — and they must use
+ * this constant rather than two numbers that happen to agree today.
+ */
+export const TOMBSTONE_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+
+/**
  * Last-write-wins, with a tiebreaker that has to be there.
  *
  * "Incoming wins ties" is quietly broken: two devices writing the same record in
@@ -136,7 +158,6 @@ export function fingerprintEntry(e: Entry): string {
 
 export function fingerprintSettings(s: { value: Settings }): string {
   return [
-    s.value.theme,
     s.value.weekStartsOn,
     s.value.dayStartHour,
     s.value.reminderHour,

@@ -59,7 +59,7 @@ Everything else in the app is in service of that loop. A screen that doesn't fee
 
 > **Revised during build.** Habit detail is `/habit?id=…`, not `/habit/[id]`. Habit ids are client-generated UUIDs the server has never heard of, so a dynamic segment could never be prerendered: every new habit would become a server round-trip, and opening one offline would fail until the service worker happened to have cached that exact URL. A search parameter keeps it a single static page, available offline the moment the shell is.
 
-Navigation is a fixed bottom tab bar (**Today · Week · Stats · Settings**) with `padding-bottom: env(safe-area-inset-bottom)` so it clears the iOS home indicator in standalone mode. `/quotes` and `/habit/[id]` are pushed views reached from within a tab, not tabs themselves.
+Navigation is a fixed bottom tab bar (**Today · Week · Stats · Settings**) with `padding-bottom: env(safe-area-inset-bottom)` so it clears the iOS home indicator in standalone mode. `/quotes` and `/habit?id=…` are pushed views reached from within a tab, not tabs themselves. `/reset-password` (§13.13) is a third, reached only from a link in an email.
 
 ### 2.3 Wireframes
 
@@ -523,6 +523,8 @@ It is registered only in production builds — a caching worker in development t
 
 Not needed in v1 — there are no server round-trips to fail. It becomes relevant the moment v2 sync lands, at which point `experimental.useOffline` in `next.config.ts` plus the `useOffline()` hook from `next/offline` gives connectivity-aware fallbacks and automatic retry of failed Server Actions. Noted here so the v2 work knows the hook exists rather than hand-rolling retries.
 
+> **Adopted, and the expectation above was half wrong.** The flag is on and `lib/sync/client.ts` uses the hook — but **it does not retry sync for us**. Next retries its own navigations, prefetches and Server Actions; `POST /api/sync` is a plain `fetch` from a Client Component and stays under the client's own policy, which is the hand-rolled one. What the hook actually buys is a *truthful* answer to "are we offline". `navigator.onLine`, which the client used before, reports true for a device on wifi with no route to the internet — a captive portal, a dead upstream — and the framework polls the origin instead. See §13.14.
+
 ### 8.4 Install prompt
 
 **Reversed.** The original decision, per the guide's recommendation, was no `beforeinstallprompt` interception: it isn't supported on iOS Safari, so a hand-rolled button produces a two-tier experience — a real button on Chromium and nothing on the platform that most needs the help. What shipped instead was a passive text hint (`InstallHint`).
@@ -578,6 +580,29 @@ Two constraints shape where that per-route metadata lives.
 `/habit` is `robots: { index: false, follow: false }`: the habit comes from `?id=`, so the bare URL a crawler would index renders nothing.
 
 **No `metadataBase`, and no OG image.** There is no canonical origin for the app yet, and every URL-based metadata field — `alternates.canonical`, `openGraph.images` — needs one, resolving against `localhost` and warning at build time without it. The OG cards carry title, description and `siteName` only, which is honest and warning-free. Setting `metadataBase` is the first thing to do when a domain exists.
+
+> **Done, without waiting for the domain.** `lib/site-url.ts` answers the origin question from `SITE_URL`, then `BETTER_AUTH_URL`, then Vercel's production host, and falls back to `http://localhost:3000` — which is what Next infers anyway, the difference being that *stating* it keeps the build silent. So the warning-free-with-no-environment property above survives, and CI still builds with nothing set.
+>
+> The origin lives in its own module rather than borrowing `lib/server/base-url.ts`, and the split is not cosmetic. That one answers "where may Better Auth mail a verification link", which is a security question and throws in production rather than guess; this one decides what an OG card's image URL says, which is cosmetic — and a deployment with no accounts at all has no `BETTER_AUTH_URL` to borrow.
+>
+> `app/opengraph-image.tsx` renders the card at build time, so the route is static like every other. It paints the same picture the verification email does (§13.9) — a contribution grid with squares lit, on the light ground — because those two surfaces are the only places OpenHabits is seen by someone who has not installed it, and they should not look like two different products. No emoji in the markup: `ImageResponse` resolves emoji against a CDN, and a build that reaches the network is a build that can fail offline.
+>
+> The **favicon** gap closed with it. `app/icon.svg` is what Next turns into `<link rel="icon">`, and `app/favicon.ico` — PNG payloads at 16, 32 and 48 in an ICO container — answers the well-known path for the clients that request it directly and never read the markup. Both come out of `scripts/generate-icons.mjs`, from the same nine-square artwork as the PWA icons; the SVG is described rather than rasterised, because a tab icon is drawn at 16px on one screen and 32 on the next and a vector is simply correct at both.
+
+---
+
+### 8.7 Content-Security-Policy
+
+Until now `next.config.ts` gave a CSP to `/sw.js` and nothing else. The app routes now carry one too, and the interesting part is what it cannot say.
+
+**`script-src` has to keep `'unsafe-inline'`.** Three scripts are inlined into every prerendered document: `lib/theme.ts`'s pre-paint block (§7.1), and two of Next's own flight-data pushes whose contents differ per page and change on every build. Neither escape is available here.
+
+- **A nonce** requires rendering the document per request, and every route is static (§8.1). Worse, `public/sw.js` then caches that HTML — so the nonce would be cached with it and mismatch the header on the next load. The offline app would break itself.
+- **Hashes** would have to cover Next's flight scripts, which are per-page and per-build. A static header cannot name them.
+
+That is a real limit and it is worth being plain about: against an injected-script attack, this policy is not the control that saves you. What it does buy is still worth having, and `connect-src 'self'` is the line that matters most — injected script can run, but it cannot post a year of habits to an origin the user has never heard of. `base-uri`, `form-action`, `object-src 'none'` and the ban on external script origins close the rest of the usual escalation paths.
+
+`style-src` keeps `'unsafe-inline'` for a smaller reason: this app's own seven pages prerender with no `<style>` block and no style attribute, but Next's built-in error and not-found documents ship both, and a strict policy would leave the 404 unstyled. Nothing in the app itself needs it — the palette writes custom properties through CSSOM (`applyPaletteVars`), which CSP does not govern.
 
 ---
 
@@ -723,7 +748,7 @@ The tick budget is still the one that matters. It's met by keeping the mutation 
 | **3 — Quotes** | Corpus, deck algorithm, quote card, favourites | ✅ |
 | **4 — PWA** | Manifest, generated icons, service worker, headers, install hint | ✅ |
 | **5 — Polish** | Week screen, export/import, Settings, motion, empty states | ✅ |
-| **6 — Depth** | Habit detail, quote collection, corpus expansion | ✅ 58 tests green |
+| **6 — Depth** | Habit detail, quote collection, corpus expansion | ✅ |
 | **7 — Field** | Lighthouse, a11y audit, install test on real iOS/Android | 🟡 partial |
 
 Phase 5's Week screen and Settings came forward because deleting a habit and backing up data are not polish — a tracker you cannot correct or export is not one you would trust with a year.
@@ -750,7 +775,7 @@ One investigated non-finding, recorded so it is not chased twice: Lighthouse rep
 
 | Risk | Mitigation |
 |---|---|
-| **Storage eviction wipes a year of streaks** | `navigator.storage.persist()` early; nag toward export backup after 30 days of use |
+| **Storage eviction wipes a year of streaks** | ✅ Done. `lib/db.ts:requestPersistence` calls `persisted()` then `persist()` on the first habit — the moment the user has something to lose |
 | **iOS Safari clears data after 7 days of non-use** | Real constraint for infrequent users. Export/import is the v1 answer; account-backed sync is the v2 answer |
 | **Quote misattribution** | Every entry needs a traceable source before it ships; no unverified quotes |
 | **Timezone travel** | Entries are stamped with local civil dates. Flying across the date line can produce a same-day double-count; accepted as rare and harmless |
@@ -858,14 +883,30 @@ Covered: convergence, stale-write rejection, tombstone propagation and cascade, 
 ### 13.8 Open questions
 
 1. **Settings sync as one blob, including `theme`.** A device-local look becomes a global one. Splitting device-local fields from account fields is the fix; the cost is dividing one type in two and threading both through the store. Left until someone complains.
+   > **Closed — `theme` left the blob.** Nobody complained; the reason to do it anyway is that it was the one open question guaranteed to be *noticed*, the instant a second device syncs. Appearance is now device-local on all three axes: `theme` in `lib/theme.ts`, `skin` in `lib/skin.ts`, `palette` beside them, all in `localStorage`, all read by the same pre-paint script. `Settings` no longer has the field, so the type did not divide in two — it lost a member, and `lib/store.ts` stopped importing `applyTheme` altogether.
+   >
+   > Two things had to be right for the removal to be safe. `lib/db.ts:readSettings` now builds the blob field by field rather than spreading a stored one back, so a stale `theme` sitting in an existing device's IndexedDB cannot ride a push into the account. And `parseSettings` **accepts and drops** the field instead of rejecting it: a device still on the older build keeps sending it, and refusing the payload would stop that device syncing its habits over a preference this build does not store.
 2. **No conflict is ever shown to the user.** A lost edit is silent by design — surfacing "your rename was overwritten" for a habit tracker seems worse than the loss. Revisit if it turns out to bite.
 3. **Tombstones accumulate forever.** Harmless at this scale (one row per deleted habit), but there is no purge. A tombstone older than any plausible offline device could be collected; nothing does it yet.
+   > **Closed.** `TOMBSTONE_TTL_MS` in `lib/sync/protocol.ts` — six months, stated once and applied by both halves, like `wins` above it. The client collects on hydrate (`lib/store.ts:collectTombstones`, after the first emit, because a tidy-up has no business in front of the first paint); the server collects inside the sync transaction, where the advisory lock is already held and the work is bounded by one account's habit count.
+   >
+   > **What the window bounds is resurrection, not storage.** A device offline longer than this returns holding a live copy of a habit whose tombstone everyone has forgotten; nothing contradicts it, so it wins by default and comes back from the dead — without the history, which was purged everywhere else. Six months is chosen against that: a phone in a drawer for half a year is a plausible device, one gone longer is a restored backup.
 4. **The advisory lock serialises an account's syncs.** Correct, and fine for a handful of devices. If sync ever runs from many clients at once the lock becomes the bottleneck, and the cursor needs a commit-ordered design instead.
 5. **`experimental.useOffline`** (§8.3) is now relevant and unused. The sync client hand-rolls its own online/visibility triggers; `useOffline()` from `next/offline` would give connectivity-aware retry for free.
+   > **Closed, and the last sentence was wrong.** The flag is on and the hook is used, but it retries only *framework* requests — navigations, prefetches, Server Actions. `POST /api/sync` is a plain `fetch` from a Client Component, so sync's retry stays hand-rolled and the visibility trigger and five-minute poll are still there. What was gained is a better answer to "are we offline" than `navigator.onLine`, which reports true for a device on wifi with no route out. See §13.14.
 6. **The client polls every five minutes when foregrounded.** Event triggers (visibility, online) carry the real load. If sync ever needs to feel live, this is where a push channel would go.
 7. **There is no password reset, and no verification.** Both need a mailer, which the app does not have. Until one exists, a forgotten password means the habits on that device are reachable only through Export backup — which the sign-up form says out loud rather than discovering later.
+   > **Both halves are now closed.** Verification became mandatory in §13.10, which is where the first half of this entry stopped being true. Password reset is §13.13, which closes the rest — and with it the sign-up copy that promised there was none.
 8. **Signing in merges whatever is already on the device into the account.** A first sync pulls, adopts the account, then pushes local habits up. Right for the common case — someone who used the app signed out and then made an account — and wrong for a borrowed phone, where it silently donates one person's habits to another's account. The 409 path covers a device *changing* accounts; it does not cover the first one.
+   > **Closed by asking.** Signing in on a device that already holds habits and has never been attached to an account now stops on a consent step (`ConfirmMerge` in `components/AccountCard.tsx`) naming the count before anything is uploaded. The session cookie exists by then, but nothing has been pushed: `syncEnabled()` reads the local hint, and withholding the hint is what holds the push.
+   >
+   > **Both answers are non-destructive, which is the whole design.** "Not mine" does *not* wipe the device to make room for the account — on the borrowed phone this exists to protect, those habits belong to the person who lent it, and deleting them to resolve the ambiguity is a worse outcome than the one being avoided. It signs out and leaves the device as it was found.
+   >
+   > A sign-*up* is exempt: the account it just made is empty and belongs to whoever is holding the device. The remaining uncovered path is the verification link opened on a *different* device that already has habits — `useSessionSync` sets the hint there without passing through this form. Narrow, and noted rather than fixed.
 9. **Two tables that both sound like the user table.** `user` and `users`, one letter apart, owned by different parties for reasons §13.6 argues are good. The reasons do not make the names less confusing to read at 2am. A `schemaName: "auth"` namespace on Better Auth's side would separate them properly, at the cost of a `pgSchema` in the migrations.
+   > **Closed.** Better Auth's four tables live in a `pgSchema("auth")`, so the boundary is in the name: `auth.user` is visibly a dependency's table, `public.users` visibly ours.
+   >
+   > **The migration is hand-written, and had to be.** drizzle-kit cannot tell a table that moved schema from one dropped here and created there — it asks, and the answer it takes without asking is the destructive one, on the tables holding every identity, credential hash and live session. `0005_move_auth_tables_to_auth_schema.sql` is four `ALTER TABLE … SET SCHEMA` statements, which move rows, indexes and constraints and copy nothing. The snapshot in `drizzle/meta/` was edited to match and then *verified by re-running the differ*: `drizzle-kit generate` reports no changes, which is the check that the committed snapshot and the code agree. `tests/server/sync-store.test.ts` asserts the outcome against real Postgres, so a future migration that puts one back in `public` fails there.
 
 ---
 
@@ -917,6 +958,10 @@ which stops Apple Mail and Outlook.com force-inverting a palette that was never
 designed for it. Gmail's dark mode tints regardless. A real dark version needs
 class hooks in a `<style>` block, which Gmail keeps for `<head>` media queries
 even though it strips much else — worth doing, not done.
+
+> **Done.** Both mails now carry a `prefers-color-scheme` block in `<head>`, which is the only place Gmail's web client keeps one. The light values stay *inline* rather than moving into that block, because the media query is an enhancement and the mail has to be right without it: every client that ignores the block renders exactly what it rendered before. The hooks are classes rather than element selectors, so adding a row to a message cannot silently opt it out of dark mode.
+>
+> The shell the two mails share came out of the same work — `lib/email-layout.ts`. Two transactional mails that look like two different senders is the smell a phishing filter, and a person, reads as suspicious; they now differ only in the copy and in which square is lit.
 
 ---
 
@@ -1019,7 +1064,7 @@ the longer spelling and other paths throw the other.
 
 ---
 
-### 13.11 The origin is configured, not inferred
+### 13.12 The origin is configured, not inferred
 
 A reversal of §13.6's `baseURL`, which was left unset so Better Auth could work
 the origin out per request. It cannot be allowed to: the value it would work out
@@ -1066,3 +1111,35 @@ IndexedDB, `/api/sync` answers 401 through `resolveUser`'s catch rather than 500
 and the app is the app it was before sync existed. This is the same shape as
 `BETTER_AUTH_SECRET`, which Better Auth has always made fatal in production for
 the same reason — a value that must be right, refusing to be guessed.
+
+---
+
+### 13.13 Password reset
+
+The last thing §13.8 #7 left open, and the highest-value user-facing gap in the app: an account you cannot get back into is an account whose habits are stranded, and the only recovery the sign-up form could honestly offer was "your habits are still on this device, use Export backup".
+
+The flow is Better Auth's, wired to the mailer §13.9 built. `AccountCard` asks for a link; the mail lands with a token good for **one hour and one use**; `GET /api/auth/reset-password/:token` checks it and redirects to `/reset-password?token=…`; that page sets the new password. No session is created by any of it — whoever opened the mail has proved they hold the address, not that the device they opened it on is one the account should stay signed in on. They sign in afterwards like anyone else.
+
+Four decisions worth stating.
+
+**It says the same thing whether or not the address has an account.** The endpoint is unauthenticated and anyone may type any address into it, so branching the UI on the response would build exactly the account-enumeration oracle the server is careful not to be. `ResetRequested` says "if that address has an account", and the mail itself says "someone asked" and names nobody.
+
+**A failed send is swallowed, which is the opposite of the verification mail.** There, a throw rolls the sign-up transaction back and frees the address to retry (§13.10). Here there is nothing to roll back, and surfacing a send failure would leak whether an address exists — the one thing the paragraph above exists to prevent. It is logged.
+
+**`revokeSessionsOnPasswordReset` is on.** A reset is what someone does when they have lost control of the password, so every existing session is one that might not be theirs. The other devices are signed *out*, not wiped: each discovers it on its next sync, takes the 401, clears the hint, and keeps every habit it holds in IndexedDB. The reset page says so, because "signs out every device" reads like a threat to your data unless you are told it is not.
+
+**With no mailer there is no button.** `sendResetPassword` is only present when `mailerConfigured()`, so Better Auth answers `RESET_PASSWORD_DISABLED` and the card says this deployment cannot reset a password — the same rule §8.5 applies to reminders, and for the same reason: a control that silently does nothing is worse than no control.
+
+`/reset-password` is static like every other route, and reads its token from `?token=` on the client for the reason `/habit` reads its id that way (§2.2). The token is read through `useSyncExternalStore` rather than an effect, with the server snapshot reporting *not read yet* — the §8.4 rule again. Reporting "bad link" on the server and correcting it after hydration would flash a failure at everyone who arrived with a perfectly good one.
+
+---
+
+### 13.14 Knowing when the network is there
+
+`experimental.useOffline` is on and `lib/sync/client.ts` uses the hook, closing §13.8 #5 — but not in the way that entry predicted, and the difference is worth recording because the entry was cited as free retry.
+
+**Next retries its own requests, not ours.** Navigations, prefetches and Server Actions are held and replayed when connectivity returns. `POST /api/sync` is a plain `fetch` from a Client Component and is explicitly outside that: it stays under the client's own policy, which is the hand-rolled one. The visibility trigger and the five-minute poll are still there and still doing the work.
+
+**What the hook actually replaced is `navigator.onLine`,** which the client used to gate `run()` on, and which answers a question nobody asked: it reports whether a network interface is up. A device on café wifi behind a captive portal, or on a connection whose upstream is dead, reports `true` and every sync fails. The framework polls the origin with a `HEAD` request instead, so the answer means "can reach the server".
+
+The value reaches `run()` through a module-level mirror, because `useOffline` is a hook and `syncNow()` is callable from anywhere. It defaults to *online*, which is the honest answer before anything has mounted, and the worst case is one request that fails and is retried.

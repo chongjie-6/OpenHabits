@@ -134,9 +134,19 @@ describe("parseSyncPush", () => {
   it("accepts null settings and rejects a malformed one", () => {
     expect(push({ settings: null }).ok).toBe(true);
     expect(push({ settings: { value: SETTINGS.value } }).ok).toBe(false);
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, theme: "neon" } } }).ok).toBe(false);
     expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, dayStartHour: 9 } } }).ok).toBe(false);
     expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, weekStartsOn: 2 } } }).ok).toBe(false);
+  });
+
+  it("drops a theme a pre-§13.8-#1 device still pushes, rather than refusing it", () => {
+    // Appearance became device-local, but a device on the older build keeps
+    // sending the field. Refusing the blob would stop that device syncing its
+    // habits over a preference this build does not store at all.
+    for (const theme of ["dark", "neon", 7, null]) {
+      const result = push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, theme } } });
+      expect(result.ok).toBe(true);
+      expect(result.ok === true && result.value.settings?.value).not.toHaveProperty("theme");
+    }
   });
 
   it("treats a missing haptics flag as the default, not as malformed", () => {

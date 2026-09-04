@@ -19,7 +19,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getDb } from "./db";
 import { resolveBaseURL } from "./base-url";
 import * as authSchema from "./auth-schema";
-import { mailerConfigured, sendVerificationEmail } from "../email";
+import { mailerConfigured, sendResetPasswordEmail, sendVerificationEmail } from "../email";
 
 const globalForAuth = globalThis as unknown as {
   // `ReturnType<typeof build>` rather than `ReturnType<typeof betterAuth>`:
@@ -78,7 +78,7 @@ function build() {
 
     /**
      * Pinned rather than inferred from the request. See `base-url.ts` and
-     * DESIGN.md §13.11: the origin Better Auth resolves is the origin it mails
+     * DESIGN.md §13.12: the origin Better Auth resolves is the origin it mails
      * verification links into, and inferring it means taking it from a header
      * the caller controls.
      */
@@ -100,13 +100,50 @@ function build() {
     /**
      * The address is verified before the first session exists, so `resolveUser`
      * needs no check of its own — a session is proof the mail was opened.
-     * Recovering from a typo'd address is still manual (§13.10): there is no
-     * password reset, and the habits stay on the device either way.
+     * Recovering from a typo'd *address* is still manual (§13.10) — nothing can
+     * mail a correction to an address nobody reads. Recovering a forgotten
+     * password is not: see `sendResetPassword` below and §13.13.
      */
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 10,
       requireEmailVerification: verificationRequired,
+
+      /**
+       * Password reset — §13.8 #7, and the last thing §13.10 left open. Present
+       * only when a mailer is: with no SMTP credentials Better Auth answers
+       * `RESET_PASSWORD_DISABLED`, and `AccountCard` reads that to explain the
+       * deployment cannot send rather than offering a link into nothing.
+       *
+       * A send that fails is logged and swallowed, the opposite of the
+       * verification mail's behaviour, and for the opposite reason. There the
+       * throw rolls back a sign-up and frees the address to retry; here there
+       * is nothing to roll back, and the endpoint answers the same way for an
+       * address it has never seen — so surfacing a send failure would turn this
+       * into the account-enumeration oracle the endpoint is careful not to be.
+       */
+      sendResetPassword: async ({ user, url }) => {
+        try {
+          await sendResetPasswordEmail({ to: user.email, url });
+        } catch (error) {
+          console.error("[openhabits] password reset email failed", error);
+        }
+      },
+
+      /**
+       * An hour. Long enough to find the mail in spam, short enough that a
+       * forwarded or logged link is not a standing key to the account.
+       */
+      resetPasswordTokenExpiresIn: 3600,
+
+      /**
+       * A reset is what someone does when they have lost control of the
+       * password, so every existing session is one that might not be theirs.
+       * The other devices are signed out, not wiped: each one discovers it on
+       * its next sync, takes the 401, clears the hint (`lib/sync/client.ts`)
+       * and keeps every habit it holds in IndexedDB.
+       */
+      revokeSessionsOnPasswordReset: true,
     },
   });
 }

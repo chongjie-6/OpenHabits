@@ -14,12 +14,13 @@ import "server-only";
  * bounded by the size of the push.
  */
 
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import {
   fingerprintEntry,
   fingerprintHabit,
   fingerprintSettings,
   MAX_ROWS_PER_REQUEST,
+  TOMBSTONE_TTL_MS,
   wins,
   type SyncPull,
   type SyncPush,
@@ -58,6 +59,7 @@ export async function runSync(db: Db, user: SyncUser, push: SyncPush): Promise<S
     await ensureUser(tx, user);
 
     await applyPush(tx, user.id, push);
+    await collectTombstones(tx, user.id);
     return pull(tx, user.id, push.since);
   });
 }
@@ -87,6 +89,33 @@ async function ensureUser(tx: Tx, user: SyncUser): Promise<void> {
     .insert(users)
     .values({ id: user.id, email: user.email })
     .onConflictDoNothing({ target: users.id });
+}
+
+/**
+ * Drop tombstones old enough that no device could still need telling. See
+ * `TOMBSTONE_TTL_MS`, which is also what the client collects against.
+ *
+ * Inside the sync transaction rather than on a cron: the work is bounded by one
+ * account's habit count — tens of rows — the advisory lock is already held, and
+ * an account nobody syncs is an account whose tombstones cost nothing. It buys
+ * no new failure mode either, because a delete here is invisible to `pull`:
+ * every device whose cursor predates the tombstone has already been told, and a
+ * device starting from zero has no copy to contradict.
+ *
+ * Ordered after `applyPush` deliberately. A push carrying a very old tombstone
+ * writes it and this immediately collects it, which is correct — the sender is
+ * the only device that still had it.
+ */
+async function collectTombstones(tx: Tx, userId: string): Promise<void> {
+  await tx
+    .delete(habits)
+    .where(
+      and(
+        eq(habits.userId, userId),
+        isNotNull(habits.deletedAt),
+        lt(habits.deletedAt, Date.now() - TOMBSTONE_TTL_MS),
+      ),
+    );
 }
 
 async function applyPush(tx: Tx, userId: string, push: SyncPush): Promise<void> {

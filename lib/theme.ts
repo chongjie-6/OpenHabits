@@ -1,13 +1,23 @@
 import { normalisePalette, type Mode, type Palette } from "./palette";
-import type { Settings } from "./types";
+
+/** Light, dark, or whatever the OS says. */
+export type Theme = "system" | "light" | "dark";
+
+const DEFAULT_THEME: Theme = "system";
 
 /**
- * Theme is mirrored into localStorage as well as IndexedDB.
+ * Theme lives in localStorage, and **only** there. See DESIGN.md §13.8 #1.
  *
- * IndexedDB is async, so it cannot be read before first paint. The blocking
+ * IndexedDB is async, so it cannot be read before first paint; the blocking
  * snippet in the document head reads this key synchronously to set
- * `data-theme`, which is what prevents a flash of the wrong theme.
- * See DESIGN.md §7.1.
+ * `data-theme`, which is what prevents a flash of the wrong theme (§7.1).
+ *
+ * It used to ride the synced settings blob as well, and that was recorded as a
+ * wart from the day it shipped: choosing dark on a phone at night silently
+ * repainted a laptop in another timezone. Appearance is now device-local on all
+ * three axes — theme here, `skin` in `lib/skin.ts`, `palette` beside this — and
+ * the cost is the one those two already pay: a look is not part of a backup,
+ * and a new device starts on system.
  *
  * The key keeps its pre-rebrand name: a rename reads as "no theme stored" and
  * flashes every existing install back to system on its next load.
@@ -167,7 +177,25 @@ function syncThemeColor(palette: Palette): void {
   }
 }
 
-export function applyTheme(theme: Settings["theme"]): void {
+function isTheme(value: unknown): value is Theme {
+  return value === "system" || value === "light" || value === "dark";
+}
+
+/**
+ * Wrapped because Safari in private mode throws on `localStorage` rather than
+ * returning null, and an optional look is no reason to take the app down.
+ */
+export function readTheme(): Theme {
+  if (typeof window === "undefined") return DEFAULT_THEME;
+  try {
+    const stored = window.localStorage.getItem(THEME_KEY);
+    return isTheme(stored) ? stored : DEFAULT_THEME;
+  } catch {
+    return DEFAULT_THEME;
+  }
+}
+
+export function applyTheme(theme: Theme): void {
   if (typeof document === "undefined") return;
 
   if (theme === "system") {

@@ -154,11 +154,29 @@ export async function loadAll(): Promise<Snapshot> {
     // Entries belonging to a deleted habit were removed when the tombstone was
     // written, so nothing here needs filtering against it.
     entries,
-    // Spread over the defaults so a settings field added in a later release
-    // does not arrive as undefined for existing users.
-    settings: { ...DEFAULT_SETTINGS, ...(settingsRow?.value ?? {}) },
+    settings: readSettings(settingsRow?.value),
     settingsUpdatedAt: settingsRow?.updatedAt ?? 0,
     sync: { ...NO_SYNC, ...(syncRow?.value ?? {}) },
+  };
+}
+
+/**
+ * Stored settings, field by field.
+ *
+ * Spread over the defaults, so a field added in a later release does not arrive
+ * as undefined for an existing user. Named rather than spread *back*, so a field
+ * this release no longer has cannot ride along either: `theme` was in this blob
+ * until §13.8 #1 moved appearance to the device, and a stale copy of it sitting
+ * in IndexedDB would otherwise be pushed to the account on the next sync.
+ */
+function readSettings(stored: unknown): Settings {
+  const value = (stored ?? {}) as Partial<Settings>;
+  return {
+    weekStartsOn: value.weekStartsOn ?? DEFAULT_SETTINGS.weekStartsOn,
+    dayStartHour: value.dayStartHour ?? DEFAULT_SETTINGS.dayStartHour,
+    reminderHour: value.reminderHour ?? DEFAULT_SETTINGS.reminderHour,
+    haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
+    favourites: value.favourites ?? DEFAULT_SETTINGS.favourites,
   };
 }
 
@@ -195,17 +213,20 @@ export async function deleteHabitRecord(habit: Habit): Promise<void> {
   await Promise.all([wrote, cleared]);
 }
 
-/** Drop a habit's entries without touching the habit — used when a peer's tombstone arrives. */
-export async function deleteEntriesFor(habitIds: string[]): Promise<void> {
-  if (habitIds.length === 0) return;
+/**
+ * Remove habit rows outright, tombstone and all.
+ *
+ * The one place a habit is genuinely deleted rather than tombstoned, and it is
+ * only ever reached by the collector in `lib/store.ts` — see
+ * `TOMBSTONE_TTL_MS`. Entries were dropped when the tombstone was written, so
+ * there is nothing else to clear.
+ */
+export async function forgetHabits(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
 
   const db = await openDb();
-  const store = tx(db, ["entries"], "readwrite").objectStore("entries");
-  await Promise.all(
-    habitIds.map((id) =>
-      promisify(store.delete(IDBKeyRange.bound([id, ""], [id, "￿"]))),
-    ),
-  );
+  const store = tx(db, ["habits"], "readwrite").objectStore("habits");
+  await Promise.all(ids.map((id) => promisify(store.delete(id))));
 }
 
 export async function putEntry(entry: Entry): Promise<void> {

@@ -9,6 +9,7 @@
  */
 
 import { useEffect } from "react";
+import { useOffline } from "next/offline";
 import { markSignedOut, signedIn, useSignedIn } from "../session";
 import * as store from "../store";
 import { collectPush, mergeIncoming, watermarkAfterPush } from "./merge";
@@ -50,9 +51,9 @@ async function run(): Promise<void> {
     return;
   }
 
-  if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    // Not an error: offline is the expected state for a PWA, and `useSync`'s
-    // listeners call back the moment it changes.
+  if (offline) {
+    // Not an error: offline is the expected state for a PWA, and `useSync`
+    // calls back the moment connectivity returns.
     return;
   }
 
@@ -195,6 +196,17 @@ function warnOnClockSkew(serverNow: number): void {
 }
 
 /**
+ * The framework's answer to "is this device offline", mirrored where `run()` can
+ * read it synchronously. See DESIGN.md §13.14.
+ *
+ * `useOffline` is a hook and `syncNow()` is callable from anywhere, so the value
+ * cannot be read at the point it is needed; `useSync` keeps this in step.
+ * Defaults to online, which is the honest answer before anything has mounted —
+ * and the worst case is one request that fails and is retried.
+ */
+let offline = false;
+
+/**
  * How often a foregrounded app checks in, in ms. Long, deliberately: the triggers
  * that matter are the event-driven ones below, and this only covers an app left
  * open and visible for hours.
@@ -222,8 +234,17 @@ export function useSync(): void {
   // Subscribed rather than read, so signing in starts sync on the spot and
   // signing out in another tab tears the listeners down in this one.
   const enabled = useSignedIn();
+  /**
+   * Replaces the `online` event and the `navigator.onLine` guard, both of which
+   * believed a device on wifi behind a captive portal was connected. This polls
+   * the origin instead, so the answer means "can reach the server". It is a
+   * dependency rather than a listener: coming back online re-runs the effect,
+   * whose first act is a sync.
+   */
+  const isOffline = useOffline();
 
   useEffect(() => {
+    offline = isOffline;
     if (!enabled) return;
     // Syncing before hydration would push an empty snapshot as though the
     // device had no habits, and read the cursor as 0 with a real one on disk.
@@ -234,16 +255,13 @@ export function useSync(): void {
     const onVisible = () => {
       if (document.visibilityState === "visible") void syncNow();
     };
-    const onOnline = () => void syncNow();
     const timer = window.setInterval(() => void syncNow(), POLL_MS);
 
     document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("online", onOnline);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("online", onOnline);
       window.clearInterval(timer);
     };
-  }, [hydrated, enabled]);
+  }, [hydrated, enabled, isOffline]);
 }

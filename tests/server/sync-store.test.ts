@@ -14,11 +14,12 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { SyncPull, SyncPush } from "@/lib/sync/protocol";
+import { TOMBSTONE_TTL_MS, type SyncPull, type SyncPush } from "@/lib/sync/protocol";
 import { DEFAULT_SETTINGS, type Entry, type Habit } from "@/lib/types";
 import type { SyncUser } from "@/lib/server/auth-types";
 import type { Db } from "@/lib/server/db";
 import * as schema from "@/lib/server/schema";
+import { sql } from "drizzle-orm";
 import { AccountMismatchError, runSync } from "@/lib/server/sync-store";
 
 const MIGRATIONS_DIR = fileURLToPath(new URL("../../drizzle", import.meta.url));
@@ -53,6 +54,14 @@ beforeEach(async () => {
   db = drizzle(pglite, { schema }) as unknown as Db;
 });
 
+/**
+ * A deletion recent enough to survive `collectTombstones`, which runs on every
+ * sync and drops anything older than `TOMBSTONE_TTL_MS`. The other stamps in
+ * this file are small synthetic numbers, which as epoch ms are 1970 — fine for
+ * ordering, and six months past the collector's cutoff.
+ */
+const RECENT = Date.now();
+
 const ALICE: SyncUser = { id: "alice", email: "alice@example.com" };
 const BOB: SyncUser = { id: "bob", email: "bob@example.com" };
 
@@ -85,6 +94,33 @@ function push(over: Partial<SyncPush> = {}): SyncPush {
 function sync(user: SyncUser, over: Partial<SyncPush> = {}): Promise<SyncPull> {
   return runSync(db, user, push(over));
 }
+
+describe("the migrations themselves", () => {
+  it("leaves Better Auth's tables in the auth schema and ours in public", async () => {
+    // §13.8 #9. `ALTER TABLE … SET SCHEMA` is hand-written in
+    // 0005 because drizzle-kit resolves a schema move by dropping and
+    // recreating, which on these tables means every identity and session on the
+    // deployment. Asserting the *outcome* rather than the SQL: a future
+    // migration that quietly puts one back in `public` fails here.
+    type Placement = { table_schema: string; table_name: string };
+    // `db` is the pglite driver cast to the production one (see `beforeEach`), so
+    // the static type of `execute` is not the shape this actually returns.
+    const result = (await db.execute(
+      sql`select table_schema, table_name from information_schema.tables
+          where table_schema in ('public', 'auth')`,
+    )) as unknown as { rows: Placement[] };
+
+    const where = (name: string) =>
+      result.rows.find((row) => row.table_name === name)?.table_schema;
+
+    for (const name of ["user", "session", "account", "verification"]) {
+      expect(where(name)).toBe("auth");
+    }
+    for (const name of ["users", "habits", "entries", "settings", "push_subscriptions"]) {
+      expect(where(name)).toBe("public");
+    }
+  });
+});
 
 describe("runSync", () => {
   it("creates the account on a first sync and stores what was pushed", async () => {
@@ -183,18 +219,40 @@ describe("runSync", () => {
     await sync(ALICE, {
       accountId: "alice",
       since: first.seq,
-      habits: [habit("h1", 300, { deletedAt: 300 })],
+      habits: [habit("h1", RECENT, { deletedAt: RECENT })],
     });
 
     const other = await sync(ALICE);
-    expect(other.habits.find((h) => h.id === "h1")?.deletedAt).toBe(300);
+    expect(other.habits.find((h) => h.id === "h1")?.deletedAt).toBe(RECENT);
     // h1's entries are gone; h2's are untouched.
     expect(other.entries.map((e) => e.habitId)).toEqual(["h2"]);
   });
 
+  it("collects a tombstone once no device could still need it", async () => {
+    const stale = Date.now() - TOMBSTONE_TTL_MS - 1;
+    await sync(ALICE, {
+      habits: [habit("h1", stale, { deletedAt: stale }), habit("h2", RECENT)],
+    });
+
+    // A full resync: the tombstone is gone rather than merely past the cursor.
+    const all = await sync(ALICE);
+    expect(all.habits.map((h) => h.id)).toEqual(["h2"]);
+  });
+
+  it("keeps a tombstone that is still inside the window", async () => {
+    const recent = Date.now() - TOMBSTONE_TTL_MS + 60_000;
+    await sync(ALICE, { habits: [habit("h1", recent, { deletedAt: recent })] });
+
+    const all = await sync(ALICE);
+    expect(all.habits.map((h) => h.id)).toEqual(["h1"]);
+  });
+
   it("does not let a lagging device resurrect a deleted habit's entries", async () => {
     await sync(ALICE, { habits: [habit("h1", 100)] });
-    await sync(ALICE, { accountId: "alice", habits: [habit("h1", 300, { deletedAt: 300 })] });
+    await sync(ALICE, {
+      accountId: "alice",
+      habits: [habit("h1", RECENT, { deletedAt: RECENT })],
+    });
 
     // This device has not applied the tombstone and is still pushing history.
     const result = await sync(ALICE, {
