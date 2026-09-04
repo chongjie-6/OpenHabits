@@ -7,6 +7,16 @@ export function mailerConfigured(): boolean {
   return Boolean(process.env.SMTP_USER) && Boolean(process.env.SMTP_PASSWORD);
 }
 
+/**
+ * The From header. Gmail rewrites this to the authenticated account unless the
+ * address is a verified "Send mail as" alias, so only the display name is
+ * reliably ours on a default deployment — which is why the fallback names the
+ * app around SMTP_USER rather than inventing an address the relay would drop.
+ */
+function from(): string {
+  return process.env.MAIL_FROM ?? `OpenHabits <${process.env.SMTP_USER}>`;
+}
+
 function client(): nodemailer.Transporter {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASSWORD;
@@ -41,7 +51,7 @@ async function sendEmail({
 }): Promise<void> {
   let info: nodemailer.SentMessageInfo;
   try {
-    info = await client().sendMail({ to, subject, html, text });
+    info = await client().sendMail({ from: from(), to, subject, html, text });
   } catch (cause) {
     throw new Error(`${subject}: send failed`, { cause });
   }

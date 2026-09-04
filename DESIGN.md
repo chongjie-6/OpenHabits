@@ -946,6 +946,13 @@ that it runs with nothing set. A transport per send is cheap next to the SMTP
 round-trip it wraps, so there is nothing here to memoise the way
 `lib/server/db.ts` memoises its pool.
 
+**The From header is a display name over Gmail's address.** `MAIL_FROM` sets it
+and defaults to `OpenHabits <SMTP_USER>`. It cannot be a `noreply@` on some
+other domain by wishing: Gmail rewrites From to the authenticated account unless
+that address is a verified "Send mail as" alias on it, so an override configured
+without doing the Gmail side first changes nothing a recipient sees. The name is
+the half that always survives, and the half worth setting.
+
 **A send that fails does not fail the sign-up.** `sendVerificationEmail` awaits
 the request — a floating promise inside a serverless invocation may never leave
 the machine — and Better Auth's callback then catches and logs. An outage at the
