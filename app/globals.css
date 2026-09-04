@@ -407,6 +407,16 @@
 
 /* --------------------------------------------------------------------------- */
 
+/**
+ * Reserve the scrollbar's width whether or not one is showing. Content that
+ * grows past the viewport - the add-habit form, an expanded card - otherwise
+ * summons a classic scrollbar mid-interaction, narrowing the viewport and
+ * sliding the centred column sideways. No-op where scrollbars overlay.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
