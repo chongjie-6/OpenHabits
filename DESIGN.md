@@ -355,6 +355,36 @@ Motion exists to confirm the tick and to reward the streak. Everything else is i
 
 All of the above is wrapped in `@media (prefers-reduced-motion: reduce)` → duration 0, state change only. The reduced-motion path must still *confirm* the action; it just does it without animating.
 
+### 6.6 Custom palettes
+
+The third appearance axis. `theme` is light or dark, `skin` is which design, and a palette is which **colours** — all three compose. A custom palette under `blocks` is still hard-edged, uppercase and 2px-bordered; only the hexes change.
+
+`lib/palette.ts` is the pure half (what a palette is, how one is derived, what it measures), `lib/theme.ts` owns storage and the pre-paint script, `lib/use-palette.ts` is the React and DOM surface, and `components/PaletteEditor.tsx` is the screen, at `/settings/colours`.
+
+**Twenty tokens, both modes.** Every colour a skin defines: four surfaces, two text roles, six accent/state colours, the quote trio, and the five-step ramp. A palette is `{ light: Swatches, dark: Swatches }` and is always complete — `normalisePalette` rejects a partial one rather than letting the rest fall through to whichever skin happens to be active, which would make the same saved colours render differently depending on a setting the palette has already overridden.
+
+Three things are deliberately **not** in it. The six habit accents, because a habit's colour is its identity across the app and each habit already takes any colour on its own (§6.2) — a palette changes the room, not which habit is the blue one. `--habit-l-min` / `--habit-l-max`, because they describe the band the *theme* occupies, which is the axis they already track. And radius, border width, shadow and type, because those are the skin's job; a palette that moved them would be a fourth skin under another name.
+
+**It wins by being inline.** Every skin defines its tokens through `:root[data-skin=…]`. A palette is written to the document element's `style`, and an inline declaration beats any selector regardless of specificity. So `app/globals.css` needs no fourth block and no skin needs to know palettes exist. The pre-paint script in `lib/theme.ts` writes them before first paint alongside `data-theme` and `data-skin`, so a custom palette cannot flash either.
+
+The script resolves which half applies — `data-theme` when set, `matchMedia` when not — because an inline style cannot carry a media query. That is also why `watchPaletteMode` exists: the light/dark swap CSS does for free has to be done by hand, from `Hydrator`, and `applyTheme` re-applies the vars so every existing caller in `lib/store.ts` gets it without knowing why. The script's two regexes are load-bearing: stored values go straight into a style declaration, so it accepts a custom-property name and a six-digit hex and nothing else.
+
+**Device-local, like skin and for the same reason** (§13.8 #1): `localStorage` alone, never the synced settings blob. Repainting a laptop because someone tried a colour on their phone is a wart the design records once and should not repeat at twenty times the volume. The cost is that a palette is not in a backup and a new device starts on the skin's own colours. That is the intended trade.
+
+#### Derivation, and why contrast is solved rather than chosen
+
+Forty hand-picked hexes is not a thing to ask of anyone, so one seed colour builds the whole set. `deriveSwatches` fixes lightness for the neutrals and *solves* it for everything carrying text: `fitLightness` binary-searches OKLCh lightness until the pairing hits its target, because luminance depends on all three axes through two non-linear transfer functions and chroma is gamut-clipped on the way out — there is nothing to invert. Chroma is the seed's, scaled hard for the neutrals (enough to tint a surface, never enough to colour it) and left alone for the accents. Out-of-gamut is not a special case: `oklchToHex` reduces chroma until it fits, which is why the pale end of the ramp desaturates without being told to. Danger keeps its own hue — an error that follows the seed is not an error.
+
+The result clears AA at every hue, which `tests/palette.test.ts` pins by auditing all 36 of them in both modes.
+
+**Then the user can break it, and the numbers say so.** The shipped skins were measured once by hand at author time — the header of `app/globals.css` is that measurement written down. Nothing measures a palette typed in at runtime, so `audit` re-runs the twelve pairings a real screen actually puts together after every edit, and the editor prints each ratio beside its target. It does not refuse a failing colour: full control was the point. It just makes the choice an informed one.
+
+Two rows are not WCAG. There is no standard for "a filled heatmap cell should be distinguishable from an empty one", but it is what most often goes wrong in a hand-built ramp. Their floors sit just under what the shipped skins already achieve — classic's level 1 is 1.19 on its empty cell, its border 1.21 on the page — because a floor the default theme would fail is a floor that teaches the user to ignore the panel.
+
+**Seeding from the stylesheet, not from a copy of it.** "Start from this design" reads the active skin's own values back out through `getComputedStyle`, driving `data-theme` through both modes inside one task and restoring everything in a `finally`. Duplicating three skins' worth of hexes in TypeScript would be wrong within a release. Values a swatch cannot hold — `grid` sets `--quote-bg: transparent` — fall back to that mode's background, which is what it looked like anyway.
+
+The editor previews the half being edited rather than the half on screen, since editing dark colours on a device in light mode otherwise repaints nothing visible. `viewport.themeColor` ships two media-scoped `theme-color` metas and both are rewritten in place rather than a third appended, because the browser honours the first tag whose media matches.
+
 ---
 
 ## 7. Architecture

@@ -7,6 +7,7 @@ import { InstallCard } from "@/components/DownloadAppButton";
 import { habitColor } from "@/lib/colors";
 import { QUOTE_COUNT } from "@/lib/quotes";
 import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
+import { usePalette } from "@/lib/use-palette";
 import {
   exportBundle,
   importBundle,
@@ -22,6 +23,8 @@ export default function SettingsPage() {
   // Safe here for the same reason it is safe on Today: everything below sits
   // behind the `hydrated` gate, so this has the real answer before it renders.
   const skin = useSkin();
+  // Same gating rule as `useSkin` — behind `hydrated`, this has the real answer.
+  const palette = usePalette();
   const fileInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -84,6 +87,25 @@ export default function SettingsPage() {
           options={SKINS.map(({ value, label }) => ({ value, label }))}
           onChange={applySkin}
         />
+        <div className="mt-4">
+          <Link
+            href="/settings/colours"
+            className="flex min-h-11 items-center gap-2 rounded-control px-1 transition-colors hover:bg-surface-2"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-medium">Colours</span>
+              <span className="block text-[11px] leading-relaxed text-muted">
+                {palette === null
+                  ? "Using this design's own palette."
+                  : "Your own palette."}{" "}
+                Build one from a single colour, or set every token by hand.
+              </span>
+            </span>
+            <span aria-hidden="true" className="shrink-0 text-muted">
+              ›
+            </span>
+          </Link>
+        </div>
       </Group>
 
       <Group title="Your week">

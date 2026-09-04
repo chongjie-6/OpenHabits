@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSessionSync } from "@/lib/session";
 import { useHydrate } from "@/lib/store";
 import { useSync } from "@/lib/sync/client";
+import { watchPaletteMode } from "@/lib/use-palette";
 
 /**
  * Reads IndexedDB into the store, starts sync, and registers the service worker.
@@ -19,6 +20,11 @@ export function Hydrator() {
   // Inert until hydration, and when signed out or the deployment has no
   // database.
   useSync();
+
+  // A custom palette carries a light half and a dark half, and an inline style
+  // cannot hold a media query — so the swap CSS does for free is done here.
+  // Inert when no palette is set.
+  useEffect(watchPaletteMode, []);
 
   useEffect(() => {
     // Skipped in development: a caching worker turns every HMR update into a
