@@ -60,7 +60,7 @@ export function Sheet({
       onClick={(event) => {
         if (startedOnBackdrop.current && event.target === dialog.current) onClose();
       }}
-      className="fixed inset-x-0 bottom-0 top-auto m-0 mx-auto flex max-h-[85dvh] min-h-[33dvh] w-full max-w-[32rem] flex-col overflow-hidden bg-surface p-0 text-foreground surface-sheet"
+      className="fixed inset-x-0 bottom-0 top-auto m-0 mx-auto flex max-h-[85dvh] min-h-[75dvh] w-full max-w-lg flex-col overflow-hidden bg-surface p-0 text-foreground surface-sheet"
     >
       <div className="flex items-start justify-between gap-4 px-4 pt-4">
         <h2 className="display-type text-[15px]">{title}</h2>
