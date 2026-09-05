@@ -9,10 +9,18 @@ import { QUOTES } from "@/data/quotes";
 import { itemForDay, seamWindow } from "./deck";
 import type { DayKey, Quote, QuoteTag } from "./types";
 
-/** Filter the corpus by tag. An empty selection means "everything". */
-export function deckFor(tags: QuoteTag[] = []): Quote[] {
+/**
+ * Filter the corpus by tag. An empty selection means "everything", and so does
+ * a selection this corpus has none of — see `Settings.dailyTags`, which holds
+ * one flat list for both corpora.
+ *
+ * `readonly string[]` rather than the tag union: the caller is the synced
+ * settings blob, whose contents a device on an older build cannot be trusted to
+ * have narrowed. Membership is decided here, by intersection.
+ */
+export function deckFor(tags: readonly string[] = []): Quote[] {
   if (tags.length === 0) return QUOTES;
-  const wanted = new Set(tags);
+  const wanted = new Set<string>(tags);
   const filtered = QUOTES.filter((q) => q.tags.some((t) => wanted.has(t)));
   return filtered.length > 0 ? filtered : QUOTES;
 }

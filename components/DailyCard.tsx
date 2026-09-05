@@ -20,10 +20,11 @@ import { useToday } from "@/lib/use-today";
  * which point it has the real answer. Where the card sits on the page is a
  * separate question, settled in CSS (`app/page.tsx`).
  *
- * Which corpus it draws from is `settings.dailyMode`, and the three skins below
- * never learn the answer — `lib/daily.ts` hands them a flattened item either
- * way. A quote's byline is its author with the source beneath; a fact's byline
- * *is* its source, because that is the only attribution a fact has.
+ * Which corpus it draws from is `settings.dailyMode`, narrowed by whichever
+ * tags `settings.dailyTags` names, and the three skins below never learn either
+ * answer — `lib/daily.ts` hands them a flattened item regardless. A quote's
+ * byline is its author with the source beneath; a fact's byline *is* its
+ * source, because that is the only attribution a fact has.
  */
 export function DailyCard() {
   const { settings } = useOpenHabits();
@@ -32,7 +33,7 @@ export function DailyCard() {
 
   if (!day) return <DailyCardPlaceholder />;
 
-  const item = dailyForDay(day, settings.dailyMode);
+  const item = dailyForDay(day, settings.dailyMode, settings.dailyTags);
   const saved = settings.favourites.includes(item.id);
   const props = { item, saved };
 

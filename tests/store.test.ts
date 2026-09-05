@@ -283,6 +283,86 @@ describe("deleteHabit", () => {
     // b's history is untouched; a's is gone.
     expect([...state.entries.keys()]).toEqual([entryKey("b", "2026-08-01")]);
   });
+
+  it("hands back the habit and its entries, which nothing else still holds", async () => {
+    const store = await load(
+      snapshot({
+        habits: [habit("a")],
+        entries: [entry("a", "2026-08-01", 1, 5), entry("a", "2026-08-02", 1, 6)],
+      }),
+    );
+
+    const deleted = store.deleteHabit("a");
+
+    expect(deleted?.habit.id).toBe("a");
+    expect(deleted?.entries.map((e) => e.date)).toEqual(["2026-08-01", "2026-08-02"]);
+    // The tombstone the peers get, not the record handed back for undo.
+    expect(deleted?.habit.deletedAt).toBeNull();
+  });
+
+  it("returns null for a habit that is not there", async () => {
+    const store = await load(snapshot());
+    expect(store.deleteHabit("ghost")).toBeNull();
+  });
+});
+
+describe("restore", () => {
+  it("puts the habit and its entries back and drops the tombstone", async () => {
+    const store = await load(
+      snapshot({
+        habits: [habit("a"), habit("b", { order: 1 })],
+        entries: [entry("a", "2026-08-01", 1, 5)],
+      }),
+    );
+
+    const deleted = store.deleteHabit("a")!;
+    store.restore(deleted);
+    const state = store.currentState();
+
+    expect(state.habits.map((h) => h.id)).toEqual(["a", "b"]);
+    expect(state.tombstones).toEqual([]);
+    expect(state.entries.get(entryKey("a", "2026-08-01"))?.count).toBe(1);
+  });
+
+  it("re-stamps everything, so the restore outranks the tombstone it undoes", async () => {
+    const store = await load(
+      snapshot({ habits: [habit("a")], entries: [entry("a", "2026-08-01", 1, 5)] }),
+    );
+
+    const deleted = store.deleteHabit("a")!;
+    const deletedAt = store.currentState().tombstones[0].updatedAt;
+    store.restore(deleted);
+    const state = store.currentState();
+
+    // Without this the next pull applies the tombstone and re-deletes it.
+    expect(state.habits[0].updatedAt).toBeGreaterThanOrEqual(deletedAt);
+    expect(state.habits[0].deletedAt).toBeNull();
+    // The entries too: the server dropped them when the tombstone landed, so
+    // they only exist again if they are pushed again.
+    expect(state.entries.get(entryKey("a", "2026-08-01"))!.updatedAt).toBeGreaterThan(5);
+  });
+
+  it("writes the habit and its entries back to storage", async () => {
+    const store = await load(
+      snapshot({ habits: [habit("a")], entries: [entry("a", "2026-08-01", 1, 5)] }),
+    );
+
+    store.restore(store.deleteHabit("a")!);
+
+    expect(wrote("putHabit")).toHaveLength(1);
+    expect((wrote("putEntries")[0].args[0] as Entry[]).map((e) => e.date)).toEqual([
+      "2026-08-01",
+    ]);
+  });
+
+  it("restores a habit with no history at all", async () => {
+    const store = await load(snapshot({ habits: [habit("a")] }));
+
+    store.restore(store.deleteHabit("a")!);
+
+    expect(store.currentState().habits.map((h) => h.id)).toEqual(["a"]);
+    expect(store.currentState().entries.size).toBe(0);
+  });
 });
 
 describe("exportBundle", () => {

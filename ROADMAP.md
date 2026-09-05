@@ -4,17 +4,17 @@ What is left, in the order it is worth doing. `DESIGN.md` holds the reasoning; t
 
 - **Status:** phases 0–6 of §11 built and passing. Phase 7 (Field) is the only unfinished one, and it needs hardware.
 - **Phases 1–3 of the previous edition of this file are done.** The test hole is filled apart from `lib/db.ts`, the shipping blockers are closed, and §13.8's actionable open questions are closed in the doc as well as the code.
-- **Last updated:** 2026-09-04.
+- **Last updated:** 2026-09-05.
 
 ---
 
 ## 1. Where the tree actually stands
 
-Verified 2026-09-04.
+Verified 2026-09-05.
 
 | Check | Result |
 |---|---|
-| `npm test` | **276 passed / 276**, 22 files, ~23s |
+| `npm test` | **351 passed / 351**, 27 files, ~25s |
 | `npm run lint` | clean |
 | `npm run typecheck` | clean |
 | `npm run build` | clean, with no environment set; every route still static |
@@ -35,6 +35,10 @@ CI (`.github/workflows/ci.yml`) runs the first four on every push and pull reque
 
 §11 already prescribes the test: install to a home screen, add five habits, backfill a month, tick something, and watch. Decide §10's LCP question at the same time; the doc argues (a) *move the budget* is probably right, and explicitly records (c) as rejected rather than available.
 
+### `lib/share-card.ts` has no rendering test
+
+The same shape of gap as `lib/db.ts` below, and a smaller one. `geometry()` is exported and covered, because an off-by-one there puts the last week over the edge of the image; the drawing needs a canvas, which means either jsdom (which does not implement one) or a real browser. **Look at a card on a phone during the §11 Phase 7 pass** — check it in both themes and against a custom palette, since the colours come from `getComputedStyle` at render time.
+
 ### `lib/db.ts` has no tests
 
 The last file from the old phase 1 list. It is not an oversight and it is not free: testing IndexedDB means a fake, and the only practical fake is a dependency — in the one module that was hand-rolled specifically so the persistence layer would not have one (`lib/db.ts`'s own header says so).
@@ -53,9 +57,13 @@ At 168. Purely additive, and slow on purpose — §5.2's verification bar matter
 - **The region.** `vercel.json` pins functions to `iad1`, which is a *guess* until the Neon database exists. Every sync is several round trips inside one advisory-locked transaction, so a mismatch is paid several times per request.
 - **The database role.** `DATABASE_URL` must not name a superuser, or row-level security (§13.15) is bypassed silently. Neon's default role is fine; check the warning `npm run db:migrate` prints.
 
-### Richer stats, more habit types
+### More habit types
 
 Genuinely new scope. Specify against §1's goals before building — G5 and the v1 non-goals rule out more than they look like they do.
+
+The candidates, in the order they are worth doing: **a note per entry** (`Entry` already carries `updatedAt` and has no tombstone question to answer, so it merges like everything else); **pause/vacation**, which maps onto the `"rest"` level the heatmap already draws and would partly close §12 #5 and #7; **an `{ kind: "interval" }` cadence** anchored on `createdAt`. All three touch `lib/sync/validate.ts` and the habit form. Monthly cadence is the one to leave alone — it does not fit a seven-column grid.
+
+**Richer stats is done** — §4.5, and listed under *Recently closed*.
 
 ---
 
@@ -74,7 +82,7 @@ Record the decision; do not reopen the reasoning.
 ## 4. Housekeeping
 
 - **Prettier, alone and on its own commit.** It would reformat the whole tree at once and bury the history of a codebase whose prose is load-bearing. Safe to do, because CI can prove it changed nothing.
-- **Test-only exports:** `lib/dates.ts:weekdayIndex` and `lib/quotes.ts:deckFor` are used by `tests/` and by no application code. `lib/store.ts:hydrate` is exported for the same reason and says so. Fine, but worth knowing before someone "cleans them up".
+- **Test-only exports:** `lib/dates.ts:weekdayIndex` is used by `tests/` and by no application code. (`deckFor` in `lib/quotes.ts` and `lib/facts.ts` was on this list until §5.4 gave it a caller.) `lib/store.ts:hydrate` is exported for the same reason and says so. Fine, but worth knowing before someone "cleans them up".
 - **`@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0**, and all three carry either the schema or the suite that validates it. Only the lockfile pins them — `npm ci` is what makes CI honour it.
 - **`@types/nodemailer` stays at `^8` against nodemailer `^9`.** nodemailer 9 ships no `.d.ts` of its own and 8.0.1 *is* the newest `@types/nodemailer`; the mismatch is DefinitelyTyped's numbering, not staleness.
 - **`0006` is part-generated and part hand-written.** The `ENABLE`/`CREATE POLICY` half comes from `schema.ts`; the five `FORCE ROW LEVEL SECURITY` statements and the superuser warning do not, because drizzle-kit cannot express them — and without the `FORCE` half the policies never fire for the table owner, which is the role in `DATABASE_URL`. `tests/server/rls.test.ts` asserts `relforcerowsecurity` so a regeneration cannot quietly drop them.
@@ -104,3 +112,7 @@ Kept as a list because `DESIGN.md` records reversals rather than overwriting the
 | Two sections numbered §13.11 | The origin section is §13.12; every citation moved with it |
 | `deleteEntriesFor`, `quoteById` unreferenced | Deleted |
 | Isolation rested on the `where user_id` clauses alone | §13.15 — row-level security on all five tables, `FORCE`d, opened per transaction by `lib/server/scope.ts` |
+| "Richer stats" was unspecified scope | §4.5 — weekday and monthly rollups and per-habit streaks, in `lib/insights.ts`; all derived, nothing stored |
+| Deleting a habit said it "cannot be undone", which the tombstone contradicted | §7.4 — one undo slot with a TTL, restoring habit and entries under fresh stamps |
+| Tags filtered the collection view and nothing else | §5.4 — `Settings.dailyTags` narrows the deck the daily card draws from |
+| The grid could only be looked at | §4.6 — `lib/share-card.ts` draws it to a PNG for the share sheet, or a download |

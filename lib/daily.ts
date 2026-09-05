@@ -16,8 +16,8 @@
 import { FACTS } from "@/data/facts";
 import { QUOTES } from "@/data/quotes";
 import { itemForDay, seamWindow, upcomingSchedule } from "./deck";
-import { FACT_TAGS } from "./facts";
-import { QUOTE_TAGS } from "./quotes";
+import { deckFor as factDeckFor, FACT_TAGS } from "./facts";
+import { deckFor as quoteDeckFor, QUOTE_TAGS } from "./quotes";
 import type { DailyMode, DayKey, Fact, Quote } from "./types";
 
 /**
@@ -62,17 +62,46 @@ export function corpusFor(mode: DailyMode): DailyItem[] {
   return mode === "facts" ? FACTS.map(fromFact) : QUOTES.map(fromQuote);
 }
 
-export function dailyForDay(day: DayKey, mode: DailyMode): DailyItem {
-  return mode === "facts"
-    ? fromFact(itemForDay(day, FACTS))
-    : fromQuote(itemForDay(day, QUOTES));
+/**
+ * The deck a mode actually draws from, once `Settings.dailyTags` has been
+ * applied. A separate idea from `corpusFor`, which is everything there is to
+ * browse: the collection still shows the whole shelf while the card reads from
+ * the narrowed pile.
+ *
+ * Every function that answers a question *about the sequence* — what shows
+ * today, when a given item comes round, how long the gap is — has to be given
+ * the same tags, or the collection's schedule column starts describing a deck
+ * the card is not using.
+ */
+function deckFor(mode: DailyMode, tags: readonly string[] = []): Quote[] | Fact[] {
+  return mode === "facts" ? factDeckFor(tags) : quoteDeckFor(tags);
 }
 
-/** When each item in the mode's corpus next comes up. */
-export function scheduleFor(from: DayKey, mode: DailyMode): Map<string, DayKey> {
+export function dailyForDay(
+  day: DayKey,
+  mode: DailyMode,
+  tags: readonly string[] = [],
+): DailyItem {
   return mode === "facts"
-    ? upcomingSchedule(from, FACTS)
-    : upcomingSchedule(from, QUOTES);
+    ? fromFact(itemForDay(day, factDeckFor(tags)))
+    : fromQuote(itemForDay(day, quoteDeckFor(tags)));
+}
+
+/**
+ * When each item in the mode's deck next comes up.
+ *
+ * Items filtered out have no next appearance and are simply absent from the
+ * map — which is what lets the collection sort them to the end and say nothing
+ * about a day they will never land on.
+ */
+export function scheduleFor(
+  from: DayKey,
+  mode: DailyMode,
+  tags: readonly string[] = [],
+): Map<string, DayKey> {
+  return mode === "facts"
+    ? upcomingSchedule(from, factDeckFor(tags))
+    : upcomingSchedule(from, quoteDeckFor(tags));
 }
 
 /**
@@ -102,8 +131,26 @@ export const MODE_COPY: Record<
 export const tagsFor = (mode: DailyMode): string[] =>
   mode === "facts" ? FACT_TAGS : QUOTE_TAGS;
 
+/** Everything in the corpus, filter or no filter — what there is to browse. */
 export const countFor = (mode: DailyMode): number =>
   mode === "facts" ? FACTS.length : QUOTES.length;
 
-/** The guaranteed minimum number of days between two showings, for this mode. */
-export const repeatGapFor = (mode: DailyMode): number => seamWindow(countFor(mode));
+/** How many of those the card can currently land on. */
+export const deckCountFor = (mode: DailyMode, tags: readonly string[] = []): number =>
+  deckFor(mode, tags).length;
+
+/**
+ * The guaranteed minimum number of days between two showings.
+ *
+ * Reads the *filtered* deck, because that is the promise the user is actually
+ * being made: narrow the tags far enough and the gap shrinks with them, and the
+ * settings screen says so rather than repeating a number from the full corpus.
+ */
+export const repeatGapFor = (mode: DailyMode, tags: readonly string[] = []): number =>
+  seamWindow(deckCountFor(mode, tags));
+
+/** Which of a mode's own tags a flat cross-corpus selection actually names. */
+export const activeTagsFor = (mode: DailyMode, tags: readonly string[]): string[] => {
+  const wanted = new Set<string>(tags);
+  return tagsFor(mode).filter((tag) => wanted.has(tag));
+};

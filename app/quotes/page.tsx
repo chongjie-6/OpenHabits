@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  activeTagsFor,
   corpusFor,
   countFor,
+  deckCountFor,
   MODE_COPY,
   repeatGapFor,
   scheduleFor,
@@ -37,11 +39,18 @@ export default function CollectionPage() {
 
   const corpus = useMemo(() => corpusFor(mode), [mode]);
 
-  // Every item's next appearance, in one pass over a full deck cycle.
+  const deckTags = settings.dailyTags;
+
+  // Every item's next appearance, in one pass over a full deck cycle. Narrowed
+  // by the same tags the card uses, so an item the filter excludes shows no
+  // date rather than a day it will never land on.
   const schedule = useMemo(
-    () => (today ? scheduleFor(today, mode) : new Map<string, DayKey>()),
-    [today, mode],
+    () => (today ? scheduleFor(today, mode, deckTags) : new Map<string, DayKey>()),
+    [today, mode, deckTags],
   );
+
+  const inDeck = activeTagsFor(mode, deckTags);
+  const deckSize = deckCountFor(mode, deckTags);
 
   const favourites = settings.favourites;
   const saved = useMemo(() => new Set(favourites), [favourites]);
@@ -172,10 +181,17 @@ export default function CollectionPage() {
       )}
 
       <p className="pb-2 text-[11px] leading-relaxed text-muted">
-        Every {copy.one} is shown once before any of them comes round again, and
-        none can repeat within {repeatGapFor(mode)} days. Which {copy.one} lands
-        on which day is a pure function of the date — identical on every device
-        you own, with or without a connection.
+        {inDeck.length > 0 && (
+          <>
+            Your daily {copy.one} is drawn from the {deckSize} tagged{" "}
+            <span className="text-foreground">{inDeck.join(", ")}</span>. Everything
+            else is still here to browse and save.{" "}
+          </>
+        )}
+        Every {copy.one} in the deck is shown once before any of them comes round
+        again, and none can repeat within {repeatGapFor(mode, deckTags)} days.
+        Which {copy.one} lands on which day is a pure function of the date —
+        identical on every device you own, with or without a connection.
       </p>
     </section>
   );

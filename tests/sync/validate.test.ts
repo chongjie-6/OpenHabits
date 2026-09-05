@@ -170,6 +170,25 @@ describe("parseSyncPush", () => {
     expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: -1 } } }).ok).toBe(false);
   });
 
+  it("treats missing dailyTags as the default, and accepts a tag it has never heard of", () => {
+    const result = push({ settings: SETTINGS });
+    expect(result.ok).toBe(true);
+    expect(result.ok === true && result.value.settings?.value.dailyTags).toEqual([]);
+
+    const withTags = (dailyTags: unknown) =>
+      push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, dailyTags } } });
+
+    expect(withTags(["discipline", "space"]).ok).toBe(true);
+    // Checked for shape, not membership: the unions grow, and a device on a
+    // newer build must not have its whole blob — habits included — refused over
+    // a tag name this release does not know. `lib/daily.ts` ignores it.
+    expect(withTags(["a-tag-from-the-future"]).ok).toBe(true);
+
+    expect(withTags("discipline").ok).toBe(false);
+    expect(withTags([7]).ok).toBe(false);
+    expect(withTags([""]).ok).toBe(false);
+  });
+
   it("accepts a tombstone", () => {
     expect(push({ habits: [{ ...HABIT, deletedAt: 2000 }] }).ok).toBe(true);
     expect(push({ habits: [{ ...HABIT, deletedAt: -5 }] }).ok).toBe(false);

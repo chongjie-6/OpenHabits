@@ -28,6 +28,8 @@ const MAX_ID = 64;
 const MAX_TARGET = 1000;
 const MAX_COUNT = 100_000;
 const MAX_FAVOURITES = 5000;
+/** Comfortably past both tag unions put together, with room for both to grow. */
+const MAX_TAGS = 200;
 const MAX_ORDER = 100_000;
 
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; message: string };
@@ -199,6 +201,15 @@ function parseSettings(value: unknown): ParseResult<Settings> {
   if (!value.favourites.every(isId)) {
     return fail("settings.favourites must be quote or fact ids");
   }
+  // Optional like `haptics`, and checked for shape rather than membership: the
+  // tag unions grow, and a device on a newer build must be able to push a tag
+  // this one has never heard of. `lib/daily.ts` intersects with the corpus it
+  // is about to draw from, so an unknown tag narrows nothing and breaks nothing.
+  if (value.dailyTags !== undefined) {
+    if (!Array.isArray(value.dailyTags)) return fail("settings.dailyTags must be an array");
+    if (value.dailyTags.length > MAX_TAGS) return fail("settings.dailyTags is too long");
+    if (!value.dailyTags.every(isId)) return fail("settings.dailyTags must be tag names");
+  }
 
   return {
     ok: true,
@@ -209,6 +220,7 @@ function parseSettings(value: unknown): ParseResult<Settings> {
       haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
       dailyMode: value.dailyMode ?? DEFAULT_SETTINGS.dailyMode,
       favourites: value.favourites as string[],
+      dailyTags: (value.dailyTags as string[] | undefined) ?? DEFAULT_SETTINGS.dailyTags,
     },
   };
 }

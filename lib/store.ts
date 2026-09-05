@@ -292,18 +292,35 @@ export function updateHabit(id: string, patch: Partial<Omit<Habit, "id">>): void
 }
 
 /**
+ * Everything a delete throws away, in the shape `restore` puts back.
+ *
+ * The entries have to travel in it. A tombstone tells every peer *and the
+ * server* to drop the habit's history — `lib/server/sync-store.ts` deletes those
+ * rows outright — so after a delete this object is the only copy that exists
+ * anywhere.
+ */
+export type DeletedHabit = { habit: Habit; entries: Entry[] };
+
+/**
  * Delete locally and leave a tombstone for the other devices. See
  * `db.deleteHabitRecord` for why the row cannot simply be dropped.
+ *
+ * Returns what was removed so the caller can offer an undo (`lib/undo.ts`).
+ * Ignoring the return value is a complete delete, which is what every path did
+ * before undo existed.
  */
-export function deleteHabit(id: string): void {
+export function deleteHabit(id: string): DeletedHabit | null {
   const habit = state.habits.find((h) => h.id === id);
-  if (!habit) return;
+  if (!habit) return null;
 
   const tombstone: Habit = { ...habit, deletedAt: Date.now(), updatedAt: Date.now() };
 
+  const removed: Entry[] = [];
   const entries = new Map(state.entries);
-  for (const key of entries.keys()) {
-    if (key.startsWith(`${id}:`)) entries.delete(key);
+  for (const [key, entry] of entries) {
+    if (!key.startsWith(`${id}:`)) continue;
+    removed.push(entry);
+    entries.delete(key);
   }
 
   state = {
@@ -314,6 +331,51 @@ export function deleteHabit(id: string): void {
   };
   emit();
   persist(() => db.deleteHabitRecord(tombstone));
+
+  return { habit, entries: removed };
+}
+
+/**
+ * Put deleted records back, as a fresh edit.
+ *
+ * Everything restored is re-stamped with the current time, and that is the whole
+ * trick: the delete it is undoing wrote a tombstone stamped *now*, which every
+ * peer and the server will apply. Restoring a habit under its original
+ * `updatedAt` would lose that comparison, so the undo would appear to work on
+ * this device and be quietly re-deleted by the next pull. The same applies to
+ * every entry — they were dropped server-side when the tombstone landed, so
+ * they have to be pushed again to exist anywhere but here.
+ *
+ * Takes a plain record rather than a habit id: by the time this runs the store
+ * no longer holds the thing being restored.
+ *
+ * Nothing here waits for the delete's own writes to land. It does not have to:
+ * both go through the same cached `openDb()` promise and IndexedDB runs
+ * overlapping readwrite transactions on a store in the order they were created,
+ * so the tombstone is committed before these rows are put back.
+ */
+export function restore(deleted: DeletedHabit): void {
+  const now = Date.now();
+  const habit: Habit = { ...deleted.habit, deletedAt: null, updatedAt: now };
+  const entries = deleted.entries.map((entry) => ({ ...entry, updatedAt: now }));
+
+  const merged = new Map(state.entries);
+  for (const entry of entries) merged.set(entryKey(entry.habitId, entry.date), entry);
+
+  state = {
+    ...state,
+    habits: [...state.habits.filter((h) => h.id !== habit.id), habit].sort(
+      (a, b) => a.order - b.order,
+    ),
+    tombstones: state.tombstones.filter((h) => h.id !== habit.id),
+    entries: merged,
+  };
+  emit();
+
+  // Both issued at once rather than in sequence: they are separate object
+  // stores with no ordering between them, and awaiting the first would leave
+  // the second a microtask behind the state the UI is already showing.
+  persist(() => Promise.all([db.putHabit(habit), db.putEntries(entries)]));
 }
 
 export function moveHabit(id: string, direction: -1 | 1): void {

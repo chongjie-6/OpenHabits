@@ -74,6 +74,20 @@ export function startOfWeek(key: DayKey, weekStartsOn: 0 | 1): DayKey {
   return addDays(key, -offset);
 }
 
+/**
+ * The first day of the month `key` falls in, `monthsBack` months earlier if
+ * given.
+ *
+ * Here rather than at the caller because it is the one piece of month
+ * arithmetic in the app, and this file is where `new Date()` is allowed to
+ * produce a DayKey. `Date.UTC` normalises a negative month index into the
+ * previous year on its own, so December needs no special case.
+ */
+export function startOfMonth(key: DayKey, monthsBack = 0): DayKey {
+  const { y, m } = parseDayKey(key);
+  return fromEpoch(Date.UTC(y, m - 1 - monthsBack, 1));
+}
+
 /** "Thursday, 14 August" */
 export function formatDayLong(key: DayKey): string {
   return dateFromDayKey(key).toLocaleDateString(undefined, {

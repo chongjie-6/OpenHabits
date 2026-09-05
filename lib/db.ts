@@ -178,6 +178,7 @@ function readSettings(stored: unknown): Settings {
     haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
     dailyMode: value.dailyMode ?? DEFAULT_SETTINGS.dailyMode,
     favourites: value.favourites ?? DEFAULT_SETTINGS.favourites,
+    dailyTags: value.dailyTags ?? DEFAULT_SETTINGS.dailyTags,
   };
 }
 

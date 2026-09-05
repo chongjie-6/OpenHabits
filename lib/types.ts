@@ -194,6 +194,23 @@ export type Settings = {
    * distinct, and a saved thing should not disappear because the mode changed.
    */
   favourites: string[];
+  /**
+   * Tags the daily card is allowed to draw from. Empty means the whole corpus,
+   * which is the default and stays the default.
+   *
+   * One flat list across both corpora, like `favourites`, and for the same
+   * reason: the two tag unions are disjoint, so the mode on screen decides
+   * which half is read and the other half sits harmlessly by. Filtering to
+   * nothing a corpus has is *not* an empty deck — `lib/daily.ts` falls back to
+   * the whole corpus, because a card with nothing on it is a worse answer than
+   * a card that ignored a filter.
+   *
+   * `string[]` rather than `(QuoteTag | FactTag)[]`: a tag added in a later
+   * release has to survive a round trip through a device on an older build,
+   * and a union type here would make that device reject the whole settings
+   * blob — and with it every habit in the same push.
+   */
+  dailyTags: string[];
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -203,6 +220,7 @@ export const DEFAULT_SETTINGS: Settings = {
   haptics: true,
   dailyMode: "quotes",
   favourites: [],
+  dailyTags: [],
 };
 
 /**

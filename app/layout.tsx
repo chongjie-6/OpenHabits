@@ -8,6 +8,7 @@ import {
   Space_Grotesk,
 } from "next/font/google";
 import { BottomNav, Hydrator } from "@/components/AppChrome";
+import { UndoBar } from "@/components/UndoBar";
 import { siteURL } from "@/lib/site-url";
 import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -125,6 +126,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <BottomNav />
+        {/* Above the nav, and outside `main`, so it survives the navigation the
+            action that raised it usually causes. */}
+        <UndoBar />
       </body>
     </html>
   );

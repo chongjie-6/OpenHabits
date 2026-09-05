@@ -4,9 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { HabitRow } from "@/components/HabitRow";
 import { Heatmap, HeatmapLegend } from "@/components/Heatmap";
+import { MonthlyTrend, WeekdayRates } from "@/components/Insights";
+import { ShareGrid } from "@/components/ShareGrid";
 import { habitColor } from "@/lib/colors";
-import { addDays, formatDayFull, startOfWeek } from "@/lib/dates";
+import { addDays, formatDayFull, startOfMonth, startOfWeek } from "@/lib/dates";
 import { buildHistory, habitsForDay, perHabitTotals } from "@/lib/history";
+import { monthRates, perHabitStreaks, weekdayRates } from "@/lib/insights";
 import { useOpenHabits } from "@/lib/store";
 import { computeStreaks } from "@/lib/streaks";
 import { useMediaQuery, WIDE } from "@/lib/use-media-query";
@@ -15,6 +18,8 @@ import type { DayKey } from "@/lib/types";
 
 const FULL_YEAR_WEEKS = 53;
 const COMPACT_WEEKS = 20;
+/** How far the trend looks back, independently of the grid's own window. */
+const TREND_MONTHS = 6;
 
 export default function StatsPage() {
   const { hydrated, habits, entries, settings } = useOpenHabits();
@@ -38,18 +43,32 @@ export default function StatsPage() {
     // Streaks and rates read the past, never the tail of future cells.
     const past = stats.filter((s) => s.date <= day);
 
+    // The trend runs on whole calendar months, which the grid's week-aligned
+    // window cannot supply: it starts partway through a month, and the first
+    // bar would be a fraction of one standing beside five whole ones.
+    const trendFrom = startOfMonth(day, TREND_MONTHS - 1);
+    const trend = monthRates(
+      buildHistory(habits, entries, trendFrom, day, settings.weekStartsOn),
+    );
+
     return {
       day,
       stats,
+      past,
       streaks: computeStreaks(past),
       totals: perHabitTotals(habits, entries, from, day, settings.weekStartsOn),
+      habitStreaks: perHabitStreaks(habits, entries, from, day, settings.weekStartsOn),
+      weekdays: weekdayRates(past, settings.weekStartsOn),
+      trend,
       windowDays: past.length,
+      from,
     };
   }, [hydrated, today, habits, entries, settings, weeks]);
 
   if (!view) return <Skeleton />;
 
-  const { day, stats, streaks, totals, windowDays } = view;
+  const { day, stats, past, streaks, totals, habitStreaks, weekdays, trend, windowDays, from } =
+    view;
   const selectedStates = selected
     ? habitsForDay(habits, entries, selected, settings.weekStartsOn)
     : null;
@@ -104,7 +123,30 @@ export default function StatsPage() {
               )}
               <HeatmapLegend />
             </div>
+            <div className="mt-3 flex items-center justify-end gap-3 border-t border-border pt-3">
+              <ShareGrid
+                // A thunk, so the year is not drawn to a canvas until the tap.
+                card={() => ({
+                  title: "My year in habits",
+                  subtitle: `${formatDayFull(from)} — ${formatDayFull(day)}`,
+                  figures: [
+                    { value: String(streaks.current), label: "day streak" },
+                    { value: `${Math.round(streaks.completionRate * 100)}%`, label: "completed" },
+                    { value: String(streaks.perfectDays), label: "perfect days" },
+                  ],
+                  // The past only. The grid on screen runs to the end of this
+                  // week and dims what has not happened yet; a still image has
+                  // no way to say "not yet", so a Monday share would otherwise
+                  // show the rest of the week as four missed days.
+                  stats: past,
+                })}
+                filename={`openhabits-${day}.png`}
+              />
+            </div>
           </div>
+
+          <WeekdayRates rates={weekdays} />
+          <MonthlyTrend months={trend} />
 
           {selected && selectedStates && (
             <div className="surface-card bg-surface p-4">
@@ -144,6 +186,7 @@ export default function StatsPage() {
                 const total = totals.get(habit.id) ?? { scheduled: 0, completed: 0 };
                 const rate =
                   total.scheduled === 0 ? 0 : total.completed / total.scheduled;
+                const streak = habitStreaks.get(habit.id)?.current ?? 0;
                 return (
                   <li key={habit.id}>
                     <Link
@@ -154,7 +197,14 @@ export default function StatsPage() {
                         {habit.emoji}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[14px]">{habit.name}</span>
+                        <span className="flex items-baseline gap-2">
+                          <span className="min-w-0 truncate text-[14px]">{habit.name}</span>
+                          {streak > 0 && (
+                            <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted">
+                              {streak}d
+                            </span>
+                          )}
+                        </span>
                         <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-surface-2">
                           <span
                             className="block h-full rounded-full"

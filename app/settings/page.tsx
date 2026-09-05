@@ -7,7 +7,14 @@ import { InstallCard } from "@/components/DownloadAppButton";
 import { ReminderCard } from "@/components/ReminderCard";
 import { habitColor } from "@/lib/colors";
 import { HAPTIC_DONE, vibrate } from "@/lib/haptics";
-import { countFor, MODE_COPY } from "@/lib/daily";
+import {
+  activeTagsFor,
+  countFor,
+  deckCountFor,
+  MODE_COPY,
+  repeatGapFor,
+  tagsFor,
+} from "@/lib/daily";
 import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
 import { usePalette } from "@/lib/use-palette";
 import { changeTheme, useTheme } from "@/lib/use-theme";
@@ -164,6 +171,7 @@ export default function SettingsPage() {
           Both run their own sequence, so switching does not restart either one,
           and anything you have saved stays saved.
         </p>
+        <DeckTags settings={settings} />
       </Group>
 
       <Group title="Feedback">
@@ -347,11 +355,81 @@ export default function SettingsPage() {
       </Group>
 
       <p className="pb-4 text-center text-[11px] text-muted">
-        OpenHabits · {countFor(settings.dailyMode)}{" "}
+        OpenHabits · {deckCountFor(settings.dailyMode, settings.dailyTags)}{" "}
         {MODE_COPY[settings.dailyMode].many} in the deck ·{" "}
         {settings.favourites.length} saved
       </p>
     </section>
+  );
+}
+
+/**
+ * Which tags the daily card may draw from — `Settings.dailyTags`, §5.3.
+ *
+ * Only the active mode's tags are offered. The stored list is flat across both
+ * corpora, so a selection made under quotes survives a trip through facts and
+ * back; showing both vocabularies at once would put nineteen chips on screen to
+ * narrow a deck of one.
+ *
+ * Nothing here can empty the deck. Deselecting everything is the default —
+ * "all of them" — and `lib/daily.ts` falls back to the whole corpus rather than
+ * leaving the card with nothing to say.
+ */
+function DeckTags({ settings }: { settings: Settings }) {
+  const mode = settings.dailyMode;
+  const copy = MODE_COPY[mode];
+  const selected = new Set(activeTagsFor(mode, settings.dailyTags));
+  const size = deckCountFor(mode, settings.dailyTags);
+
+  function toggle(tag: string) {
+    const next = selected.has(tag)
+      ? settings.dailyTags.filter((t) => t !== tag)
+      : [...settings.dailyTags, tag];
+    updateSettings({ dailyTags: next });
+  }
+
+  function clear() {
+    // Only this mode's tags — the other corpus keeps whatever it was given.
+    const others = new Set(tagsFor(mode));
+    updateSettings({ dailyTags: settings.dailyTags.filter((t) => !others.has(t)) });
+  }
+
+  return (
+    <fieldset className="mt-4 border-t border-border pt-4">
+      <legend className="sr-only">Which {copy.many} to draw from</legend>
+      <p className="text-[13px] font-medium">Draw from</p>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+        {selected.size === 0
+          ? `All ${size} ${copy.many}. Pick a few themes to narrow the deck.`
+          : `${size} of ${countFor(mode)} ${copy.many}, repeating no sooner than every ${repeatGapFor(mode, settings.dailyTags)} days.`}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {tagsFor(mode).map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            aria-pressed={selected.has(tag)}
+            onClick={() => toggle(tag)}
+            className={`h-8 rounded-full border px-3 text-[12px] capitalize transition-colors ${
+              selected.has(tag)
+                ? "border-accent bg-accent text-accent-fg"
+                : "border-border text-muted hover:text-foreground"
+            }`}
+          >
+            {tag}
+          </button>
+        ))}
+        {selected.size > 0 && (
+          <button
+            type="button"
+            onClick={clear}
+            className="h-8 rounded-full px-3 text-[12px] text-accent"
+          >
+            Use all
+          </button>
+        )}
+      </div>
+    </fieldset>
   );
 }
 

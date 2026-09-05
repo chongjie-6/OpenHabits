@@ -5,7 +5,7 @@ A local-first PWA that pairs a **daily quote from someone worth quoting** with a
 - **Status:** phases 0–6 built and passing; §11 has what remains. Sync (§13) runs: the auth seam is filled (§13.6) and an account is created from the Settings screen.
 - **Stack:** Next.js 16.3.1 (App Router), React 19.2, Tailwind CSS v4, TypeScript 5, Vitest
 - **Sync stack:** Postgres + Drizzle, Better Auth for identity, PGlite for tests (§13)
-- **Last updated:** 2026-08-23
+- **Last updated:** 2026-09-05
 
 > Sections marked **Revised during build** record where implementation contradicted the plan. They are kept rather than overwritten — the reasoning that turned out to be wrong is usually the reasoning most worth having on the record.
 
@@ -56,6 +56,8 @@ Everything else in the app is in service of that loop. A screen that doesn't fee
 | `/settings` | **Settings** | Theme, week start, habits, export/import, danger zone | ✅ |
 | `/habit?id=` | **Habit detail** | Single-habit heatmap, rename, cadence, archive, delete | ✅ |
 | `/quotes` | **Collection** | Saved quotes or facts, searchable by author, source and tag | ✅ |
+
+> **Added after the first release.** Stats grew two rollups under the grid (§4.5) and a share button beside its legend (§4.6); the habit detail screen has the same share button and no new route. Nothing was added to the tab bar — §2.1's rule still applies, and neither is a screen.
 
 > **Revised during build.** Habit detail is `/habit?id=…`, not `/habit/[id]`. Habit ids are client-generated UUIDs the server has never heard of, so a dynamic segment could never be prerendered: every new habit would become a server round-trip, and opening one offline would fail until the service worker happened to have cached that exact URL. A search parameter keeps it a single static page, available offline the moment the shell is.
 
@@ -256,6 +258,34 @@ Keyboard support uses **roving tabindex** — the grid holds a single tab stop, 
 
 A visually-hidden `<table>` alternative is *not* needed; the labelled grid is sufficient and cheaper. But the Stats page must also present the same information as text ("You completed 82% of scheduled habits over the last 30 days"), because a 371-cell grid is a poor primary read for a screen reader user regardless of labelling.
 
+### 4.5 Reading the grid back — `lib/insights.ts`
+
+> **Added after the first release.** The grid answers "what did my year look like". It does not answer "what is going wrong", and that is the question a habit tracker exists to help with.
+
+Three rollups, all of them functions of the `DayStat[]` the grid was already built from. Nothing new is stored, and §3.1's rule holds unchanged: **derived data is never persisted.**
+
+- **By weekday.** The most actionable number in the app. "You miss Saturdays" is something a person can act on; an overall completion rate is not. Counted in **habit-days**, not whole days — one bad Saturday out of twenty must not read the same as twenty half-done ones.
+- **By calendar month.** Calendar months rather than rolling 30-day windows, because a trend is read against the months a person remembers living through and "March" is a label they already have. This is the one read that needs its own window: the grid's starts on a week boundary partway through a month, so `lib/dates.ts:startOfMonth` supplies whole months instead and the first bar is not a fraction of one standing beside five whole ones.
+- **Per-habit streaks.** The aggregate streak at the top of Stats breaks the moment *any* habit is missed, which makes a 40-day run on one habit invisible — and that run is the number the person actually wants. Built through `buildHabitHistory`, so a counted habit is scored the way its own grid scores it.
+
+**A null rate is a real answer and is drawn as one.** "Nothing was ever scheduled on a Sunday" and "every Sunday was missed" are different observations and must not look alike — an empty track, never a zero-width bar in a full one. This is §4.2's rest cell, applied a second time.
+
+**The weekday headline refuses to print more often than it prints.** `weekdayExtremes` names a best and worst day only when both ends carry enough scheduled habit-days to mean anything (`MIN_SAMPLE`) *and* the gap between them is wider than a single missed day could produce (`MIN_SPREAD`). An app that tells you Tuesdays are your weakness on the strength of one Tuesday is worse than an app that says nothing.
+
+### 4.6 The grid as an image — `lib/share-card.ts`
+
+> **Added after the first release.** Social features are a v1 non-goal (§1) and this is not one: nothing is posted, no account is involved, and the file goes wherever the user's own share sheet sends it. It is an **export** — G5's "the data is theirs" pointed at the one screen G2 calls the emotional payoff.
+
+**Drawn to a canvas, not screenshotted.** `components/Heatmap.tsx` renders SVG sized for a phone, carrying a keyboard cursor, selection rings and month gutters that belong to an interface rather than to a picture; serialising it would also mean inlining every CSS variable it resolves against. The card has its own layout at its own size.
+
+**Fixed cell metrics, variable canvas.** The grid is the subject, so a cell is 22px whether the card covers twenty weeks or fifty-three, and the canvas is sized to fit — down to a floor width, below which a short window would come out as a strip rather than a card. `geometry()` is exported and tested, because an off-by-one there puts the last week over the edge of the image and still looks like a card.
+
+**Colours are resolved by the browser, not by us.** The tokens are custom properties and two of the ramps are `color-mix` or relative-colour expressions on top of them — none of which `ctx.fillStyle` parses. Each is assigned to a throwaway element and read back through `getComputedStyle`, which is the only thing that knows the current theme, skin and palette (§6.5, §6.6). A card therefore comes out in whatever the user is looking at.
+
+**Share sheet where there is one, download where there is not.** `navigator.canShare({ files })` is checked with the actual file rather than by testing for the API — desktop Chrome has `navigator.share` and refuses files. A cancelled share sheet throws `AbortError`, which is a completed interaction and not a failure to report.
+
+The rendering happens on the tap and nowhere else. Drawing a megapixel canvas on every visit to Stats would charge every user for a feature most of them will never use.
+
 ---
 
 ## 5. The daily card
@@ -318,6 +348,20 @@ Two tests guard the corpus: ids are unique, and no two entries share the same op
 **The mode syncs; appearance still does not.** It sits in the settings blob beside `weekStartsOn` and `reminderHour`, because it decides *what the app says to you* rather than how it looks (§13.8 #1). `parseSettings` accepts it as optional and checks it against the union rather than against `string`, for the reason `haptics` is optional: a device on an older build pushes a blob without it, and an unrecognised mode would reach every other device and leave the card with no corpus to draw from.
 
 **Favourites are one list across both.** The ids are distinct, nothing has to be migrated, and a saved thing does not vanish because the mode changed — the collection view counts the saved items *in the corpus on screen* rather than the length of the list.
+
+### 5.4 Narrowing the deck by tag
+
+> **Added after the first release.** Both corpora were already tagged, and the tags were used only to filter the collection view. `Settings.dailyTags` points the same tags at the deck: pick `courage` and `discipline`, and those are the quotes the card draws from.
+
+**One flat list across both corpora**, exactly like `favourites` and for the same reason — the two tag unions are disjoint, so the mode on screen decides which half is read and the other half sits harmlessly by. A test pins that disjointness, because the day they overlap is the day picking a quote tag silently narrows the facts too.
+
+**Filtering to nothing is not an empty deck.** A selection naming no tag this corpus has falls back to the whole corpus (`deckFor`). Two ordinary situations produce it — someone who has only ever picked fact tags looking at a quote, and a tag from a build this device has not installed yet — and a card with nothing on it is a worse answer than a card that ignored a filter.
+
+**`string[]`, not `(QuoteTag | FactTag)[]`.** `parseSettings` checks the field for shape rather than membership. The unions grow; a device on a newer release must not have its whole settings blob refused — habits and all — over a tag name this build has never heard of. This is the same reasoning that makes `haptics` and `dailyMode` optional, taken one step further, and `lib/daily.ts` narrows by intersection so an unknown tag can only ever narrow nothing.
+
+**Every question about the sequence takes the same tags.** `dailyForDay`, `scheduleFor`, `deckCountFor` and `repeatGapFor` all read the filtered deck. Miss one and the collection's "in 12 days" column starts describing a deck the card is not using. In particular `repeatGapFor` reports the *filtered* gap: narrow the tags far enough and quotes repeat sooner, and the settings screen says so rather than reprinting a number from the full corpus.
+
+`countFor` is deliberately the exception — it is what there is to *browse*, and the collection still shows the whole shelf.
 
 ---
 
@@ -519,6 +563,22 @@ Subscription goes through `useSyncExternalStore` — correct under React 19 conc
 - **Request persistent storage** on first habit creation: `navigator.storage.persist()`. Without it, IndexedDB sits in the evictable bucket and a year of streaks can be reclaimed under storage pressure. This is the single highest-value line of code in the persistence layer.
 - **Export/import** as a versioned JSON blob (`{ version: 1, habits, entries, settings }`) from Settings. This is the v1 backup story and the v1 device-migration story. Import is offered as merge-by-`updatedAt` or full replace.
 - **Migrations** keyed on the IDB `version` integer, with a documented upgrade function per version bump.
+
+### 7.4 Undo — `lib/undo.ts`
+
+> **Added after the first release.** Deleting a habit told the user it "cannot be undone" while the data model said otherwise: §13.4 writes a tombstone rather than dropping the row, so putting it back is a stamp change.
+
+**One slot, not a stack.** This is a way out of the tap you just regretted, not a history. A stack would need every entry to stay valid as the ones beneath it were undone, and the actions worth undoing at all are the rare, loud ones. A second offer pushes the first out.
+
+**The offer expires** (`UNDO_TTL_MS`). An undo sitting in a corner for ten minutes is a button whose meaning nobody remembers, and the payload it holds — a deleted habit's entire history — should not stay alive for a user who has moved on.
+
+**It lives in the root layout, not beside what raised it.** The action that needs undoing is usually the last thing done on a screen before leaving it: deleting a habit navigates away from the habit. A bar owned by that screen would unmount with it, taking the only way back.
+
+**Restoring re-stamps everything, and that is the whole trick.** The delete it undoes wrote a tombstone stamped *now*, which every peer and the server will apply. A habit restored under its original `updatedAt` loses that comparison — the undo would appear to work on this device and be quietly re-deleted by the next pull. The entries are re-stamped too, and for a stronger reason: `lib/server/sync-store.ts` **deletes a habit's entry rows outright** when its tombstone lands, so after a delete the record handed back by `deleteHabit` is the only copy of that history anywhere. Restoring has to push it again for it to exist at all.
+
+**What is not undoable, and why.** "Delete all data" and a replacing import both sit behind a two-step confirmation in a section labelled as dangerous, and an undo bar under a deliberate, confirmed, destructive action makes it read as casual. The backup file is the answer there, which is what §7.3 says it is for.
+
+`lib/store.ts:deleteHabit` returns what it removed; the caller decides whether to offer an undo. **The store does not import `lib/undo.ts`** — the dependency runs one way, as it does with sync.
 
 ---
 

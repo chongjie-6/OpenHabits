@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addDays,
   daysBetween,
+  startOfMonth,
   startOfWeek,
   todayKey,
   weekdayIndex,
@@ -86,6 +87,33 @@ describe("startOfWeek", () => {
   it("is idempotent", () => {
     const once = startOfWeek("2026-08-14", 1);
     expect(startOfWeek(once, 1)).toBe(once);
+  });
+});
+
+describe("startOfMonth", () => {
+  it("snaps to the first of the month", () => {
+    expect(startOfMonth("2026-08-14")).toBe("2026-08-01");
+    expect(startOfMonth("2026-08-01")).toBe("2026-08-01");
+  });
+
+  it("walks back whole months", () => {
+    expect(startOfMonth("2026-08-14", 1)).toBe("2026-07-01");
+    expect(startOfMonth("2026-08-14", 5)).toBe("2026-03-01");
+  });
+
+  it("crosses the year boundary", () => {
+    expect(startOfMonth("2026-02-14", 3)).toBe("2025-11-01");
+    expect(startOfMonth("2026-01-31", 1)).toBe("2025-12-01");
+  });
+
+  it("does not carry the day of the month into a shorter one", () => {
+    // The trap this avoids: 31 January minus one month landing on 3 March.
+    expect(startOfMonth("2026-03-31", 1)).toBe("2026-02-01");
+  });
+
+  it("is idempotent", () => {
+    const once = startOfMonth("2026-08-14");
+    expect(startOfMonth(once)).toBe(once);
   });
 });
 

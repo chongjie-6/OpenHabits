@@ -6,10 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Heatmap, HeatmapLegend } from "@/components/Heatmap";
 import { describeCadence } from "@/components/HabitForm";
 import { HabitFormPanel } from "@/components/HabitFormPanel";
+import { ShareGrid } from "@/components/ShareGrid";
 import { habitColor } from "@/lib/colors";
 import { addDays, formatDayFull, startOfWeek } from "@/lib/dates";
 import { buildHabitHistory } from "@/lib/history";
-import { deleteHabit, toggleEntry, updateHabit, useOpenHabits } from "@/lib/store";
+import { deleteHabit, restore, toggleEntry, updateHabit, useOpenHabits } from "@/lib/store";
+import { offerUndo } from "@/lib/undo";
 import { computeStreaks } from "@/lib/streaks";
 import { MOBILE, useMediaQuery, WIDE } from "@/lib/use-media-query";
 import { useToday } from "@/lib/use-today";
@@ -55,6 +57,7 @@ export function HabitDetail() {
 
     return {
       stats,
+      past,
       streaks: computeStreaks(past),
       scheduledDays: scheduled.length,
       completedDays: scheduled.filter((s) => s.completed > 0).length,
@@ -160,6 +163,29 @@ export function HabitDetail() {
               <HeatmapLegend ramp={habit.color} />
             </div>
 
+            <div className="mt-3 flex items-center justify-end gap-3 border-t border-border pt-3">
+              <ShareGrid
+                card={() => ({
+                  title: `${habit.emoji} ${habit.name}`,
+                  subtitle: describeCadence(
+                    habit.cadence,
+                    habit.target,
+                    settings.weekStartsOn,
+                  ),
+                  figures: [
+                    { value: String(view.streaks.current), label: "day streak" },
+                    { value: String(view.streaks.longest), label: "longest" },
+                    { value: `${Math.round(rate * 100)}%`, label: "completed" },
+                  ],
+                  // Ends today: a still image cannot dim a day that has not
+                  // happened yet, so the rest of this week would read as missed.
+                  stats: view.past,
+                  ramp: habit.color,
+                })}
+                filename={`openhabits-${slug(habit.name)}-${today}.png`}
+              />
+            </div>
+
             {selected && (
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
                 <p className="min-w-0 text-[13px]">
@@ -209,11 +235,14 @@ export function HabitDetail() {
                 <Action
                   danger
                   onClick={() => {
-                    deleteHabit(habit.id);
+                    const deleted = deleteHabit(habit.id);
+                    if (deleted) {
+                      offerUndo(`${deleted.habit.name} deleted.`, () => restore(deleted));
+                    }
                     router.push("/settings");
                   }}
                 >
-                  Delete forever
+                  Yes, delete
                 </Action>
                 <Action onClick={() => setConfirmDelete(false)}>Cancel</Action>
               </>
@@ -226,8 +255,8 @@ export function HabitDetail() {
 
           <p className="pb-2 text-[11px] leading-relaxed text-muted">
             Archiving keeps the history and stops the habit appearing on Today.
-            Deleting removes the habit and every entry it ever had, and cannot
-            be undone.
+            Deleting removes the habit and every entry it ever had — you have a
+            few seconds to undo it, and after that it is gone from every device.
           </p>
         </>
       )}
@@ -247,6 +276,15 @@ export function HabitDetail() {
       />
     </section>
   );
+}
+
+/** A habit name as a filename fragment — letters and digits, nothing else. */
+function slug(name: string): string {
+  const cleaned = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return cleaned || "habit";
 }
 
 function countLabel(count: number, target: number): string {
