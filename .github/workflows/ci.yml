@@ -63,5 +63,9 @@ jobs:
 
       - run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
+      # Assigned first, echoed second. Inlining the substitution into `echo`
+      # hands the step `echo`'s exit code, so a rejected deploy reported green.
       - id: deploy
-        run: echo "url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})" >> "$GITHUB_OUTPUT"
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
