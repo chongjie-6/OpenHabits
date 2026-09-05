@@ -1,0 +1,45 @@
+name: Reminders
+
+# The sweep has to run hourly — "9am" is a wall clock and one daily run is nine
+# o'clock in exactly one timezone (DESIGN.md §8.5). Vercel Cron is capped at
+# daily on Hobby, so the schedule lives here instead and the endpoint stays the
+# same. GitHub's scheduler is best-effort: a run can land minutes late, which a
+# sweep that asks "is it the user's hour there" absorbs, and it stops firing
+# after 60 days of repo inactivity, which is the cost of the free tier.
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: reminders
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sweep
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # Unset is a deployment that has not switched reminders on, which is
+          # a supported configuration everywhere else in this app — so it is a
+          # quiet no-op, not an hourly red run. Once the secret exists, every
+          # answer but 200 is loud.
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "SITE_URL variable or CRON_SECRET secret is unset; reminders are off."
+            exit 0
+          fi
+          # `-f` alone would hide the body, and the route explains itself there:
+          # 401 is a mismatched secret, 503 an unset one, 200 with `skipped` a
+          # deployment that has no database or VAPID pair. Fail on the status,
+          # print the body either way.
+          code=$(curl -sS -m 60 -o body.json -w '%{http_code}' \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${SITE_URL%/}/api/cron/reminders")
+          cat body.json
+          echo
+          [ "$code" = "200" ] || { echo "sweep returned $code" >&2; exit 1; }

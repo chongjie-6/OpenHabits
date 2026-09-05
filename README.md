@@ -104,7 +104,7 @@ CRON_SECRET=                # authenticates the hourly reminder sweep
 npm run db:migrate
 ```
 
-**Daily reminders are hourly cron plus a per-device timezone.** "9am" is a wall clock, so one daily invocation would only ever be nine o'clock in a single timezone; `vercel.json` schedules `/api/cron/reminders` every hour and the sweep asks each subscription whether it is that user's hour *there*. Without the VAPID pair the Settings card says the deployment cannot send rather than offering a switch, and without `CRON_SECRET` the cron route refuses to run at all — it reads every account's habits, so unset means disabled, not open. See DESIGN.md §8.5.
+**Daily reminders are hourly cron plus a per-device timezone.** "9am" is a wall clock, so one daily invocation would only ever be nine o'clock in a single timezone; `.github/workflows/reminders.yml` calls `/api/cron/reminders` every hour and the sweep asks each subscription whether it is that user's hour *there*. Without the VAPID pair the Settings card says the deployment cannot send rather than offering a switch, and without `CRON_SECRET` the cron route refuses to run at all — it reads every account's habits, so unset means disabled, not open. See DESIGN.md §8.5.
 
 **The app is told its own origin rather than working it out.** Inferring it means reading the request's `Host` header, and that origin is what verification links are built from — while `/api/auth/send-verification-email` takes any address and no session. A forged `Host` would have this app mail a genuine link into an attacker's server, carrying a token that `autoSignInAfterVerification` turns into a session. Development still infers; production fails to start accounts until `BETTER_AUTH_URL` (or `BETTER_AUTH_ALLOWED_HOSTS`, for several hosts) is set. See DESIGN.md §13.12.
 
@@ -136,10 +136,10 @@ MAIL_FROM=OpenHabits <habits3233@gmail.com>   # Gmail keeps its own address; the
 VAPID_PUBLIC_KEY=            # omit the pair to ship with reminders switched off
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=mailto:you@example.com
-CRON_SECRET=                 # Vercel sends this as the cron's Authorization header
+CRON_SECRET=                 # the scheduler sends this as the cron's Authorization header
 ```
 
-**One cron job, scheduled hourly.** `vercel.json` declares a single entry — the fan-out across timezones happens inside the sweep, not by adding jobs. What it does need is a plan allowing a sub-daily schedule: a daily-only cron delivers at the right hour for one timezone and the wrong one for everybody else.
+**One cron job, scheduled hourly — from GitHub Actions, not Vercel.** A single entry is enough because the fan-out across timezones happens inside the sweep. What it needs is a scheduler allowing a sub-daily interval, and Vercel Cron is capped at daily below Pro; a daily-only cron delivers at the right hour for one timezone and the wrong one for everybody else. So `.github/workflows/reminders.yml` holds the schedule and curls the endpoint. It needs the repository variable `SITE_URL` and the secret `CRON_SECRET`, and it needs the production deployment reachable without Vercel Authentication — deployment protection answers the sweep with an SSO redirect, not a 200.
 
 **`BETTER_AUTH_ALLOWED_HOSTS`, not `BETTER_AUTH_URL`.** Every preview deployment answers on its own `*.vercel.app` host, and one pinned origin would mail a preview's visitors a verification link into production. The list is resolved per request and every host outside it is refused, which is the property that matters (§13.12).
 

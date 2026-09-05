@@ -3,7 +3,7 @@
  *
  * Hourly, not daily. "9am" is a wall clock, and one daily invocation can only be
  * nine o'clock in a single timezone; `lib/server/reminders.ts` decides per device
- * whether it is that hour *there*. `vercel.json` holds the schedule.
+ * whether it is that hour *there*. `.github/workflows/reminders.yml` holds the schedule.
  *
  * It fails closed. `CRON_SECRET` unset is not "no authentication needed" — it is
  * a deployment that cannot authenticate the caller, and this route reads every
