@@ -55,7 +55,7 @@ Everything else in the app is in service of that loop. A screen that doesn't fee
 | `/stats` | **Stats** | The full contribution heatmap, streaks, completion rates | ✅ |
 | `/settings` | **Settings** | Theme, week start, habits, export/import, danger zone | ✅ |
 | `/habit?id=` | **Habit detail** | Single-habit heatmap, rename, cadence, archive, delete | ✅ |
-| `/quotes` | **Collection** | Saved quotes, searchable by author, source and tag | ✅ |
+| `/quotes` | **Collection** | Saved quotes or facts, searchable by author, source and tag | ✅ |
 
 > **Revised during build.** Habit detail is `/habit?id=…`, not `/habit/[id]`. Habit ids are client-generated UUIDs the server has never heard of, so a dynamic segment could never be prerendered: every new habit would become a server round-trip, and opening one offline would fail until the service worker happened to have cached that exact URL. A search parameter keeps it a single static page, available offline the moment the shell is.
 
@@ -160,7 +160,8 @@ type Settings = {
   weekStartsOn: 0 | 1;     // Sunday or Monday
   dayStartHour: number;    // 0–6; 4 means "the day rolls over at 4am"
   reminderHour: number;    // 0–23; when the daily reminder is due (§8.5)
-  favourites: string[];    // saved quote ids
+  dailyMode: "quotes" | "facts";  // which corpus the daily card draws from (§5.3)
+  favourites: string[];    // saved quote and fact ids
 };
 ```
 
@@ -257,7 +258,7 @@ A visually-hidden `<table>` alternative is *not* needed; the labelled grid is su
 
 ---
 
-## 5. Quote selection
+## 5. The daily card
 
 ### 5.1 The deck algorithm
 
@@ -301,6 +302,22 @@ It ships in the client bundle. The original plan kept it server-side and sent on
 The corpus is **168 verified quotes**, spanning antiquity through the twentieth century. That is a full pass every 168 days with a guaranteed 21-day minimum gap — short of the ~400 the algorithm would like, and the remaining distance is the honest limit of what could be attributed with confidence rather than a lack of effort. Getting to 400 means checking candidates against primary sources; padding it with plausible-sounding lines would defeat the point of having the constraint at all.
 
 Two tests guard the corpus: ids are unique, and no two entries share the same opening text (a duplicate slipping in would quietly break the no-repeat property).
+
+### 5.3 Fun facts, as a second corpus
+
+> **Added after the first release.** Not everybody wants to be told to persevere over breakfast. `Settings.dailyMode` switches the daily card between `"quotes"` and `"facts"`; the habit tracker is untouched either way.
+
+**It is a second corpus, not a second app.** The deck algorithm moved out of `lib/quotes.ts` into `lib/deck.ts`, generic over anything with an `id`, and the two corpora each bind it (`lib/quotes.ts`, `lib/facts.ts`). They run *independent* sequences: switching modes drops you wherever the other deck's date maths says you are, rather than restarting it, because the sequence is a pure function of the date and the date does not care what you read yesterday.
+
+**A `Fact` is a sibling of `Quote`, not a variant of it.** A quote has an author and, where traceable, a source; a fact has no author at all, so its `source` — where the reader can *check* it — is required rather than optional. Modelling facts as authorless quotes would have made `author` optional on both and lost the constraint that keeps the quote corpus honest.
+
+`lib/daily.ts` is the one module that knows both. It flattens either into a `DailyItem` — `text`, a `byline` (a quote's author, a fact's source), an optional `detail` (a quote's source), and an optional `note` — so the card's three skins and the collection view stayed single-variant. Without it, every screen would carry a quote branch and a fact branch, and the second corpus would have doubled the UI.
+
+**Sourcing bar, inherited but aimed differently.** The quote corpus's failure mode is misattribution; a fact corpus's is the plausible factoid nobody ever checked — "we use 10% of our brain", "the Great Wall is visible from space". So the rule is the same shape (no source, no ship; `note` carries the correction where the famous version is wrong) but points at the claim rather than the speaker. The corpus is **85 facts**, giving a full pass every 85 days and a guaranteed 10-day gap.
+
+**The mode syncs; appearance still does not.** It sits in the settings blob beside `weekStartsOn` and `reminderHour`, because it decides *what the app says to you* rather than how it looks (§13.8 #1). `parseSettings` accepts it as optional and checks it against the union rather than against `string`, for the reason `haptics` is optional: a device on an older build pushes a blob without it, and an unrecognised mode would reach every other device and leave the card with no corpus to draw from.
+
+**Favourites are one list across both.** The ids are distinct, nothing has to be migrated, and a saved thing does not vanish because the mode changed — the collection view counts the saved items *in the corpus on screen* rather than the length of the list.
 
 ---
 
@@ -684,7 +701,10 @@ lib/
   dates.ts                DayKey maths, week bounds, dayStartHour, civilInZone
   history.ts              cadence evaluation, day rollups, per-habit history
   streaks.ts
-  quotes.ts               deck algorithm, seam repair, upcoming schedule
+  deck.ts                 deck algorithm, seam repair, upcoming schedule
+  quotes.ts               the quote corpus, bound to the deck
+  facts.ts                the fact corpus, bound to the deck (§5.3)
+  daily.ts                the two corpora behind one DailyItem
   colors.ts               ramp lookups, neutral and per-habit
   haptics.ts              tick/completion vibration patterns (§6.4)
   theme.ts                pre-paint script + localStorage mirror
@@ -721,6 +741,7 @@ app/api/cron/reminders/   the hourly sweep; fails closed without CRON_SECRET
 
 drizzle/                  generated, reviewed, committed migrations
 data/quotes.ts            168 attributed quotes
+data/facts.ts             85 sourced fun facts
 scripts/generate-icons.mjs
 public/sw.js
 ```

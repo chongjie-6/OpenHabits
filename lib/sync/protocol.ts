@@ -162,6 +162,7 @@ export function fingerprintSettings(s: { value: Settings }): string {
     s.value.dayStartHour,
     s.value.reminderHour,
     s.value.haptics,
+    s.value.dailyMode,
     // Sorted, so two devices that favourited the same quotes in a different
     // order still fingerprint identically and neither write wins spuriously.
     [...s.value.favourites].sort().join(","),

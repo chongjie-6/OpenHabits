@@ -176,6 +176,7 @@ function readSettings(stored: unknown): Settings {
     dayStartHour: value.dayStartHour ?? DEFAULT_SETTINGS.dayStartHour,
     reminderHour: value.reminderHour ?? DEFAULT_SETTINGS.reminderHour,
     haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
+    dailyMode: value.dailyMode ?? DEFAULT_SETTINGS.dailyMode,
     favourites: value.favourites ?? DEFAULT_SETTINGS.favourites,
   };
 }

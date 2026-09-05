@@ -2,51 +2,83 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { QUOTES } from "@/data/quotes";
+import {
+  corpusFor,
+  countFor,
+  MODE_COPY,
+  repeatGapFor,
+  scheduleFor,
+  tagsFor,
+  type DailyItem,
+} from "@/lib/daily";
 import { daysBetween } from "@/lib/dates";
-import { ALL_TAGS, MIN_REPEAT_GAP, QUOTE_COUNT, upcomingSchedule } from "@/lib/quotes";
-import { toggleFavourite, useOpenHabits } from "@/lib/store";
+import { toggleFavourite, updateSettings, useOpenHabits } from "@/lib/store";
 import { useToday } from "@/lib/use-today";
-import type { DayKey, Quote, QuoteTag } from "@/lib/types";
+import type { DailyMode, DayKey } from "@/lib/types";
 
 type Tab = "saved" | "all";
 
-export default function QuotesPage() {
+/**
+ * The collection follows `dailyMode` rather than fixing on the quotes: showing
+ * a shelf of quotes to someone whose Today card is a fun fact would be a second
+ * app. The mode switch is repeated here because this is where you are while
+ * deciding you would rather read the other one, and both corpora share one
+ * favourites list, so nothing is lost by switching.
+ */
+export default function CollectionPage() {
   const { hydrated, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
+  const mode = settings.dailyMode;
+  const copy = MODE_COPY[mode];
 
   const [tab, setTab] = useState<Tab>("saved");
   const [query, setQuery] = useState("");
-  const [tag, setTag] = useState<QuoteTag | null>(null);
+  const [tag, setTag] = useState<string | null>(null);
 
-  // Every quote's next appearance, in one pass over a full deck cycle.
+  const corpus = useMemo(() => corpusFor(mode), [mode]);
+
+  // Every item's next appearance, in one pass over a full deck cycle.
   const schedule = useMemo(
-    () => (today ? upcomingSchedule(today) : new Map<string, DayKey>()),
-    [today],
+    () => (today ? scheduleFor(today, mode) : new Map<string, DayKey>()),
+    [today, mode],
   );
 
   const favourites = settings.favourites;
   const saved = useMemo(() => new Set(favourites), [favourites]);
+  // Favourites span both corpora, so the tab count has to be of this one.
+  const savedHere = useMemo(
+    () => corpus.filter((item) => saved.has(item.id)).length,
+    [corpus, saved],
+  );
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
 
-    return QUOTES.filter((quote) => {
-      if (tab === "saved" && !saved.has(quote.id)) return false;
-      if (tag && !quote.tags.includes(tag)) return false;
-      if (!needle) return true;
-      return (
-        quote.text.toLowerCase().includes(needle) ||
-        quote.author.toLowerCase().includes(needle) ||
-        (quote.source?.toLowerCase().includes(needle) ?? false)
-      );
-    }).sort((a, b) => {
-      // Soonest first, so the list reads as "what's coming".
-      const dayA = schedule.get(a.id) ?? "9999";
-      const dayB = schedule.get(b.id) ?? "9999";
-      return dayA < dayB ? -1 : dayA > dayB ? 1 : 0;
-    });
-  }, [tab, query, tag, schedule, saved]);
+    return corpus
+      .filter((item) => {
+        if (tab === "saved" && !saved.has(item.id)) return false;
+        if (tag && !item.tags.includes(tag)) return false;
+        if (!needle) return true;
+        return (
+          item.text.toLowerCase().includes(needle) ||
+          item.byline.toLowerCase().includes(needle) ||
+          (item.detail?.toLowerCase().includes(needle) ?? false)
+        );
+      })
+      .sort((a, b) => {
+        // Soonest first, so the list reads as "what's coming".
+        const dayA = schedule.get(a.id) ?? "9999";
+        const dayB = schedule.get(b.id) ?? "9999";
+        return dayA < dayB ? -1 : dayA > dayB ? 1 : 0;
+      });
+  }, [corpus, tab, query, tag, schedule, saved]);
+
+  function switchMode(next: DailyMode) {
+    if (next === mode) return;
+    updateSettings({ dailyMode: next });
+    // The tags belong to the corpus that just left the screen.
+    setTag(null);
+  }
 
   if (!hydrated || !today) return <Skeleton />;
 
@@ -55,16 +87,25 @@ export default function QuotesPage() {
       <header className="flex items-baseline justify-between gap-3">
         <h1 className="display-type text-[15px]">Collection</h1>
         <Link href="/" className="shrink-0 text-[12px] text-muted hover:text-foreground">
-          Today&rsquo;s quote →
+          Today&rsquo;s {copy.one} →
         </Link>
       </header>
 
       <div className="flex gap-2">
+        <Segment active={mode === "quotes"} onClick={() => switchMode("quotes")}>
+          Quotes
+        </Segment>
+        <Segment active={mode === "facts"} onClick={() => switchMode("facts")}>
+          Fun facts
+        </Segment>
+      </div>
+
+      <div className="flex gap-2">
         <Segment active={tab === "saved"} onClick={() => setTab("saved")}>
-          Saved · {settings.favourites.length}
+          Saved · {savedHere}
         </Segment>
         <Segment active={tab === "all"} onClick={() => setTab("all")}>
-          All · {QUOTE_COUNT}
+          All · {countFor(mode)}
         </Segment>
       </div>
 
@@ -72,13 +113,15 @@ export default function QuotesPage() {
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search text, author or source"
-        aria-label="Search quotes"
+        placeholder={
+          mode === "facts" ? "Search text or source" : "Search text, author or source"
+        }
+        aria-label={`Search ${copy.many}`}
         className="h-11 w-full rounded-control border border-border bg-surface px-3 text-[14px] placeholder:text-muted"
       />
 
       <div className="flex flex-wrap gap-1.5">
-        {ALL_TAGS.map((option) => (
+        {tagsFor(mode).map((option) => (
           <button
             key={option}
             type="button"
@@ -99,28 +142,28 @@ export default function QuotesPage() {
         <p className="surface-dashed px-4 py-8 text-center text-[13px] leading-relaxed text-muted">
           {tab === "saved" && !query && !tag ? (
             <>
-              Nothing saved yet. Tap the heart on a quote to keep it.
+              Nothing saved yet. Tap the heart on a {copy.one} to keep it.
               <br />
               <button
                 type="button"
                 onClick={() => setTab("all")}
                 className="mt-2 text-accent"
               >
-                Browse all {QUOTE_COUNT} instead
+                Browse all {countFor(mode)} instead
               </button>
             </>
           ) : (
-            "No quotes match that."
+            `No ${copy.many} match that.`
           )}
         </p>
       ) : (
         <ul className="space-y-2">
-          {results.map((quote) => (
-            <li key={quote.id}>
-              <QuoteRow
-                quote={quote}
-                saved={saved.has(quote.id)}
-                showing={schedule.get(quote.id)}
+          {results.map((item) => (
+            <li key={item.id}>
+              <ItemRow
+                item={item}
+                saved={saved.has(item.id)}
+                showing={schedule.get(item.id)}
                 today={today}
               />
             </li>
@@ -129,22 +172,22 @@ export default function QuotesPage() {
       )}
 
       <p className="pb-2 text-[11px] leading-relaxed text-muted">
-        Every quote is shown once before any of them comes round again, and none
-        can repeat within {MIN_REPEAT_GAP} days. Which quote lands on which day
-        is a pure function of the date — identical on every device you own, with
-        or without a connection.
+        Every {copy.one} is shown once before any of them comes round again, and
+        none can repeat within {repeatGapFor(mode)} days. Which {copy.one} lands
+        on which day is a pure function of the date — identical on every device
+        you own, with or without a connection.
       </p>
     </section>
   );
 }
 
-function QuoteRow({
-  quote,
+function ItemRow({
+  item,
   saved,
   showing,
   today,
 }: {
-  quote: Quote;
+  item: DailyItem;
   saved: boolean;
   showing: DayKey | undefined;
   today: DayKey;
@@ -153,13 +196,13 @@ function QuoteRow({
     <article className="surface-card bg-surface p-4">
       <div className="flex items-start gap-3">
         <blockquote className="min-w-0 flex-1 font-serif text-[15px] leading-normal">
-          {quote.text}
+          {item.text}
         </blockquote>
         <button
           type="button"
-          onClick={() => toggleFavourite(quote.id)}
+          onClick={() => toggleFavourite(item.id)}
           aria-pressed={saved}
-          aria-label={saved ? `Remove ${quote.author} quote` : `Save ${quote.author} quote`}
+          aria-label={saved ? `Remove ${item.byline}` : `Save ${item.byline}`}
           className={`-m-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
             saved ? "text-accent" : "text-muted hover:text-accent"
           }`}
@@ -183,10 +226,10 @@ function QuoteRow({
       <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="min-w-0">
           <cite className="text-[11px] font-semibold not-italic uppercase tracking-[0.08em] text-muted">
-            {quote.author}
+            {item.byline}
           </cite>
-          {quote.source && (
-            <span className="block text-[11px] text-muted">{quote.source}</span>
+          {item.detail && (
+            <span className="block text-[11px] text-muted">{item.detail}</span>
           )}
         </p>
         {showing && (
@@ -196,9 +239,9 @@ function QuoteRow({
         )}
       </div>
 
-      {quote.note && (
+      {item.note && (
         <p className="mt-3 border-t border-border pt-3 text-[11px] leading-relaxed text-muted">
-          {quote.note}
+          {item.note}
         </p>
       )}
     </article>

@@ -127,6 +127,35 @@ export type Quote = {
   tags: QuoteTag[];
 };
 
+export type FactTag =
+  | "space"
+  | "earth"
+  | "ocean"
+  | "animals"
+  | "body"
+  | "language"
+  | "history"
+  | "numbers"
+  | "technology"
+  | "food";
+
+/**
+ * A fun fact. The sibling of `Quote`, not a variant of it: a fact has no author
+ * to stand behind it, so `source` — where it can be *checked* — is required
+ * rather than optional, and there is no line to attribute.
+ */
+export type Fact = {
+  id: string;
+  text: string;
+  source: string;
+  /** Set when the popular version of the fact is wrong and we are correcting it. */
+  note?: string;
+  tags: FactTag[];
+};
+
+/** Which corpus the daily card draws from. See DESIGN.md §5.3. */
+export type DailyMode = "quotes" | "facts";
+
 /**
  * The synced half of a user's preferences. Appearance is **not** in here —
  * `theme`, `skin` and `palette` are all device-local (`lib/theme.ts`,
@@ -153,7 +182,17 @@ export type Settings = {
    * phone they carry.
    */
   haptics: boolean;
-  /** Saved quote ids. */
+  /**
+   * Whether the daily card shows a quote or a fun fact. Synced rather than
+   * device-local, unlike the three appearance axes: this picks *what the app
+   * says to you*, not how it looks, and someone who came for facts did not come
+   * for quotes on their laptop.
+   */
+  dailyMode: DailyMode;
+  /**
+   * Saved quote and fact ids. One list across both corpora — the ids are
+   * distinct, and a saved thing should not disappear because the mode changed.
+   */
   favourites: string[];
 };
 
@@ -162,6 +201,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dayStartHour: 0,
   reminderHour: 9,
   haptics: true,
+  dailyMode: "quotes",
   favourites: [],
 };
 

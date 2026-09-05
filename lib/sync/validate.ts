@@ -184,9 +184,21 @@ function parseSettings(value: unknown): ParseResult<Settings> {
   if (value.haptics !== undefined && typeof value.haptics !== "boolean") {
     return fail("settings.haptics must be a boolean");
   }
+  // Optional for the same reason, and checked against the union rather than
+  // "is a string": an unknown mode would reach every other device and leave the
+  // daily card with no corpus to draw from.
+  if (
+    value.dailyMode !== undefined &&
+    value.dailyMode !== "quotes" &&
+    value.dailyMode !== "facts"
+  ) {
+    return fail("settings.dailyMode must be 'quotes' or 'facts'");
+  }
   if (!Array.isArray(value.favourites)) return fail("settings.favourites must be an array");
   if (value.favourites.length > MAX_FAVOURITES) return fail("settings.favourites is too long");
-  if (!value.favourites.every(isId)) return fail("settings.favourites must be quote ids");
+  if (!value.favourites.every(isId)) {
+    return fail("settings.favourites must be quote or fact ids");
+  }
 
   return {
     ok: true,
@@ -195,6 +207,7 @@ function parseSettings(value: unknown): ParseResult<Settings> {
       dayStartHour: value.dayStartHour,
       reminderHour: value.reminderHour ?? DEFAULT_SETTINGS.reminderHour,
       haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
+      dailyMode: value.dailyMode ?? DEFAULT_SETTINGS.dailyMode,
       favourites: value.favourites as string[],
     },
   };

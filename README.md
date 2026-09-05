@@ -1,6 +1,6 @@
 # OpenHabits
 
-A local-first PWA that pairs a **daily quote from someone worth quoting** with a **habit tracker whose history renders as a GitHub-style contribution grid**.
+A local-first PWA that pairs a **daily quote from someone worth quoting** — or a **fun fact**, if being told to persevere over breakfast is not your thing — with a **habit tracker whose history renders as a GitHub-style contribution grid**.
 
 Ticking a habit takes one tap, zero latency and zero network. Your data lives in IndexedDB on your device, works fully offline, and needs no account. An account is available and buys exactly one thing: the same habits on a second device.
 
@@ -8,7 +8,7 @@ Ticking a habit takes one tap, zero latency and zero network. Your data lives in
   morning                     during the day                evening
   ┌──────────────┐            ┌──────────────┐             ┌──────────────┐
   │ open app     │            │ tap to tick  │             │ see the grid │
-  │ read quote   │  ───────►  │ a habit done │  ─────────► │ gain a square│
+  │ read the card│  ───────►  │ a habit done │  ─────────► │ gain a square│
   └──────────────┘            └──────────────┘             └──────────────┘
          ▲                                                        │
          └────────────────── streak pressure ─────────────────────┘
@@ -34,7 +34,7 @@ Node 24 (`.nvmrc`, and `engines` in `package.json`). CI runs on the same version
 | `/stats` | **Stats** | The full contribution heatmap, streaks, completion rates |
 | `/settings` | **Settings** | Theme, week start, habits, account, export/import, danger zone |
 | `/habit?id=` | **Habit detail** | Single-habit heatmap, rename, cadence, archive, delete |
-| `/quotes` | **Collection** | Saved quotes, searchable by author, source and tag |
+| `/quotes` | **Collection** | Saved quotes or facts, searchable by author, source and tag |
 
 Navigation is a fixed bottom tab bar (Today · Week · Stats · Settings). `/quotes` and habit detail are pushed views reached from within a tab.
 
@@ -59,7 +59,8 @@ Sync imports the store; the store knows nothing about sync.
 A few decisions worth knowing before you change anything:
 
 - **Mutations are synchronous and optimistic.** The UI never awaits a write. A habit tick that spins is a habit that dies.
-- **Quotes are a deck, not a hash.** Fisher–Yates per cycle, seeded deterministically, so every quote appears once per pass and none repeats within 21 days — identical on every device, with no server call. 168 attributed quotes ship in `data/quotes.ts`.
+- **The daily card is a deck, not a hash.** Fisher–Yates per cycle, seeded deterministically, so every entry appears once per pass and none repeats within 21 days — identical on every device, with no server call. 168 attributed quotes ship in `data/quotes.ts`.
+- **Quotes or fun facts, one setting apart.** `dailyMode` swaps the corpus behind the daily card; 85 sourced facts ship in `data/facts.ts`, running their own sequence, sharing one favourites list, and held to the same rule — no traceable source, no ship (DESIGN.md §5.3).
 - **Dates are local civil `YYYY-MM-DD` strings.** `lib/dates.ts` is the only module that calls `new Date()` to produce one, and it carries the largest share of the test suite (month/year boundaries, leap years, DST in both directions).
 - **Derived data is never persisted.** `lib/history.ts` and `lib/streaks.ts` rebuild a full year well inside the frame budget, pinned by a benchmark test.
 - **Nothing user- or date-dependent renders on the server.** Routes are static and the service worker caches that HTML, so a server-computed date would pin every visitor to the build day's quote, and a server-read session would hand one visitor's account state to the next. Anything browser-shaped — the account card, the install prompt, display mode — is gated on a `useSyncExternalStore` whose *server snapshot reports the hidden case*, so that UI only ever appears after hydration and never flashes out of cached HTML and vanishes.
@@ -80,7 +81,7 @@ Sync is **replication between copies of the local store**, not a move to server-
 
 **Signing in on a device that already has habits asks first.** The common case — you used the app signed out, then made an account — wants those habits in the account, and that is one button. A borrowed phone does not, and until it is answered nothing has been uploaded: the session cookie exists, but sync is gated on the local hint and the hint is withheld. Neither answer deletes anything (§13.8 #8).
 
-**Appearance never syncs.** Theme, design and palette are all device-local, in `localStorage`, read by one blocking script before first paint. Only behaviour — week start, day rollover, reminder hour, haptics, saved quotes — rides the synced settings blob (§13.8 #1).
+**Appearance never syncs.** Theme, design and palette are all device-local, in `localStorage`, read by one blocking script before first paint. Only behaviour — week start, day rollover, reminder hour, haptics, quotes-or-facts, saved items — rides the synced settings blob (§13.8 #1).
 
 **Passwords can be reset** where a mailer is configured, and the link is good for one hour and one use. Setting a new one signs out every device that was signed in; none of them loses a habit, because signing out never deletes what is on a device (§13.13).
 
@@ -210,6 +211,7 @@ lib/            kebab-case modules — the domain logic
   sync/         wire protocol, merge rules, client runner
   server/       the only server-side code: schema, db, auth seam, sync store
 data/quotes.ts  168 attributed quotes
+data/facts.ts   85 sourced fun facts
 drizzle/        generated, reviewed, committed migrations
 tests/          mirrors lib/
 public/sw.js    runtime-caching service worker (no build-time precache)

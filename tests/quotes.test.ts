@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { QUOTES } from "@/data/quotes";
 import { addDays } from "@/lib/dates";
-import { deckFor, quoteForDay, QUOTE_COUNT, upcomingSchedule } from "@/lib/quotes";
+import { upcomingSchedule } from "@/lib/deck";
+import { deckFor, quoteForDay, QUOTE_COUNT } from "@/lib/quotes";
 
 describe("the deck", () => {
   it("is deterministic — the same day always yields the same quote", () => {
@@ -76,17 +77,17 @@ describe("upcomingSchedule", () => {
   it("reaches every quote in a single pass", () => {
     // The whole point of the deck: one cycle covers the corpus exactly once, so
     // the collection view never has to say "not scheduled".
-    const schedule = upcomingSchedule("2026-08-14");
+    const schedule = upcomingSchedule("2026-08-14", QUOTES);
     expect(schedule.size).toBe(QUOTE_COUNT);
   });
 
   it("puts today's quote on today", () => {
-    const schedule = upcomingSchedule("2026-08-14");
+    const schedule = upcomingSchedule("2026-08-14", QUOTES);
     expect(schedule.get(quoteForDay("2026-08-14").id)).toBe("2026-08-14");
   });
 
   it("agrees with quoteForDay for every entry", () => {
-    const schedule = upcomingSchedule("2026-08-14");
+    const schedule = upcomingSchedule("2026-08-14", QUOTES);
     for (const [id, day] of schedule) {
       expect(quoteForDay(day).id, `${id} on ${day}`).toBe(id);
     }

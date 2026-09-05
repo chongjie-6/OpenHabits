@@ -1,13 +1,12 @@
 "use client";
 
-import { quoteForDay } from "@/lib/quotes";
+import { dailyForDay, type DailyItem } from "@/lib/daily";
 import { useSkin } from "@/lib/skin";
 import { toggleFavourite, useOpenHabits } from "@/lib/store";
 import { useToday } from "@/lib/use-today";
-import type { Quote } from "@/lib/types";
 
 /**
- * The hero. See DESIGN.md §5.1, §6.5.
+ * The hero. See DESIGN.md §5.1, §5.3, §6.5.
  *
  * The day is resolved on the client. This page prerenders to static HTML, so a
  * server-computed date would pin every visitor to the *build* day's quote — and
@@ -18,50 +17,55 @@ import type { Quote } from "@/lib/types";
  *
  * That placeholder is also what makes `useSkin` safe here: it reports `classic`
  * until mount, and nothing it decides is rendered until `day` is non-null, by
- * which point it has the real answer. Where the quote sits on the page is a
+ * which point it has the real answer. Where the card sits on the page is a
  * separate question, settled in CSS (`app/page.tsx`).
+ *
+ * Which corpus it draws from is `settings.dailyMode`, and the three skins below
+ * never learn the answer — `lib/daily.ts` hands them a flattened item either
+ * way. A quote's byline is its author with the source beneath; a fact's byline
+ * *is* its source, because that is the only attribution a fact has.
  */
-export function QuoteCard() {
+export function DailyCard() {
   const { settings } = useOpenHabits();
   const day = useToday(settings.dayStartHour);
   const skin = useSkin();
 
-  if (!day) return <QuoteCardPlaceholder />;
+  if (!day) return <DailyCardPlaceholder />;
 
-  const quote = quoteForDay(day);
-  const saved = settings.favourites.includes(quote.id);
-  const props = { quote, saved };
+  const item = dailyForDay(day, settings.dailyMode);
+  const saved = settings.favourites.includes(item.id);
+  const props = { item, saved };
 
-  if (skin === "grid") return <QuoteRule {...props} />;
-  if (skin === "blocks") return <QuoteBlock {...props} />;
-  return <QuoteCardClassic {...props} />;
+  if (skin === "grid") return <DailyRule {...props} />;
+  if (skin === "blocks") return <DailyBlock {...props} />;
+  return <DailyCardClassic {...props} />;
 }
 
-type Props = { quote: Quote; saved: boolean };
+type Props = { item: DailyItem; saved: boolean };
 
 /** A card, a serif, and room to breathe. */
-function QuoteCardClassic({ quote, saved }: Props) {
+function DailyCardClassic({ item, saved }: Props) {
   return (
     <figure className="surface-card bg-surface p-5">
       <blockquote className="font-serif text-[19px] leading-[1.55] text-foreground">
-        {quote.text}
+        {item.text}
       </blockquote>
 
       <figcaption className="mt-4 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <cite className="block text-[11px] font-semibold not-italic uppercase tracking-[0.08em] text-muted">
-            {quote.author}
+            {item.byline}
           </cite>
-          {quote.source && (
-            <p className="mt-0.5 truncate text-[11px] text-muted">{quote.source}</p>
+          {item.detail && (
+            <p className="mt-0.5 truncate text-[11px] text-muted">{item.detail}</p>
           )}
         </div>
-        <SaveButton saved={saved} quoteId={quote.id} />
+        <SaveButton saved={saved} itemId={item.id} />
       </figcaption>
 
-      {quote.note && (
+      {item.note && (
         <p className="mt-3 border-t border-border pt-3 text-[11px] leading-relaxed text-muted">
-          {quote.note}
+          {item.note}
         </p>
       )}
     </figure>
@@ -69,29 +73,29 @@ function QuoteCardClassic({ quote, saved }: Props) {
 }
 
 /**
- * `grid` demotes the quote to a footnote under the data — no card, no serif,
+ * `grid` demotes the card to a footnote under the data — no card, no serif,
  * one rule down the left. It sits at the foot of the page, so it has to read as
  * an endnote rather than a second hero.
  */
-function QuoteRule({ quote, saved }: Props) {
+function DailyRule({ item, saved }: Props) {
   return (
     <figure className="border-l-2 border-border pl-3">
       <blockquote className="text-[13px] leading-[1.5] text-foreground">
-        {quote.text}
+        {item.text}
       </blockquote>
 
       <figcaption className="mt-2 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <cite className="block font-mono text-[10px] font-medium not-italic uppercase tracking-[0.1em] text-muted">
-            {quote.author}
-            {quote.source && ` · ${quote.source}`}
+            {item.byline}
+            {item.detail && ` · ${item.detail}`}
           </cite>
         </div>
-        <SaveButton saved={saved} quoteId={quote.id} />
+        <SaveButton saved={saved} itemId={item.id} />
       </figcaption>
 
-      {quote.note && (
-        <p className="mt-2 text-[11px] leading-relaxed text-muted">{quote.note}</p>
+      {item.note && (
+        <p className="mt-2 text-[11px] leading-relaxed text-muted">{item.note}</p>
       )}
     </figure>
   );
@@ -103,26 +107,26 @@ function QuoteRule({ quote, saved }: Props) {
  * near-black, so the block flips to the acid accent instead and the meta line
  * goes dark on it.
  */
-function QuoteBlock({ quote, saved }: Props) {
+function DailyBlock({ item, saved }: Props) {
   return (
     <figure className="bg-quote-bg p-4 text-quote-fg">
       <blockquote className="text-[17px] font-medium leading-[1.34] text-balance">
-        {quote.text}
+        {item.text}
       </blockquote>
 
       <figcaption className="mt-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <cite className="display-type block text-[11px] not-italic tracking-[0.08em] text-quote-meta">
-            {quote.author}
-            {quote.source && ` — ${quote.source}`}
+            {item.byline}
+            {item.detail && ` — ${item.detail}`}
           </cite>
         </div>
-        <SaveButton saved={saved} quoteId={quote.id} tone="quote" />
+        <SaveButton saved={saved} itemId={item.id} tone="quote" />
       </figcaption>
 
-      {quote.note && (
+      {item.note && (
         <p className="mt-3 border-t border-quote-meta pt-3 text-[11px] leading-relaxed text-quote-meta">
-          {quote.note}
+          {item.note}
         </p>
       )}
     </figure>
@@ -134,11 +138,11 @@ function QuoteBlock({ quote, saved }: Props) {
  * button has to take its ink from the block it sits on, not from the page.
  */
 function SaveButton({
-  quoteId,
+  itemId,
   saved,
   tone = "page",
 }: {
-  quoteId: string;
+  itemId: string;
   saved: boolean;
   tone?: "page" | "quote";
 }) {
@@ -148,7 +152,7 @@ function SaveButton({
   return (
     <button
       type="button"
-      onClick={() => toggleFavourite(quoteId)}
+      onClick={() => toggleFavourite(itemId)}
       aria-pressed={saved}
       aria-label={saved ? "Remove from collection" : "Save to collection"}
       className={`-m-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors hover:text-accent ${
@@ -173,11 +177,11 @@ function SaveButton({
 }
 
 /**
- * Holds the card's footprint so the page does not shift when the quote lands.
+ * Holds the card's footprint so the page does not shift when the card lands.
  * Sized for the classic card; the other two skins are shorter, so they settle
  * upward rather than pushing the habit list down.
  */
-function QuoteCardPlaceholder() {
+function DailyCardPlaceholder() {
   return (
     <div aria-hidden="true" className="min-h-41 surface-card bg-surface p-5">
       <div className="space-y-2.5">

@@ -7,7 +7,7 @@ import { InstallCard } from "@/components/DownloadAppButton";
 import { ReminderCard } from "@/components/ReminderCard";
 import { habitColor } from "@/lib/colors";
 import { HAPTIC_DONE, vibrate } from "@/lib/haptics";
-import { QUOTE_COUNT } from "@/lib/quotes";
+import { countFor, MODE_COPY } from "@/lib/daily";
 import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
 import { usePalette } from "@/lib/use-palette";
 import { changeTheme, useTheme } from "@/lib/use-theme";
@@ -147,6 +147,23 @@ export default function SettingsPage() {
             </span>
           </Link>
         </div>
+      </Group>
+
+      <Group title="Daily card">
+        <Choice<Settings["dailyMode"]>
+          label="Show me"
+          hint={MODE_COPY[settings.dailyMode].hint}
+          value={settings.dailyMode}
+          options={[
+            { value: "quotes", label: MODE_COPY.quotes.label },
+            { value: "facts", label: MODE_COPY.facts.label },
+          ]}
+          onChange={(dailyMode) => updateSettings({ dailyMode })}
+        />
+        <p className="mt-3 text-[11px] leading-relaxed text-muted">
+          Both run their own sequence, so switching does not restart either one,
+          and anything you have saved stays saved.
+        </p>
       </Group>
 
       <Group title="Feedback">
@@ -330,7 +347,9 @@ export default function SettingsPage() {
       </Group>
 
       <p className="pb-4 text-center text-[11px] text-muted">
-        OpenHabits · {QUOTE_COUNT} quotes in the deck · {settings.favourites.length} saved
+        OpenHabits · {countFor(settings.dailyMode)}{" "}
+        {MODE_COPY[settings.dailyMode].many} in the deck ·{" "}
+        {settings.favourites.length} saved
       </p>
     </section>
   );

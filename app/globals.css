@@ -573,7 +573,7 @@ body {
   margin-top: 0;
 }
 
-:root[data-skin="grid"] [data-slot="quote"] {
+:root[data-skin="grid"] [data-slot="daily"] {
   order: 2;
   margin-top: 2rem;
 }
