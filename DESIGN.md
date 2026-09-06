@@ -624,6 +624,24 @@ The plan named **Serwist**, which the Next PWA guide points to. It is the right 
 
 Because the data layer is entirely client-side, "offline" is nearly the whole app for free. The SW's only job is delivering the shell; there is no data-sync layer to reconcile.
 
+> **Reversed in part: routes are precached, assets still are not.** "Full offline after one visit" was true of the data and false of the app, and the table above hid the reason — it has a row for navigations and none for the router. Only Today was reliably reachable offline; Week, Stats and Settings failed in three distinct ways, none of which show up online:
+>
+> - **A relaunch on any route but `/` drew Today under that route's URL.** The navigate fallback was `caches.match(request) || caches.match("/")`, and only a route the browser had loaded as a *document* was ever in the shell cache. Inside a standalone app nothing does that except the launch itself, which lands on `start_url`. So the manifest's own `/stats` shortcut opened Today.
+> - **A tab tap asked for a flight payload that could not be matched.** Soft navigation fetches `/week?_rsc=<hash>` — the hash is derived from the request and differs between a prefetch and a navigation — and Next answers it with `Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch`. Caching those responses under their own URL and matching them with a plain `caches.match` means an entry only ever matches a repeat of the exact request that stored it. Routes that happened to be prefetched from the page you were on worked; `/settings/colours`, which is prefetched from nowhere the launch visits, never did.
+> - **`useOffline` made that failure silent.** §8.3's flag keeps a failed navigation pending instead of throwing, so there was no error, no fallback hard navigation and no feedback — the tab simply did not respond. Good behaviour for a slow server, and the worst possible presentation of a cache miss.
+>
+> The fix is a `ROUTES` list in `public/sw.js` naming the seven prerendered pages, precached at install as both halves — the document and the flight payload — and a fourth row for the router's fetches:
+>
+> | Request | Strategy |
+> |---|---|
+> | `?_rsc=` / `RSC: 1` | Stale-while-revalidate, **keyed by pathname** |
+>
+> Keying by pathname is what makes the entries findable at all: it drops the per-request `_rsc` hash, and rebuilding the response to store it drops the `Vary` header along with the 307 that `cache.put` refuses. It also means `/habit?id=…` needs one entry rather than one per habit — which is the payoff the search parameter was chosen for (see that page's own header).
+>
+> This is the build coupling the section above declined, so it is held by a test rather than by discipline: `tests/sw.test.ts` reads `app/` back and fails if a prerendered route is missing from `ROUTES`. A route that is absent renders fine in review and in CI, and fails only on a plane. `/reset-password` is excluded on purpose — the link arrives by mail and the form posts to the server, so a shell with nothing behind it is worth nothing.
+>
+> `VERSION` is bumped to `openhabits-v2`, which discards the old caches. A deploy does not bump it, so `install` cannot be what keeps the precache current; `revalidate()` re-runs it once per worker startup off the back of a successful network response — about once per launch, as conditional requests.
+
 It is registered only in production builds — a caching worker in development turns every HMR update into a debugging session about stale assets.
 
 `next.config.ts` gets the headers block from the guide's §8: `no-cache` on the service worker file, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`.

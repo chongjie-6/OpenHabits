@@ -1,19 +1,40 @@
 /**
- * OpenHabits service worker.
+ * OpenHabits service worker — DESIGN.md §8.2.
  *
- * Runtime caching only — no precache manifest, and therefore no build
- * integration to keep in sync. Affordable because the worker's only job is
- * delivering the shell: user data lives in IndexedDB and is already offline by
- * construction.
+ * Runtime caching plus a **route precache**, which is the one piece of build
+ * coupling this worker carries. `ROUTES` is the app's complete list of
+ * prerendered pages, and `tests/sw.test.ts` fails if `app/` grows one this file
+ * does not name.
+ *
+ * Runtime caching alone was not enough, and the reason is the router rather
+ * than the data. Every screen is offline by construction — habits live in
+ * IndexedDB — but reaching a screen is a fetch. A tab tap asks for that route's
+ * flight payload, and a relaunch asks for its HTML, so a route the browser
+ * never happened to request while online was simply missing: the tap did
+ * nothing (`experimental.useOffline` keeps a failed navigation pending rather
+ * than throwing) and a relaunch on `/stats` fell through to the `/` fallback
+ * and drew Today under the Stats URL. Seven static documents is a cheap price
+ * for an app that calls itself local-first.
  */
 
-const VERSION = "openhabits-v1";
+const VERSION = "openhabits-v2";
 const SHELL = `${VERSION}-shell`;
 const ASSETS = `${VERSION}-assets`;
-const KEEP = new Set([SHELL, ASSETS]);
+const FLIGHT = `${VERSION}-flight`;
+const KEEP = new Set([SHELL, ASSETS, FLIGHT]);
+
+/**
+ * Every route reachable from inside the app. `/reset-password` is deliberately
+ * absent: it is an online-only flow — the link arrives by mail and the form
+ * posts to the server — so precaching it would buy a shell with nothing behind
+ * it.
+ */
+const ROUTES = ["/", "/week", "/stats", "/settings", "/settings/colours", "/quotes", "/habit"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(self.skipWaiting());
+  // Precaching must not gate activation: a worker that fails to install leaves
+  // the previous one in charge, and a partial precache is worth more than none.
+  event.waitUntil(Promise.all([self.skipWaiting(), precache("reload")]));
 });
 
 self.addEventListener("activate", (event) => {
@@ -25,6 +46,70 @@ self.addEventListener("activate", (event) => {
     })(),
   );
 });
+
+/**
+ * Both halves of a route: the document a relaunch or a shared link asks for,
+ * and the flight payload a tab tap asks for. Failures are swallowed per route —
+ * offline at install time is the normal case for a reinstall, and the next
+ * online navigation refreshes what is missing.
+ */
+async function precache(cacheMode) {
+  const [shell, flight] = await Promise.all([caches.open(SHELL), caches.open(FLIGHT)]);
+
+  await Promise.all(
+    ROUTES.map(async (path) => {
+      await Promise.all([
+        fetch(path, { cache: cacheMode })
+          .then((r) => (r.ok ? shell.put(routeKey(path), r) : null))
+          .catch(() => null),
+        fetch(path, { cache: cacheMode, headers: { RSC: "1" } })
+          .then((r) => (r.ok ? putFlight(flight, path, r) : null))
+          .catch(() => null),
+      ]);
+    }),
+  );
+}
+
+/**
+ * A deploy does not bump `VERSION`, so nothing else would ever re-run the
+ * precache: `install` fires when this file changes, not when the app behind it
+ * does. Kicked off once per worker startup off the back of a network response,
+ * which in a standalone app is about once per launch.
+ */
+let revalidated = false;
+function revalidate() {
+  if (revalidated) return;
+  revalidated = true;
+  // Conditional requests, not `reload` — the routes carry ETags and only the
+  // ones that actually changed cost a body.
+  precache("no-cache").catch(() => null);
+}
+
+/**
+ * Routes are keyed by pathname, without the query. `/habit?id=…` is one static
+ * page parameterised at runtime (see its own header), so one entry answers
+ * every habit — which is the whole reason that screen is a search parameter
+ * rather than a dynamic segment.
+ */
+function routeKey(path) {
+  return new Request(new URL(path, self.location.origin).pathname);
+}
+
+/**
+ * Two things stop a flight response being stored as it arrives. Next answers an
+ * RSC request with a 307 to a hash-stamped `?_rsc=` URL — the hash differs
+ * between a prefetch and a navigation, and changes every build — and `cache.put`
+ * refuses a response that followed a redirect. Rebuilding it drops both the
+ * redirect and the `Vary` header, which otherwise makes the entry unmatchable:
+ * `Vary` names the router's own state-tree and prefetch headers, so a stored
+ * payload would only ever match a repeat of the exact request that fetched it.
+ */
+async function putFlight(cache, path, response) {
+  const headers = new Headers(response.headers);
+  headers.delete("vary");
+  const body = await response.blob();
+  await cache.put(routeKey(path), new Response(body, { status: 200, headers }));
+}
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
@@ -42,20 +127,53 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
 
   // Navigations: network first, so a deploy is picked up immediately, with the
-  // cached shell as the offline fallback.
+  // precached document as the offline fallback. Falling back to `/` is the last
+  // resort for a URL this app does not serve — every route it does serve is in
+  // `ROUTES`, so no tab can land on Today's HTML under another tab's address.
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
         try {
           const response = await fetch(request);
           const cache = await caches.open(SHELL);
-          cache.put(request, response.clone());
+          cache.put(routeKey(url.pathname), response.clone());
+          revalidate();
           return response;
         } catch {
+          const shell = await caches.open(SHELL);
           const cached =
-            (await caches.match(request)) || (await caches.match("/"));
+            (await shell.match(routeKey(url.pathname))) || (await shell.match(routeKey("/")));
           return cached ?? Response.error();
         }
+      })(),
+    );
+    return;
+  }
+
+  // The router's own fetches — a prefetch or a tab tap. Stale-while-revalidate
+  // rather than network-first, because these are on the path of every soft
+  // navigation and a static route has nothing to be fresh about; the background
+  // refresh picks a deploy up by the next tap.
+  if (url.searchParams.has("_rsc") || request.headers.get("RSC") === "1") {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(FLIGHT);
+        const key = routeKey(url.pathname);
+        const cached = await cache.match(key);
+        const network = fetch(request)
+          .then(async (response) => {
+            if (response.ok) {
+              await putFlight(cache, url.pathname, response.clone());
+              revalidate();
+            }
+            return response;
+          })
+          .catch(() => cached);
+
+        // The refresh has to outlive the response, or a cache hit lets the
+        // worker be killed before the new payload lands.
+        event.waitUntil(network);
+        return (cached ?? (await network)) ?? Response.error();
       })(),
     );
     return;
