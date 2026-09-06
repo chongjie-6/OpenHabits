@@ -86,6 +86,48 @@ And the whole thing goes out as one image:
 
 ---
 
+## Three skins, and then your own colours
+
+The same day, the same data, three designs. A skin is a **layout** decision, not a palette swap: `grid` puts your year above the fold and gives every habit its own history strip, `blocks` throws away the soft edges for tiles you can hit without looking. The daily card and the tick target are redrawn per skin; the mutation underneath all three is the same function.
+
+<table>
+<tr>
+<td width="33%" align="center" valign="middle">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/today-dark.png"><img alt="The classic skin: a serif quote card above roomy habit rows" src="docs/media/today-light.png" width="100%"></picture>
+</td>
+<td width="33%" align="center" valign="middle">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/skin-grid-dark.png"><img alt="The grid skin: the year's heatmap on top, dense habit rows with per-habit history strips, the quote demoted to a footnote" src="docs/media/skin-grid-light.png" width="100%"></picture>
+</td>
+<td width="33%" align="center" valign="middle">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/skin-blocks-dark.png"><img alt="The blocks skin: hard edges, an inverted quote panel and big two-column habit tiles" src="docs/media/skin-blocks-light.png" width="100%"></picture>
+</td>
+</tr>
+<tr>
+<td align="center"><b><code>classic</code></b><br><sub>Cards, soft edges, one column.</sub></td>
+<td align="center"><b><code>grid</code></b><br><sub>Your year up top, dense rows below.</sub></td>
+<td align="center"><b><code>blocks</code></b><br><sub>Hard edges and big tiles.</sub></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="40%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/palette-editor-dark.png"><img alt="The Colours screen: six preset seeds, a live preview showing a quote card and a habit row, and the derived surface hexes beneath" src="docs/media/palette-editor-light.png" width="100%"></picture>
+</td>
+<td valign="top">
+
+**One colour builds the whole set.** Pick a seed and `lib/palette.ts` derives all 20 tokens from it — surfaces take a trace of the hue, text and accents are solved *against* the surface they land on, and the result is checked so it clears WCAG AA whichever colour you picked. A palette is always complete for both light and dark; a partial one is rejected rather than left to fall through to the skin underneath.
+
+It wins by being inline on `<html>`, which beats every skin's stylesheet without a single `!important` — so no skin has to know palettes exist. Habit colours stay out of it on purpose: a habit's colour is its identity across the app, and a skin changes the room, not which habit is the blue one.
+
+**None of this syncs, on any axis.** Theme, skin and palette are device-local and read by one blocking script before first paint — your phone can be dark `blocks` while your laptop is light `classic`. Only *behaviour* rides the synced settings blob.
+
+</td>
+</tr>
+</table>
+
+---
+
 ## Quick start
 
 ```bash

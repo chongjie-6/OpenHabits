@@ -203,4 +203,77 @@ for (const theme of ["light", "dark"]) {
   await page.close();
 }
 
+// The three skins, on the screen that differs most between them: the daily card
+// and the tick target are redrawn per skin, the tokens underneath are not.
+// `Ocean` is applied through the palette editor's own preset button, so the
+// fourth frame is a real custom palette rather than a recoloured screenshot.
+for (const variant of [
+  { name: "skin-grid", skin: "grid" },
+  { name: "skin-blocks", skin: "blocks" },
+  { name: "palette-editor", skin: null, preset: "Ocean" },
+]) {
+  for (const theme of ["light", "dark"]) {
+    const page = await browser.newPage();
+    await page.emulateMediaFeatures([
+      { name: "prefers-color-scheme", value: theme },
+      { name: "prefers-reduced-motion", value: "reduce" },
+    ]);
+    await page.evaluateOnNewDocument(() => {
+      const real = window.matchMedia.bind(window);
+      window.matchMedia = (q) =>
+        /display-mode/.test(q)
+          ? { matches: true, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }
+          : real(q);
+    });
+    // Pages in one browser context share an origin's localStorage, so the
+    // previous variant's skin is still set here unless it is cleared.
+    await page.evaluateOnNewDocument(
+      (t, sk, keepPalette) => {
+        localStorage.setItem("hapi-theme", t);
+        if (sk) localStorage.setItem("hapi-skin", sk);
+        else localStorage.removeItem("hapi-skin");
+        // Not on a palette run: this fires on every navigation, and would wipe
+        // the palette the editor just wrote on the way to the next page.
+        if (!keepPalette) localStorage.removeItem("hapi-palette");
+      },
+      theme,
+      variant.skin,
+      Boolean(variant.preset),
+    );
+    await seed(page);
+
+    if (variant.preset) {
+      await page.goto(`${BASE}/settings/colours`, { waitUntil: "networkidle0" });
+      await page.waitForFunction(
+        (l) => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === l),
+        {},
+        variant.preset,
+      );
+      await page.evaluate(
+        (l) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === l).click(),
+        variant.preset,
+      );
+      await sleep(600);
+    }
+
+    if (!variant.preset) {
+      await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+      await page.waitForSelector("main");
+      await page.evaluate(() => {
+        const b = [...document.querySelectorAll("button")].find((x) =>
+          /save/i.test(x.getAttribute("aria-label") || ""),
+        );
+        if (b && b.getAttribute("aria-pressed") !== "true") b.click();
+      });
+    }
+    await sleep(700);
+    const height = await fit(page);
+    await page.setViewport(phone(height));
+    await sleep(500);
+    await page.screenshot({ path: `${OUT}${variant.name}-${theme}.png` });
+    console.log(`${variant.name}-${theme}.png  390x${height}`);
+    await page.close();
+  }
+}
+
 await browser.close();
