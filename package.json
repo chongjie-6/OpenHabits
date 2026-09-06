@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "icons": "node scripts/generate-icons.mjs",
+    "media": "node scripts/generate-readme-media.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
