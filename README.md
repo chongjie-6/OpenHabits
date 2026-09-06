@@ -265,7 +265,7 @@ CRON_SECRET=                 # the scheduler sends this as the cron's Authorizat
 
 **`DATABASE_URL` must not be a superuser.** Every table is under row-level security, and a role with `BYPASSRLS` ignores the lot with no error to notice. Neon's default role is fine; `postgres` on a local install is not. `db:migrate` warns when the role applying it is a superuser.
 
-**Production is deployed from CI, not from the Git integration.** `vercel.json` sets `git.deploymentEnabled.master` to `false`, because Vercel and GitHub Actions subscribe to the same push webhook independently — left on, Vercel ships a build whose tests are still running, or have already failed. The `deploy` job in `.github/workflows/ci.yml` runs `needs: verify` and does what the integration did:
+**Production is deployed from CI, not from the Git integration.** `vercel.json` sets `git.deploymentEnabled.main` to `false`, because Vercel and GitHub Actions subscribe to the same push webhook independently — left on, Vercel ships a build whose tests are still running, or have already failed. The `deploy` job in `.github/workflows/ci.yml` runs `needs: verify` and does what the integration did:
 
 ```bash
 vercel pull --yes --environment=production
