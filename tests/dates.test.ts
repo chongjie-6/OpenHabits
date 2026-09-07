@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addDays,
   daysBetween,
+  relativeDayLabel,
   startOfMonth,
   startOfWeek,
   todayKey,
@@ -128,6 +129,24 @@ describe("weekdayIndex", () => {
     const initials = weekdayInitials(1);
     expect(initials).toEqual(["M", "T", "W", "T", "F", "S", "S"]);
     expect(initials[weekdayIndex("2026-08-14", 1)]).toBe("F");
+  });
+});
+
+describe("relativeDayLabel", () => {
+  it("names the three days that have a name", () => {
+    expect(relativeDayLabel("2026-08-14", "2026-08-14")).toBe("Today");
+    expect(relativeDayLabel("2026-08-13", "2026-08-14")).toBe("Yesterday");
+    expect(relativeDayLabel("2026-08-15", "2026-08-14")).toBe("Tomorrow");
+  });
+
+  it("leaves the rest to the caller's own date format", () => {
+    expect(relativeDayLabel("2026-08-12", "2026-08-14")).toBeNull();
+    expect(relativeDayLabel("2026-08-16", "2026-08-14")).toBeNull();
+  });
+
+  it("counts across a month boundary rather than by date arithmetic", () => {
+    expect(relativeDayLabel("2026-07-31", "2026-08-01")).toBe("Yesterday");
+    expect(relativeDayLabel("2027-01-01", "2026-12-31")).toBe("Tomorrow");
   });
 });
 

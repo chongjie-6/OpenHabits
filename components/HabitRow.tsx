@@ -14,17 +14,23 @@ import type { DayKey } from "@/lib/types";
  * What must never differ between them is the mutation, and the way to keep that
  * true is for all three to go through the same `TickTarget`: the whole control
  * is the button, it is at least 44px on its shortest side, and the write is
- * synchronous — no await, no spinner, no disabled state.
+ * synchronous — no await and no spinner.
+ *
+ * `readOnly` is the one thing that disables it, and it is never about waiting:
+ * a day that has not happened yet cannot be ticked (§6.8), the same rule the
+ * week grid applies to its future columns.
  */
 
 function TickTarget({
   state,
   day,
+  readOnly = false,
   className,
   children,
 }: {
   state: HabitDayState;
   day: DayKey;
+  readOnly?: boolean;
   className: string;
   children: React.ReactNode;
 }) {
@@ -34,6 +40,7 @@ function TickTarget({
   return (
     <button
       type="button"
+      disabled={readOnly}
       onClick={() => toggleEntry(habit.id, day)}
       aria-pressed={done}
       aria-label={
@@ -41,7 +48,7 @@ function TickTarget({
           ? `${habit.name}: ${count} of ${habit.target} done`
           : `${habit.name}${done ? ", done" : ", not done"}`
       }
-      className={className}
+      className={`${className} disabled:cursor-default`}
     >
       {children}
     </button>
@@ -94,10 +101,12 @@ function Checkbox({
 export function HabitRow({
   state,
   day,
+  readOnly = false,
   dimmed = false,
 }: {
   state: HabitDayState;
   day: DayKey;
+  readOnly?: boolean;
   dimmed?: boolean;
 }) {
   const { habit, count, done } = state;
@@ -108,6 +117,7 @@ export function HabitRow({
     <TickTarget
       state={state}
       day={day}
+      readOnly={readOnly}
       className={`flex min-h-[56px] w-full items-center gap-3 rounded-control px-3 text-left transition-colors hover:bg-surface-2 ${
         dimmed ? "opacity-55" : ""
       }`}
@@ -160,12 +170,14 @@ export function HabitRowDense({
   day,
   trail,
   streak,
+  readOnly = false,
   dimmed = false,
 }: {
   state: HabitDayState;
   day: DayKey;
   trail?: DayStat[];
   streak?: number;
+  readOnly?: boolean;
   dimmed?: boolean;
 }) {
   const { habit, count, done } = state;
@@ -176,6 +188,7 @@ export function HabitRowDense({
     <TickTarget
       state={state}
       day={day}
+      readOnly={readOnly}
       className={`flex min-h-[52px] w-full items-center gap-2.5 rounded-control px-3 text-left transition-colors hover:bg-surface-2 ${
         dimmed ? "opacity-55" : ""
       }`}
@@ -245,11 +258,13 @@ export function HabitTile({
   state,
   day,
   streak,
+  readOnly = false,
   dimmed = false,
 }: {
   state: HabitDayState;
   day: DayKey;
   streak?: number;
+  readOnly?: boolean;
   dimmed?: boolean;
 }) {
   const { habit, count, done } = state;
@@ -260,6 +275,7 @@ export function HabitTile({
     <TickTarget
       state={state}
       day={day}
+      readOnly={readOnly}
       className={`surface-card flex h-full min-h-[128px] w-full flex-col justify-between gap-2 p-3 text-left transition-colors ${
         done ? "bg-accent-2 text-accent-2-fg" : "bg-surface text-foreground"
       } ${dimmed ? "opacity-55" : ""}`}

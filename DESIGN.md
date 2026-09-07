@@ -50,7 +50,7 @@ Everything else in the app is in service of that loop. A screen that doesn't fee
 
 | Route | Name | Purpose | Built |
 |---|---|---|---|
-| `/` | **Today** | Quote card + today's scheduled habits as tappable rows | ✅ |
+| `/` | **Today** | Quote card + a day's scheduled habits as tappable rows, swipeable between days (§6.8) | ✅ |
 | `/week` | **Week** | 7-day × N-habit grid; backfill and correct past days | ✅ |
 | `/stats` | **Stats** | The full contribution heatmap, streaks, completion rates | ✅ |
 | `/settings` | **Settings** | Theme, week start, habits, export/import, danger zone | ✅ |
@@ -499,6 +499,25 @@ Two details that are not decoration:
 
 The inline form resets by unmounting, as it always did. The sheet cannot — it stays mounted while it animates out — so the call sites remount it with a `key` bumped **on open only**, which leaves the copy sliding away with its contents and still starts the next one clean.
 
+### 6.8 Swiping between days and weeks
+
+Today and Week each show one slice of a timeline, and on a phone the natural way to move along a timeline is to push it. **Swipe left for the next day/week, right for the previous.** Today gains a day offset it never had; Week already had one behind two arrows, and the gesture is a second way to reach it.
+
+`lib/use-swipe.ts` is the whole mechanism, and `resolveSwipe` — the pure half — is where all three thresholds live, because a threshold is the part worth testing. A gesture counts as a swipe when it travels at least **56px**, stays within **0.6×** that distance off the horizontal, and completes inside **800ms**. The first keeps a tap a tap: the tick target is the most-used control in the app (§6.5) and it must survive a thumb that moved. The second is the one that matters most — a habit list exists to be scrolled vertically, and a thumb dragging down it drifts sideways by tens of pixels meaning nothing by it. The third rejects a slow drag, which is a scroll that changed its mind.
+
+Four decisions around it:
+
+- **The arrows are the control; the swipe is the shortcut.** A gesture is announced to no screen reader and reachable from no keyboard, so Today gets the same `‹ Today ›` cluster Week has always had. Shipping the gesture alone would have made the feature invisible as well as inaccessible.
+- **Touch and pen only.** On a desktop a horizontal drag is a text selection, and pretending otherwise breaks a habit name mid-highlight.
+- **A swipe that starts on a habit still ends in a click.** The hook swallows that click in the capture phase, which is the only reason swiping across the list does not tick a habit off on the way past. The flag is cleared on the next press, so a swipe that landed on nothing cannot eat a later tap.
+- **No `touch-action: pan-y`.** It is the obvious thing to reach for and it is wrong here: Week's grid is a table in a horizontal scroller, `pan-y` on an ancestor takes that axis away from it, and a descendant cannot give it back. The hook instead walks up from the press and declines the gesture if it began inside a scroller that can actually scroll sideways — so on Week the table scrolls and the weeks stay put.
+
+**What does not move with the day.** The streak, the heat strip and the per-habit trails stay anchored on *today*. They are claims about the present: recomputing them per browsed day would show a streak that was never true, and a day in the future would score every day between here and there as missed. Splitting them into their own memo is also what keeps a swipe cheap — the browsed day is one pass over the habits, where the summary is a year of them.
+
+**A future day is readable, not tickable.** `TickTarget` takes a `readOnly` prop and the header says why, which is the rule the week grid has always applied to its future columns. `AddHabit` hides itself off today for a related reason: a habit created now is not active on the day being browsed, so it would be added into a screen that cannot show it.
+
+No slide animation. §6.3 rules slides out for tab changes, and the reasoning holds here too — the content changes, the heading changes, and the gesture is its own feedback.
+
 ---
 
 ## 7. Architecture
@@ -794,6 +813,7 @@ lib/
   reminders.ts            subscribe/unsubscribe, and why a switch is not offered
   email.ts                nodemailer SMTP transport, built per send (§13.9)
   verification-email.ts   the verification mail: tables, inline styles, no images
+  use-swipe.ts            the swipe gesture, and the thresholds it turns on (§6.8)
   use-today.ts            the clock as external state
   use-media-query.ts
   *.test.ts               tests over the pure logic

@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AddHabit } from "@/components/AddHabit";
 import { HabitRow, HabitRowDense, HabitTile } from "@/components/HabitRow";
 import { levelColor } from "@/lib/colors";
-import { addDays, formatDayLong, formatDayFull } from "@/lib/dates";
+import {
+  addDays,
+  formatDayLong,
+  formatDayFull,
+  formatWeekdayLong,
+  relativeDayLabel,
+} from "@/lib/dates";
 import {
   buildHabitHistory,
   buildHistory,
@@ -16,6 +22,7 @@ import {
 import { useSkin, type Skin } from "@/lib/skin";
 import { useOpenHabits } from "@/lib/store";
 import { computeStreaks } from "@/lib/streaks";
+import { useSwipe } from "@/lib/use-swipe";
 import { useToday } from "@/lib/use-today";
 import type { DayKey } from "@/lib/types";
 
@@ -43,18 +50,32 @@ type PerHabit = { trail: DayStat[]; streak: number };
 
 export function TodayList() {
   const { hydrated, habits, entries, settings } = useOpenHabits();
-  const day = useToday(settings.dayStartHour);
+  const today = useToday(settings.dayStartHour);
   const skin = useSkin();
+  const [offset, setOffset] = useState(0);
+  const swipe = useSwipe((direction) =>
+    setOffset((o) => o + (direction === "left" ? 1 : -1)),
+  );
 
-  const view = useMemo(() => {
-    if (!hydrated || !day) return null;
+  const day = today === null ? null : addDays(today, offset);
 
-    const states = habitsForDay(habits, entries, day, settings.weekStartsOn);
+  /**
+   * Anchored on `today`, never on the day being browsed. The streak, the heat
+   * strip and the per-habit trails are claims about the present: recomputing
+   * them as the user swipes would show a streak that was never true, and a day
+   * in the future would score every day between here and there as missed.
+   *
+   * Keeping them in their own memo is also what makes a swipe cheap — the day's
+   * states are one pass, where this is a year of them.
+   */
+  const summary = useMemo(() => {
+    if (!hydrated || !today) return null;
+
     const history = buildHistory(
       habits,
       entries,
-      addDays(day, -(STREAK_WINDOW - 1)),
-      day,
+      addDays(today, -(STREAK_WINDOW - 1)),
+      today,
       settings.weekStartsOn,
     );
 
@@ -65,8 +86,8 @@ export function TodayList() {
         const own = buildHabitHistory(
           habit,
           entries,
-          addDays(day, -(HABIT_STREAK_WINDOW - 1)),
-          day,
+          addDays(today, -(HABIT_STREAK_WINDOW - 1)),
+          today,
           settings.weekStartsOn,
         );
         perHabit.set(habit.id, {
@@ -77,27 +98,46 @@ export function TodayList() {
     }
 
     return {
-      scheduled: states.filter((s) => s.scheduled),
-      unscheduled: states.filter((s) => !s.scheduled),
       streaks: computeStreaks(history),
       recent: history.slice(-7),
       strip: history.slice(-(STRIP_WEEKS * 7)),
       perHabit,
     };
-  }, [hydrated, day, habits, entries, settings, skin]);
+  }, [hydrated, today, habits, entries, settings, skin]);
+
+  const states = useMemo(() => {
+    if (!hydrated || !day) return null;
+    return habitsForDay(habits, entries, day, settings.weekStartsOn);
+  }, [hydrated, day, habits, entries, settings.weekStartsOn]);
 
   // Gate every data-dependent subtree on hydration: a checked box that renders
   // unchecked for 200ms reads as data loss. See DESIGN.md §7.1. It is also what
   // makes `useSkin` safe here — it reports `classic` until mount, and nothing it
   // decides is rendered before that.
-  if (!view || !day) return <Skeleton />;
+  if (!summary || !states || !day || !today) return <Skeleton />;
 
-  const { scheduled, unscheduled, streaks, recent, strip, perHabit } = view;
+  const { streaks, recent, strip, perHabit } = summary;
+  const scheduled = states.filter((s) => s.scheduled);
+  const unscheduled = states.filter((s) => !s.scheduled);
   const done = scheduled.filter((s) => s.done).length;
+  const future = day > today;
 
   return (
-    <section className="mt-6">
-      <Header skin={skin} day={day} done={done} total={scheduled.length} />
+    <section className="mt-6" {...swipe}>
+      <Header
+        skin={skin}
+        day={day}
+        today={today}
+        done={done}
+        total={scheduled.length}
+        nav={<DayNav offset={offset} onOffset={setOffset} />}
+      />
+
+      {future && (
+        <p className="mt-2 text-[12px] text-muted">
+          Nothing to tick yet — this day hasn&rsquo;t happened.
+        </p>
+      )}
 
       {skin === "grid" && habits.length > 0 && (
         <HeatStrip stats={strip} rate={streaks.completionRate} />
@@ -110,6 +150,7 @@ export function TodayList() {
           scheduled={scheduled}
           unscheduled={unscheduled}
           day={day}
+          readOnly={future}
           perHabit={perHabit}
         />
       ) : (
@@ -118,11 +159,15 @@ export function TodayList() {
           scheduled={scheduled}
           unscheduled={unscheduled}
           day={day}
+          readOnly={future}
           perHabit={perHabit}
         />
       )}
 
-      <AddHabit />
+      {/* A habit created today is not active on the day being browsed, so it
+          would be added into an empty screen. The button comes back with the
+          day it belongs to. */}
+      {offset === 0 && <AddHabit />}
 
       {habits.length > 0 && skin !== "grid" && (
         <StreakLink skin={skin} recent={recent} streak={streaks.current} />
@@ -131,31 +176,96 @@ export function TodayList() {
   );
 }
 
+/**
+ * The keyboard and screen-reader half of the swipe (§6.8). A gesture announces
+ * itself to neither, so the arrows are not a fallback — they are the control,
+ * and the swipe is the shortcut.
+ */
+function DayNav({
+  offset,
+  onOffset,
+}: {
+  offset: number;
+  onOffset: (next: number) => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <NavButton label="Previous day" onClick={() => onOffset(offset - 1)}>
+        ‹
+      </NavButton>
+      {offset !== 0 && (
+        <button
+          type="button"
+          onClick={() => onOffset(0)}
+          className="h-9 rounded-control px-2 text-[12px] text-muted transition-colors hover:text-foreground"
+        >
+          Today
+        </button>
+      )}
+      <NavButton label="Next day" onClick={() => onOffset(offset + 1)}>
+        ›
+      </NavButton>
+    </div>
+  );
+}
+
+function NavButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="flex h-9 w-9 items-center justify-center rounded-control border border-border text-muted transition-colors hover:text-foreground"
+    >
+      {children}
+    </button>
+  );
+}
+
 function Header({
   skin,
   day,
+  today,
   done,
   total,
+  nav,
 }: {
   skin: Skin;
   day: DayKey;
+  today: DayKey;
   done: number;
   total: number;
+  nav: React.ReactNode;
 }) {
+  const relative = relativeDayLabel(day, today);
+
   if (skin === "blocks") {
     return (
       <header className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="display-type text-[32px] leading-[0.92]">Today</h1>
+        <div className="min-w-0">
+          <h1 className="display-type truncate text-[32px] leading-[0.92]">
+            {relative ?? formatWeekdayLong(day)}
+          </h1>
           <p className="mt-1 text-[12px] font-medium tracking-[0.12em] uppercase">
             {formatDayFull(day)}
           </p>
         </div>
-        {total > 0 && (
-          <p className="display-type shrink-0 bg-accent px-3 py-2 text-[17px] tabular-nums text-accent-fg">
-            {done} / {total}
-          </p>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {total > 0 && (
+            <p className="display-type bg-accent px-3 py-2 text-[17px] tabular-nums text-accent-fg">
+              {done} / {total}
+            </p>
+          )}
+          {nav}
+        </div>
       </header>
     );
   }
@@ -163,32 +273,44 @@ function Header({
   if (skin === "grid") {
     return (
       <header className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="font-mono text-[10px] font-medium tracking-[0.1em] uppercase text-muted">
             {formatDayFull(day)}
           </p>
-          <h1 className="display-type mt-0.5 text-[20px]">Today</h1>
+          <h1 className="display-type mt-0.5 truncate text-[20px]">
+            {relative ?? formatWeekdayLong(day)}
+          </h1>
         </div>
-        {total > 0 && (
-          <p className="flex shrink-0 items-baseline gap-0.5">
-            <span className="font-mono text-[28px] font-semibold leading-none tabular-nums">
-              {done}
-            </span>
-            <span className="font-mono text-[15px] text-muted">/{total}</span>
-          </p>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {total > 0 && (
+            <p className="flex items-baseline gap-0.5">
+              <span className="font-mono text-[28px] font-semibold leading-none tabular-nums">
+                {done}
+              </span>
+              <span className="font-mono text-[15px] text-muted">/{total}</span>
+            </p>
+          )}
+          {nav}
+        </div>
       </header>
     );
   }
 
   return (
-    <header className="flex items-baseline justify-between gap-3">
-      <h1 className="display-type text-[15px]">{formatDayLong(day)}</h1>
-      {total > 0 && (
-        <p className="shrink-0 font-mono text-[12px] tabular-nums text-muted">
-          {done} of {total} done
-        </p>
-      )}
+    <header className="flex items-center justify-between gap-3">
+      {/* Today keeps its date rather than saying so twice: the reset button in
+          the nav is already the thing that names the offset. */}
+      <h1 className="display-type min-w-0 truncate text-[15px]">
+        {day === today ? formatDayLong(day) : (relative ?? formatDayLong(day))}
+      </h1>
+      <div className="flex shrink-0 items-center gap-2">
+        {total > 0 && (
+          <p className="font-mono text-[12px] tabular-nums text-muted">
+            {done} of {total} done
+          </p>
+        )}
+        {nav}
+      </div>
     </header>
   );
 }
@@ -255,12 +377,14 @@ function Rows({
   scheduled,
   unscheduled,
   day,
+  readOnly,
   perHabit,
 }: {
   skin: Skin;
   scheduled: HabitDayState[];
   unscheduled: HabitDayState[];
   day: DayKey;
+  readOnly: boolean;
   perHabit: Map<string, PerHabit>;
 }) {
   const render = (state: HabitDayState, dimmed?: boolean) => {
@@ -272,11 +396,12 @@ function Rows({
           day={day}
           trail={own?.trail}
           streak={own?.streak}
+          readOnly={readOnly}
           dimmed={dimmed}
         />
       );
     }
-    return <HabitRow state={state} day={day} dimmed={dimmed} />;
+    return <HabitRow state={state} day={day} readOnly={readOnly} dimmed={dimmed} />;
   };
 
   return (
@@ -290,7 +415,7 @@ function Rows({
       {unscheduled.length > 0 && (
         <details className="-mx-3 mt-4">
           <summary className="cursor-pointer px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-            Not scheduled today ({unscheduled.length})
+            Not scheduled ({unscheduled.length})
           </summary>
           <ul className="mt-1">
             {unscheduled.map((state) => (
@@ -307,11 +432,13 @@ function Tiles({
   scheduled,
   unscheduled,
   day,
+  readOnly,
   perHabit,
 }: {
   scheduled: HabitDayState[];
   unscheduled: HabitDayState[];
   day: DayKey;
+  readOnly: boolean;
   perHabit: Map<string, PerHabit>;
 }) {
   return (
@@ -323,6 +450,7 @@ function Tiles({
               state={state}
               day={day}
               streak={perHabit.get(state.habit.id)?.streak}
+              readOnly={readOnly}
             />
           </li>
         ))}
@@ -331,7 +459,7 @@ function Tiles({
       {unscheduled.length > 0 && (
         <details className="mt-4">
           <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
-            Not scheduled today ({unscheduled.length})
+            Not scheduled ({unscheduled.length})
           </summary>
           <ul className="mt-3 grid grid-cols-2 gap-3">
             {unscheduled.map((state) => (
@@ -340,6 +468,7 @@ function Tiles({
                   state={state}
                   day={day}
                   streak={perHabit.get(state.habit.id)?.streak}
+                  readOnly={readOnly}
                   dimmed
                 />
               </li>

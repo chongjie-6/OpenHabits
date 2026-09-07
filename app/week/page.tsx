@@ -11,6 +11,7 @@ import {
 } from "@/lib/dates";
 import { habitsForDay, type HabitDayState } from "@/lib/history";
 import { toggleEntry, useOpenHabits } from "@/lib/store";
+import { useSwipe } from "@/lib/use-swipe";
 import { useToday } from "@/lib/use-today";
 import type { DayKey } from "@/lib/types";
 
@@ -18,6 +19,12 @@ export default function WeekPage() {
   const { hydrated, habits, entries, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
   const [offset, setOffset] = useState(0);
+
+  // Swiping forward stops at the current week for the same reason the arrow is
+  // disabled there: a grid of empty future columns is not a week to look at.
+  const swipe = useSwipe((direction) =>
+    setOffset((o) => (direction === "left" ? Math.min(0, o + 1) : o - 1)),
+  );
 
   const view = useMemo(() => {
     if (!hydrated || !today) return null;
@@ -48,7 +55,7 @@ export default function WeekPage() {
   const initials = weekdayInitials(settings.weekStartsOn);
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4" {...swipe}>
       <header className="flex items-center justify-between gap-2">
         <h1 className="display-type text-[15px]">
           {offset === 0 ? "This week" : rangeLabel(weekStart)}

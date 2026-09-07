@@ -107,6 +107,31 @@ export function formatDayFull(key: DayKey): string {
   });
 }
 
+/** "Thursday" — the weekday alone, for a heading that has the date beneath it. */
+export function formatWeekdayLong(key: DayKey): string {
+  return dateFromDayKey(key).toLocaleDateString(undefined, { weekday: "long" });
+}
+
+/**
+ * "Today" / "Yesterday" / "Tomorrow", or null for anything further out.
+ *
+ * Null rather than a formatted date so the caller picks its own fallback: the
+ * three skins each give the date a different shape, and a heading that reads
+ * "Today" at 32px reads as a date at 12px in the line under it.
+ */
+export function relativeDayLabel(key: DayKey, today: DayKey): string | null {
+  switch (daysBetween(today, key)) {
+    case 0:
+      return "Today";
+    case -1:
+      return "Yesterday";
+    case 1:
+      return "Tomorrow";
+    default:
+      return null;
+  }
+}
+
 /** "Aug" */
 export function formatMonthShort(key: DayKey): string {
   return dateFromDayKey(key).toLocaleDateString(undefined, { month: "short" });
