@@ -30,7 +30,7 @@ npm run db:migrate
 
 **Daily reminders are an hourly cron plus a per-device timezone.** "9am" is a
 wall clock, so one daily invocation would only ever be nine o'clock in a single
-timezone; `.github/workflows/reminders.yml` calls `/api/cron/reminders` every
+timezone; the Cloudflare Worker in `worker/` calls `/api/cron/reminders` every
 hour and the sweep asks each subscription whether it is that user's hour
 *there*. Without the VAPID pair the Settings card says the deployment cannot
 send rather than offering a switch, and without `CRON_SECRET` the cron route
@@ -85,13 +85,13 @@ VAPID_SUBJECT=mailto:you@example.com
 CRON_SECRET=                 # the scheduler sends this as the cron's Authorization header
 ```
 
-**One cron job, hourly — from GitHub Actions, not Vercel.** A single entry is
+**One cron job, hourly — from Cloudflare, not Vercel.** A single entry is
 enough because the fan-out across timezones happens inside the sweep. What it
 needs is a scheduler allowing a sub-daily interval, and Vercel Cron is capped at
-daily below Pro. So `.github/workflows/reminders.yml` holds the schedule and
-curls the endpoint; it needs the repository variable `SITE_URL`, the secret
-`CRON_SECRET`, and the production deployment reachable without Vercel
-Authentication.
+daily below Pro. So `worker/` holds the schedule and calls the endpoint; see
+[the section below](#cloudflare-the-reminder-schedule). The production
+deployment has to be reachable without Vercel Authentication, which answers a
+sweep with an SSO redirect rather than a 200.
 
 **`BETTER_AUTH_ALLOWED_HOSTS`, not `BETTER_AUTH_URL`.** Every preview deployment
 answers on its own `*.vercel.app` host, and one pinned origin would mail a
@@ -136,3 +136,53 @@ vercel deploy --prebuilt --prod
 
 It needs three repository secrets — `VERCEL_TOKEN`, `VERCEL_ORG_ID`,
 `VERCEL_PROJECT_ID`. Preview branches still deploy from Git, ungated.
+
+---
+
+## Cloudflare — the reminder schedule
+
+The hourly sweep needs a scheduler that fires hourly and keeps firing. Vercel
+Cron is capped at daily below Pro; GitHub Actions can do hourly but stops
+scheduling after 60 days without a push, which is a clock that runs out exactly
+when a feature is finished. A Cloudflare Worker cron trigger is free, hourly and
+has no such condition.
+
+`worker/` is the whole of it — thirty lines that hold no logic of their own,
+plus `worker/wrangler.jsonc` holding the schedule. Set `SITE_URL` in that file
+to the deployment's public origin, then, from the repository root:
+
+```bash
+npx wrangler@4 login
+npx wrangler@4 secret put CRON_SECRET --config worker/wrangler.jsonc
+npx wrangler@4 deploy --config worker/wrangler.jsonc
+```
+
+`CRON_SECRET` has to be the same value the Vercel project holds; the Worker
+sends it as `Authorization: Bearer`, and the route answers 401 to anything else.
+Wrangler is deliberately not a dependency of this project — it is a large
+install carrying platform binaries, it would be pulled into every Vercel build
+for a Worker that Vercel does not build, and this is deployed by hand about as
+often as the schedule changes.
+
+**Free-plan limits are not close.** Hourly is 24 invocations a day against
+100,000; the Worker's own CPU time is a few milliseconds because waiting on the
+sweep's response is wall clock, not CPU. The Worker has no `fetch` handler and
+`workers_dev` is `false`, so the schedule is its only entry point.
+
+To check it, run the sweep by hand — the same request the Worker makes:
+
+```bash
+curl -i -H "Authorization: Bearer $CRON_SECRET" https://openhabits.example/api/cron/reminders
+```
+
+200 with counts is a sweep that ran, 200 with `skipped` a deployment with no
+database or VAPID pair, 401 a mismatched secret, 503 an unset one.
+
+**A failed run is quieter than the red CI run it replaces.** The Worker throws
+on any status but 200, because a throw is what marks a cron invocation failed;
+it shows up under the Worker's **Cron Events** and in its logs, which
+`observability` in `wrangler.jsonc` keeps. Nothing emails you about it. Per
+DESIGN.md §8.5 a reminder that silently doesn't fire is the worst outcome this
+feature has, and the scheduler is one of the ways it can — so if you want to
+know, add a Cloudflare notification on Worker errors, or watch
+`npx wrangler@4 tail openhabits-reminders` after a change.
