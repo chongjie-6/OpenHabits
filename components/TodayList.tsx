@@ -124,17 +124,12 @@ export function TodayList() {
 
   return (
     <section className="mt-6" {...swipe}>
-      <Header
-        skin={skin}
-        day={day}
-        today={today}
-        done={done}
-        total={scheduled.length}
-        nav={<DayNav offset={offset} onOffset={setOffset} />}
-      />
+      <Header skin={skin} day={day} today={today} done={done} total={scheduled.length} />
+
+      <DayNav offset={offset} onOffset={setOffset} />
 
       {future && (
-        <p className="mt-2 text-[12px] text-muted">
+        <p className="mt-1 text-[12px] text-muted">
           Nothing to tick yet — this day hasn&rsquo;t happened.
         </p>
       )}
@@ -189,7 +184,7 @@ function DayNav({
   onOffset: (next: number) => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-0.5">
+    <div className="mt-2 flex items-center justify-end gap-0.5">
       <NavButton label="Previous day" onClick={() => onOffset(offset - 1)}>
         ‹
       </NavButton>
@@ -236,14 +231,12 @@ function Header({
   today,
   done,
   total,
-  nav,
 }: {
   skin: Skin;
   day: DayKey;
   today: DayKey;
   done: number;
   total: number;
-  nav: React.ReactNode;
 }) {
   const relative = relativeDayLabel(day, today);
 
@@ -258,14 +251,11 @@ function Header({
             {formatDayFull(day)}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {total > 0 && (
-            <p className="display-type bg-accent px-3 py-2 text-[17px] tabular-nums text-accent-fg">
-              {done} / {total}
-            </p>
-          )}
-          {nav}
-        </div>
+        {total > 0 && (
+          <p className="display-type shrink-0 bg-accent px-3 py-2 text-[17px] tabular-nums text-accent-fg">
+            {done} / {total}
+          </p>
+        )}
       </header>
     );
   }
@@ -281,36 +271,30 @@ function Header({
             {relative ?? formatWeekdayLong(day)}
           </h1>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {total > 0 && (
-            <p className="flex items-baseline gap-0.5">
-              <span className="font-mono text-[28px] font-semibold leading-none tabular-nums">
-                {done}
-              </span>
-              <span className="font-mono text-[15px] text-muted">/{total}</span>
-            </p>
-          )}
-          {nav}
-        </div>
+        {total > 0 && (
+          <p className="flex shrink-0 items-baseline gap-0.5">
+            <span className="font-mono text-[28px] font-semibold leading-none tabular-nums">
+              {done}
+            </span>
+            <span className="font-mono text-[15px] text-muted">/{total}</span>
+          </p>
+        )}
       </header>
     );
   }
 
   return (
-    <header className="flex items-center justify-between gap-3">
+    <header className="flex items-baseline justify-between gap-3">
       {/* Today keeps its date rather than saying so twice: the reset button in
           the nav is already the thing that names the offset. */}
       <h1 className="display-type min-w-0 truncate text-[15px]">
         {day === today ? formatDayLong(day) : (relative ?? formatDayLong(day))}
       </h1>
-      <div className="flex shrink-0 items-center gap-2">
-        {total > 0 && (
-          <p className="font-mono text-[12px] tabular-nums text-muted">
-            {done} of {total} done
-          </p>
-        )}
-        {nav}
-      </div>
+      {total > 0 && (
+        <p className="shrink-0 font-mono text-[12px] tabular-nums text-muted">
+          {done} of {total} done
+        </p>
+      )}
     </header>
   );
 }
