@@ -29,8 +29,11 @@ jobs:
           # a supported configuration everywhere else in this app — so it is a
           # quiet no-op, not an hourly red run. Once the secret exists, every
           # answer but 200 is loud.
-          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "SITE_URL variable or CRON_SECRET secret is unset; reminders are off."
+          missing=""
+          [ -n "$SITE_URL" ] || missing="SITE_URL variable"
+          [ -n "$CRON_SECRET" ] || missing="${missing:+$missing and }CRON_SECRET secret"
+          if [ -n "$missing" ]; then
+            echo "$missing unset; reminders are off."
             exit 0
           fi
           # `-f` alone would hide the body, and the route explains itself there:
