@@ -11,7 +11,12 @@
 import { useState, useSyncExternalStore } from "react";
 import { disableReminders } from "@/lib/reminders";
 import { authClient, markSignedIn, markSignedOut } from "@/lib/session";
-import { adoptAccount, syncMeta, useOpenHabits, type SyncStatus } from "@/lib/store";
+import {
+  adoptAccount,
+  syncMeta,
+  useOpenHabits,
+  type SyncStatus,
+} from "@/lib/store";
 import { syncNow } from "@/lib/sync/client";
 
 type Mode = "sign-in" | "sign-up";
@@ -73,7 +78,10 @@ export function AccountCard() {
   if (!mounted || isPending) {
     return (
       <Card>
-        <div aria-hidden="true" className="h-24 animate-pulse rounded-control bg-surface-2" />
+        <div
+          aria-hidden="true"
+          className="h-24 animate-pulse rounded-control bg-surface-2"
+        />
       </Card>
     );
   }
@@ -179,7 +187,11 @@ function SignedOut({
       // The server already resent the mail on its way out (`sendOnSignIn`), so
       // a 403 here is the wait entered from the other side, not a failure.
       if (result.error.code === "EMAIL_NOT_VERIFIED") {
-        onOutcome({ kind: "verify", email: credentials.email, origin: "sign-in" });
+        onOutcome({
+          kind: "verify",
+          email: credentials.email,
+          origin: "sign-in",
+        });
         return;
       }
       // Only reachable with no mailer: `requireEmailVerification` makes Better
@@ -195,7 +207,9 @@ function SignedOut({
         });
         return;
       }
-      setError({ text: result.error.message ?? "That did not work. Try again." });
+      setError({
+        text: result.error.message ?? "That did not work. Try again.",
+      });
       return;
     }
 
@@ -203,7 +217,11 @@ function SignedOut({
     // sync yet, and the hint must stay unset or `lib/sync/client.ts` spends the
     // wait collecting 401s.
     if (!result.data?.token) {
-      onOutcome({ kind: "verify", email: credentials.email, origin: "sign-up" });
+      onOutcome({
+        kind: "verify",
+        email: credentials.email,
+        origin: "sign-up",
+      });
       return;
     }
 
@@ -222,7 +240,11 @@ function SignedOut({
      * whoever is holding the device, so there is no second person's data for the
      * habits to land in.
      */
-    if (mode === "sign-in" && habits.length > 0 && syncMeta().accountId === null) {
+    if (
+      mode === "sign-in" &&
+      habits.length > 0 &&
+      syncMeta().accountId === null
+    ) {
       onOutcome({
         kind: "confirm-merge",
         email: credentials.email,
@@ -288,9 +310,7 @@ function SignedOut({
     <>
       <p className="text-[13px] leading-relaxed text-muted">
         An account keeps your habits on your other devices. It is entirely
-        optional — everything works signed out, and nothing leaves this device
-        until you sign in. If habits are already here, you are asked before any
-        of them go into the account.
+        optional
       </p>
 
       <form onSubmit={submit} className="mt-3 space-y-2">
@@ -329,7 +349,9 @@ function SignedOut({
           label="Password"
           type="password"
           value={password}
-          autoComplete={mode === "sign-up" ? "new-password" : "current-password"}
+          autoComplete={
+            mode === "sign-up" ? "new-password" : "current-password"
+          }
           onChange={(value) => {
             setPassword(value);
             setError(null);
@@ -350,7 +372,11 @@ function SignedOut({
             disabled={busy || email.trim() === "" || password === ""}
             className="h-10 rounded-control border border-accent bg-accent px-3 text-[13px] font-medium text-accent-fg transition-opacity disabled:opacity-50"
           >
-            {busy ? "Working…" : mode === "sign-up" ? "Create account" : "Sign in"}
+            {busy
+              ? "Working…"
+              : mode === "sign-up"
+                ? "Create account"
+                : "Sign in"}
           </button>
           <button
             type="button"
@@ -360,7 +386,9 @@ function SignedOut({
             }}
             className="h-10 rounded-control px-2 text-[13px] text-muted underline underline-offset-4 hover:text-foreground"
           >
-            {mode === "sign-up" ? "I already have an account" : "Create an account"}
+            {mode === "sign-up"
+              ? "I already have an account"
+              : "Create an account"}
           </button>
         </div>
 
@@ -551,11 +579,12 @@ function ConfirmMerge({
       </p>
       <p className="mt-2 text-[12px] leading-relaxed text-muted">
         Adding {habits === 1 ? "it" : "them"} copies{" "}
-        {habits === 1 ? "it" : "them"} into the account, where your other devices
-        will pick {habits === 1 ? "it" : "them"} up. If this is someone else&rsquo;s
-        device, or {habits === 1 ? "that habit is" : "those habits are"} not
-        yours, sign out instead — nothing has been uploaded yet, and nothing here
-        will be changed.
+        {habits === 1 ? "it" : "them"} into the account, where your other
+        devices will pick {habits === 1 ? "it" : "them"} up. If this is someone
+        else&rsquo;s device, or{" "}
+        {habits === 1 ? "that habit is" : "those habits are"} not yours, sign
+        out instead — nothing has been uploaded yet, and nothing here will be
+        changed.
       </p>
 
       {failed && (
@@ -596,12 +625,18 @@ function ConfirmMerge({
  * server answers identically either way, and a screen that said "check your
  * email" only for real accounts would undo that in the UI.
  */
-function ResetRequested({ email, onDone }: { email: string; onDone: () => void }) {
+function ResetRequested({
+  email,
+  onDone,
+}: {
+  email: string;
+  onDone: () => void;
+}) {
   return (
     <>
       <Banner tone="ok">
-        If <span className="font-medium">{email}</span> has an account, a link to
-        set a new password is on its way.
+        If <span className="font-medium">{email}</span> has an account, a link
+        to set a new password is on its way.
       </Banner>
       <p className="mt-2 text-[13px] leading-relaxed">
         Open it within the hour — the link works once, and expires after that.
@@ -805,7 +840,9 @@ function Banner({
     <div
       role={tone === "error" ? "alert" : "status"}
       className={`rounded-control border px-3 py-2 text-[12px] leading-relaxed ${
-        tone === "error" ? "border-danger text-danger" : "border-accent text-accent"
+        tone === "error"
+          ? "border-danger text-danger"
+          : "border-accent text-accent"
       }`}
     >
       {children}

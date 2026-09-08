@@ -9,10 +9,8 @@ import { habitColor } from "@/lib/colors";
 import { HAPTIC_DONE, vibrate } from "@/lib/haptics";
 import {
   activeTagsFor,
-  countFor,
   deckCountFor,
   MODE_COPY,
-  repeatGapFor,
   tagsFor,
 } from "@/lib/daily";
 import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
@@ -83,7 +81,9 @@ export default function SettingsPage() {
     } catch (error) {
       setPending(null);
       setNotice(
-        error instanceof Error ? `Could not read that file: ${error.message}` : "Import failed.",
+        error instanceof Error
+          ? `Could not read that file: ${error.message}`
+          : "Import failed.",
       );
     }
   }
@@ -97,7 +97,11 @@ export default function SettingsPage() {
           : `Merged ${bundle.habits.length} habits and ${bundle.entries.length} entries.`,
       );
     } catch (error) {
-      setNotice(error instanceof Error ? `Import failed: ${error.message}` : "Import failed.");
+      setNotice(
+        error instanceof Error
+          ? `Import failed: ${error.message}`
+          : "Import failed.",
+      );
     } finally {
       setPending(null);
       setConfirmReplace(false);
@@ -159,7 +163,6 @@ export default function SettingsPage() {
       <Group title="Daily card">
         <Choice<Settings["dailyMode"]>
           label="Show me"
-          hint={MODE_COPY[settings.dailyMode].hint}
           value={settings.dailyMode}
           options={[
             { value: "quotes", label: MODE_COPY.quotes.label },
@@ -167,17 +170,12 @@ export default function SettingsPage() {
           ]}
           onChange={(dailyMode) => updateSettings({ dailyMode })}
         />
-        <p className="mt-3 text-[11px] leading-relaxed text-muted">
-          Both run their own sequence, so switching does not restart either one,
-          and anything you have saved stays saved.
-        </p>
         <DeckTags settings={settings} />
       </Group>
 
       <Group title="Feedback">
         <Choice<Settings["haptics"]>
           label="Vibrate on a tick"
-          hint="A short buzz when you tick a habit, and a double one when it hits its target. Phones and tablets only — desktops and iPhones have no vibration to give."
           value={settings.haptics}
           options={[
             { value: true, label: "On" },
@@ -204,7 +202,6 @@ export default function SettingsPage() {
         />
         <Choice<number>
           label="Day rolls over at"
-          hint="For night owls — anything before this hour still counts as yesterday."
           value={settings.dayStartHour}
           options={[
             { value: 0, label: "Midnight" },
@@ -259,16 +256,11 @@ export default function SettingsPage() {
       )}
 
       <Group title="Your data">
-        <p className="text-[13px] leading-relaxed text-muted">
-          Everything lives on this device first, and works with no account at
-          all. Signing in above adds a copy on the server so your other devices
-          can catch up — it does not move anything off this one. Either way a
-          browser clearing its storage takes its copy with it, so export a backup
-          now and then.
-        </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button onClick={download}>Export backup</Button>
-          <Button onClick={() => fileInput.current?.click()}>Import backup</Button>
+          <Button onClick={() => fileInput.current?.click()}>
+            Import backup
+          </Button>
           <input
             ref={fileInput}
             type="file"
@@ -290,15 +282,16 @@ export default function SettingsPage() {
         {pending && (
           <div className="mt-3 rounded-control border border-border p-3">
             <p className="text-[13px] font-medium">
-              {pending.habits.length} habits and {pending.entries.length} entries in that
-              file.
+              {pending.habits.length} habits and {pending.entries.length}{" "}
+              entries in that file.
             </p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted">
-              <strong className="font-medium text-foreground">Merge</strong> keeps what is
-              on this device and adds anything the file has that it does not; where both
-              have the same day, the newer one wins.{" "}
-              <strong className="font-medium text-foreground">Replace</strong> deletes
-              everything here first, including habits the backup never had.
+              <strong className="font-medium text-foreground">Merge</strong>{" "}
+              keeps what is on this device and adds anything the file has that
+              it does not; where both have the same day, the newer one wins.{" "}
+              <strong className="font-medium text-foreground">Replace</strong>{" "}
+              deletes everything here first, including habits the backup never
+              had.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button onClick={() => run(pending, "merge")}>Merge</Button>
@@ -334,7 +327,9 @@ export default function SettingsPage() {
       <Group title="Danger zone">
         {confirmReset ? (
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[13px] text-danger">Delete every habit and all history?</p>
+            <p className="text-[13px] text-danger">
+              Delete every habit and all history?
+            </p>
             <Button
               danger
               onClick={() => {
@@ -379,7 +374,6 @@ function DeckTags({ settings }: { settings: Settings }) {
   const mode = settings.dailyMode;
   const copy = MODE_COPY[mode];
   const selected = new Set(activeTagsFor(mode, settings.dailyTags));
-  const size = deckCountFor(mode, settings.dailyTags);
 
   function toggle(tag: string) {
     const next = selected.has(tag)
@@ -389,20 +383,16 @@ function DeckTags({ settings }: { settings: Settings }) {
   }
 
   function clear() {
-    // Only this mode's tags — the other corpus keeps whatever it was given.
     const others = new Set(tagsFor(mode));
-    updateSettings({ dailyTags: settings.dailyTags.filter((t) => !others.has(t)) });
+    updateSettings({
+      dailyTags: settings.dailyTags.filter((t) => !others.has(t)),
+    });
   }
 
   return (
     <fieldset className="mt-4 border-t border-border pt-4">
       <legend className="sr-only">Which {copy.many} to draw from</legend>
       <p className="text-[13px] font-medium">Draw from</p>
-      <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-        {selected.size === 0
-          ? `All ${size} ${copy.many}. Pick a few themes to narrow the deck.`
-          : `${size} of ${countFor(mode)} ${copy.many}, repeating no sooner than every ${repeatGapFor(mode, settings.dailyTags)} days.`}
-      </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {tagsFor(mode).map((tag) => (
           <button
@@ -453,7 +443,13 @@ function HabitLink({ habit }: { habit: Habit }) {
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="surface-card bg-surface p-4">
       <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -480,7 +476,9 @@ function Choice<T extends string | number | boolean>({
   return (
     <fieldset className="mb-4 last:mb-0">
       <legend className="text-[13px] font-medium">{label}</legend>
-      {hint && <p className="mt-0.5 text-[11px] leading-relaxed text-muted">{hint}</p>}
+      {hint && (
+        <p className="mt-0.5 text-[11px] leading-relaxed text-muted">{hint}</p>
+      )}
       <div className="mt-2 flex flex-wrap gap-2">
         {options.map((option) => (
           <button

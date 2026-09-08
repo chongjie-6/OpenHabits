@@ -73,7 +73,10 @@ export function corpusFor(mode: DailyMode): DailyItem[] {
  * the same tags, or the collection's schedule column starts describing a deck
  * the card is not using.
  */
-function deckFor(mode: DailyMode, tags: readonly string[] = []): Quote[] | Fact[] {
+function deckFor(
+  mode: DailyMode,
+  tags: readonly string[] = [],
+): Quote[] | Fact[] {
   return mode === "facts" ? factDeckFor(tags) : quoteDeckFor(tags);
 }
 
@@ -111,19 +114,17 @@ export function scheduleFor(
  */
 export const MODE_COPY: Record<
   DailyMode,
-  { one: string; many: string; label: string; hint: string }
+  { one: string; many: string; label: string }
 > = {
   quotes: {
     one: "quote",
     many: "quotes",
     label: "Quotes",
-    hint: "A line from someone worth quoting, every day.",
   },
   facts: {
     one: "fact",
     many: "facts",
     label: "Fun facts",
-    hint: "Something true and unlikely, every day.",
   },
 };
 
@@ -136,8 +137,10 @@ export const countFor = (mode: DailyMode): number =>
   mode === "facts" ? FACTS.length : QUOTES.length;
 
 /** How many of those the card can currently land on. */
-export const deckCountFor = (mode: DailyMode, tags: readonly string[] = []): number =>
-  deckFor(mode, tags).length;
+export const deckCountFor = (
+  mode: DailyMode,
+  tags: readonly string[] = [],
+): number => deckFor(mode, tags).length;
 
 /**
  * The guaranteed minimum number of days between two showings.
@@ -146,11 +149,16 @@ export const deckCountFor = (mode: DailyMode, tags: readonly string[] = []): num
  * being made: narrow the tags far enough and the gap shrinks with them, and the
  * settings screen says so rather than repeating a number from the full corpus.
  */
-export const repeatGapFor = (mode: DailyMode, tags: readonly string[] = []): number =>
-  seamWindow(deckCountFor(mode, tags));
+export const repeatGapFor = (
+  mode: DailyMode,
+  tags: readonly string[] = [],
+): number => seamWindow(deckCountFor(mode, tags));
 
 /** Which of a mode's own tags a flat cross-corpus selection actually names. */
-export const activeTagsFor = (mode: DailyMode, tags: readonly string[]): string[] => {
+export const activeTagsFor = (
+  mode: DailyMode,
+  tags: readonly string[],
+): string[] => {
   const wanted = new Set<string>(tags);
   return tagsFor(mode).filter((tag) => wanted.has(tag));
 };
