@@ -18,6 +18,12 @@
  */
 const TIMEOUT_MS = 60_000;
 
+/** Optional because a missing binding is a case the handler reports, not assumes away. */
+interface Env {
+  SITE_URL?: string;
+  CRON_SECRET?: string;
+}
+
 const scheduler = {
   /**
    * Awaited rather than handed to `ctx.waitUntil`, and it throws rather than
@@ -25,7 +31,7 @@ const scheduler = {
    * reminder that silently doesn't fire is the worst available outcome. The
    * scheduler is now one of the ways it can silently not fire.
    */
-  async scheduled(_controller, env) {
+  async scheduled(_controller: unknown, env: Env): Promise<void> {
     const site = (env.SITE_URL ?? "").replace(/\/$/, "");
     if (!site || !env.CRON_SECRET) {
       // Not a quiet no-op, unlike the CI workflow this replaced: that ran on

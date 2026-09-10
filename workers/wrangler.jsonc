@@ -1,6 +1,6 @@
 {
   "name": "openhabits-reminders",
-  "main": "reminders.js",
+  "main": "reminders.ts",
   "compatibility_date": "2026-09-01",
 
   "triggers": {

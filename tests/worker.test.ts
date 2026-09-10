@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
-import scheduler from "../worker/reminders.js";
+import scheduler from "@/workers/reminders";
 
 const ENV = { SITE_URL: "https://openhabits.example", CRON_SECRET: "s3cret" };
 

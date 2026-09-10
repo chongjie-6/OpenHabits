@@ -36,7 +36,7 @@ npm run db:migrate
 
 **Daily reminders are an hourly cron plus a per-device timezone.** "9am" is a
 wall clock, so one daily invocation would only ever be nine o'clock in a single
-timezone; the Cloudflare Worker in `worker/` calls `/api/cron/reminders` every
+timezone; the Cloudflare Worker in `workers/reminders.ts` calls `/api/cron/reminders` every
 hour and the sweep asks each subscription whether it is that user's hour
 *there*. Without the VAPID pair the Settings card says the deployment cannot
 send rather than offering a switch, and without `CRON_SECRET` the cron route
@@ -122,7 +122,7 @@ CRON_SECRET=                 # the scheduler sends this as the cron's Authorizat
 **One cron job, hourly — from Cloudflare, not Vercel.** A single entry is
 enough because the fan-out across timezones happens inside the sweep. What it
 needs is a scheduler allowing a sub-daily interval, and Vercel Cron is capped at
-daily below Pro. So `worker/` holds the schedule and calls the endpoint; see
+daily below Pro. So `workers/reminders.ts` holds the schedule and calls the endpoint; see
 [the section below](#cloudflare-the-reminder-schedule). The production
 deployment has to be reachable without Vercel Authentication, which answers a
 sweep with an SSO redirect rather than a 200.
@@ -181,14 +181,14 @@ scheduling after 60 days without a push, which is a clock that runs out exactly
 when a feature is finished. A Cloudflare Worker cron trigger is free, hourly and
 has no such condition.
 
-`worker/` is the whole of it — thirty lines that hold no logic of their own,
-plus `worker/wrangler.jsonc` holding the schedule. Set `SITE_URL` in that file
+`workers/reminders.ts` is the whole of it — thirty lines that hold no logic of their own,
+plus `workers/wrangler.jsonc` holding the schedule. Set `SITE_URL` in that file
 to the deployment's public origin, then, from the repository root:
 
 ```bash
 npx wrangler@4 login
-npx wrangler@4 secret put CRON_SECRET --config worker/wrangler.jsonc
-npx wrangler@4 deploy --config worker/wrangler.jsonc
+npx wrangler@4 secret put CRON_SECRET --config workers/wrangler.jsonc
+npx wrangler@4 deploy --config workers/wrangler.jsonc
 ```
 
 `CRON_SECRET` has to be the same value the Vercel project holds; the Worker

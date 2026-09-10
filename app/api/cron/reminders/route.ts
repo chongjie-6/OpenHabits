@@ -3,7 +3,7 @@
  *
  * Hourly, not daily. "9am" is a wall clock, and one daily invocation can only be
  * nine o'clock in a single timezone; `lib/server/reminders.ts` decides per device
- * whether it is that hour *there*. `worker/` holds the schedule — a Cloudflare
+ * whether it is that hour *there*. `workers/reminders.ts` holds the schedule — a Cloudflare
  * Worker cron trigger, which calls this route with the `CRON_SECRET` bearer.
  *
  * It fails closed. `CRON_SECRET` unset is not "no authentication needed" — it is

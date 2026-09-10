@@ -699,9 +699,9 @@ The scheduler is a **cron running hourly**, not daily. "9am" is a wall clock, an
 
 **The schedule moved off Vercel Cron.** It was declared in `vercel.json` and the deploy was rejected: Hobby caps cron at one run per day, which is the one shape this feature cannot take. Hourly was not negotiable, so the scheduler was — `.github/workflows/reminders.yml` now curls `/api/cron/reminders` on the hour with the `CRON_SECRET` bearer. The route did not change, and neither did anything downstream of it: the sweep was always written to be called by something at-least-once and slightly late. What is bought back in cost is paid in punctuality — GitHub's scheduler runs late under load and stops firing after 60 days without a push — and in one new way to be silently off, since a deployment behind Vercel Authentication answers the sweep with an SSO redirect rather than a 200. The workflow fails on any status but 200 for exactly that reason: per the warning above, a toggle that silently doesn't fire is the worst available outcome, and that now includes the scheduler.
 
-**And then off GitHub Actions.** Of the two costs above, lateness was the one worth paying and the sixty days were not: that clock runs out for the one reason a finished feature is *likely* to hit — nobody pushing to it — so the scheduler was arranged to stop precisely when the app had settled down. `worker/` replaces it with a Cloudflare Worker cron trigger on the same `0 * * * *`, which has no such condition, and once again nothing downstream moved: the Worker holds no logic, knows nothing about timezones or push, and does what the workflow's `curl` did — one authenticated GET, fail on any status but 200. What is genuinely lost is the red run and the mail that came with it. So the Worker `await`s the fetch rather than handing it to `ctx.waitUntil`, and throws rather than logging, because a throw is the only thing that marks a cron invocation failed; `observability` is on in `wrangler.jsonc` so there is somewhere for the body to land. **Someone still has to go and look, or wire an alert** — per the warning above, the scheduler remains one of the ways this toggle can silently not fire, and it is now the way with the quietest failure.
+**And then off GitHub Actions.** Of the two costs above, lateness was the one worth paying and the sixty days were not: that clock runs out for the one reason a finished feature is *likely* to hit — nobody pushing to it — so the scheduler was arranged to stop precisely when the app had settled down. `workers/reminders.ts` replaces it with a Cloudflare Worker cron trigger on the same `0 * * * *`, which has no such condition, and once again nothing downstream moved: the Worker holds no logic, knows nothing about timezones or push, and does what the workflow's `curl` did — one authenticated GET, fail on any status but 200. What is genuinely lost is the red run and the mail that came with it. So the Worker `await`s the fetch rather than handing it to `ctx.waitUntil`, and throws rather than logging, because a throw is the only thing that marks a cron invocation failed; `observability` is on in `wrangler.jsonc` so there is somewhere for the body to land. **Someone still has to go and look, or wire an alert** — per the warning above, the scheduler remains one of the ways this toggle can silently not fire, and it is now the way with the quietest failure.
 
-Wrangler is not a dependency of this project, and the Worker is plain JavaScript with no build step: it is thirty lines deployed by hand about as often as the schedule changes, and pulling a toolchain carrying platform binaries into every Vercel build to avoid typing `npx` is the wrong trade.
+Wrangler is not a dependency of this project, and the Worker has no build step of ours: it is TypeScript because wrangler bundles `.ts` itself and the app's `tsc` then checks it for free, and it is thirty lines deployed by hand about as often as the schedule changes, and pulling a toolchain carrying platform binaries into every Vercel build to avoid typing `npx` is the wrong trade.
 
 **When, and whether, are stored in different places, because they are different kinds of fact.**
 
@@ -826,7 +826,7 @@ lib/
     validate.ts           hand-written payload validation for a public endpoint
     client.ts             single-flight runner + useSync triggers
 
-  server/                 the only server-side code in the app
+  server/                 the server-side modules; workers/ holds the job handlers
     schema.ts             Drizzle/Postgres tables
     db.ts                 lazily built, globally cached connection
     scope.ts              opens an RLS scope; the only way in to a table (§13.15)
@@ -845,8 +845,12 @@ app/api/sync/route.ts     replication — the only endpoint touching user data
 app/api/auth/[...all]/    sign-up, sign-in, sign-out, session
 app/api/reminders/        push subscriptions — a device fact, never replicated
 app/api/cron/reminders/   the hourly sweep; fails closed without CRON_SECRET
-app/api/email/            the mail queue's worker; fails closed without its keys
+app/api/email/            the mail queue's entry point; segment config only
 proxy.ts                  the global rate limit tier, matched on /api (§13.17)
+
+workers/email.ts          the mail queue's worker; fails closed without its keys
+workers/reminders.ts      the hourly Cloudflare cron that calls the sweep (§8.5)
+workers/wrangler.jsonc    its schedule; wrangler bundles reminders.ts alone
 
 drizzle/                  generated, reviewed, committed migrations
 data/quotes.ts            168 attributed quotes

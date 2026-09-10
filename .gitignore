@@ -41,6 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# cloudflare (worker/ — the reminder schedule)
+# cloudflare (workers/wrangler.jsonc — the reminder schedule)
 .wrangler
 .dev.vars*
