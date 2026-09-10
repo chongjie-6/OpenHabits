@@ -71,6 +71,9 @@ export type SyncErrorCode =
   | "account-mismatch"
   | "payload-too-large"
   | "malformed"
+  /** The only code here that is about the request's *rate* rather than its
+   * content, and so the only one worth trying again unchanged. See §13.17. */
+  | "rate-limited"
   | "server-error";
 
 export type SyncErrorBody = { error: SyncErrorCode; message: string };

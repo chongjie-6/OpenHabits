@@ -12,6 +12,7 @@
 
 import { resolveUser } from "@/lib/server/auth";
 import { getDb, syncConfigured } from "@/lib/server/db";
+import { check } from "@/lib/server/ratelimit";
 import { AccountMismatchError, runSync } from "@/lib/server/sync-store";
 import type { SyncErrorBody, SyncErrorCode } from "@/lib/sync/protocol";
 import { parseSyncPush } from "@/lib/sync/validate";
@@ -48,6 +49,18 @@ export async function POST(request: Request): Promise<Response> {
   const user = await resolveUser(request);
   if (!user) {
     return error(401, "unauthenticated", "Sign in to sync.");
+  }
+
+  /**
+   * Keyed by account, and placed here for that reason — after the session is
+   * known, and still before the body is read. Two devices on one account share
+   * the budget, which is the right unit: what this bounds is the account-wide
+   * advisory lock and a full-history pull, and both are costs per account rather
+   * than per caller. See DESIGN.md §13.17.
+   */
+  const metered = await check("sync", user.id);
+  if (!metered.ok) {
+    return error(429, "rate-limited", "Syncing too often; this device will try again shortly.");
   }
 
   let body: unknown;

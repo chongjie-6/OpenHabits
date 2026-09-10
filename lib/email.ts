@@ -33,6 +33,16 @@ function client(): nodemailer.Transporter {
       user,
       pass,
     },
+    /**
+     * Bounded on purpose. Nodemailer's defaults leave a stalled relay to the
+     * platform's own request timeout, which is how a slow Gmail becomes a slow
+     * sign-up — and on the queued path (§13.16) a hang is strictly worse than a
+     * failure, because a failure is retried and a hang burns the invocation.
+     * Ten seconds is several times a healthy round trip.
+     */
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
 
   return transporter;

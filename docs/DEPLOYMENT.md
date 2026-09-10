@@ -25,6 +25,12 @@ VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=              # mailto: or https: contact; falls back to BETTER_AUTH_URL
 CRON_SECRET=                # authenticates the hourly reminder sweep
 
+UPSTASH_REDIS_REST_URL=     # turns on rate limiting; also the mail queue's envelope store
+UPSTASH_REDIS_REST_TOKEN=
+QSTASH_TOKEN=               # decouples outbound mail from the request; unset → sent inline
+QSTASH_CURRENT_SIGNING_KEY= # what /api/email verifies deliveries with; unset → route refuses
+QSTASH_NEXT_SIGNING_KEY=
+
 npm run db:migrate
 ```
 
@@ -50,6 +56,34 @@ sign-in 403s and resends on the way out, and a failed send fails the sign-up so
 the address isn't held hostage against a retry. With no credentials, requiring a
 click that no mail can deliver would break sign-up entirely, so verification is
 off.
+
+**With a queue, what fails the sign-up is the hand-off** (DESIGN.md §13.16).
+`QSTASH_TOKEN` moves the SMTP attempt out of the request: a failure to *enqueue*
+still rolls the sign-up back and frees the address, but a failure to *send* is
+retried three times and then parked in QStash's dead letter queue — so an
+account can exist while its verification mail is stuck there, and **nothing
+alerts about it**. If somebody reports never receiving a link, the DLQ in the
+QStash console is the first place to look. This is the same standing caveat as
+the reminder Worker below: someone has to go and look, or wire an alert.
+
+Both Upstash resources are created in the console (console.upstash.com) — a
+Redis database in the region nearest `DATABASE_URL`, and a QStash instance. Set
+`QSTASH_TOKEN` without the two signing keys and mail is enqueued and never
+delivered: the worker refuses every request rather than trust an unsigned one,
+because it mails a link to an address its own body names. The free tiers are
+ample — one Redis command per request, one message per email.
+
+`QSTASH_TOKEN` is ignored on localhost whatever it is set to, because QStash
+delivers by making a request from its own network and cannot reach a laptop; a
+development machine sends inline instead of filling the DLQ. Exercising the
+queued path needs a public origin — a preview deployment, or a tunnel with
+`SITE_URL` pointed at it.
+
+**Rate limiting fails open** (§13.17). With Redis unset nothing is metered,
+which is how this app ran before; with it set and unreachable, requests are
+allowed rather than refused, because a store outage that 429s the site would be
+a denial of service handed over for free. Refusals are visible only in the
+Upstash dashboard, which analytics are enabled for.
 
 ### Local development against a real database, without signing in
 

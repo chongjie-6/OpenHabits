@@ -18,6 +18,7 @@ import { isTimeZone } from "@/lib/dates";
 import { resolveUser } from "@/lib/server/auth";
 import { getDb, syncConfigured } from "@/lib/server/db";
 import { applicationServerKey, pushConfigured } from "@/lib/server/push";
+import { check, tooMany } from "@/lib/server/ratelimit";
 import { pushSubscriptions, users } from "@/lib/server/schema";
 import { asServer, asUser } from "@/lib/server/scope";
 import { and, eq } from "drizzle-orm";
@@ -111,6 +112,17 @@ export async function POST(request: Request): Promise<Response> {
 
   const user = await resolveUser(request);
   if (!user) return error(401, "Sign in to turn on reminders.");
+
+  /**
+   * Keyed by account, like `/api/sync`. Above the real cadence with room to
+   * spare: `announce()` re-posts the subscription on app start and whenever the
+   * settings card is opened, which is a handful of writes a day, not thirty a
+   * minute. See DESIGN.md §13.17.
+   */
+  const metered = await check("reminders", user.id);
+  if (!metered.ok) {
+    return tooMany("Too many reminder updates. Try again shortly.", metered.retryAfter);
+  }
 
   let body: unknown;
   try {

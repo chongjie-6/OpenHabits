@@ -10,11 +10,11 @@ What is left, in the order it is worth doing. `DESIGN.md` holds the reasoning; t
 
 ## 1. Where the tree actually stands
 
-Verified 2026-09-05.
+Verified 2026-09-08.
 
 | Check | Result |
 |---|---|
-| `npm test` | **351 passed / 351**, 27 files, ~25s |
+| `npm test` | **400 passed / 400**, 32 files, ~23s |
 | `npm run lint` | clean |
 | `npm run typecheck` | clean |
 | `npm run build` | clean, with no environment set; every route still static |
@@ -34,6 +34,14 @@ CI (`.github/workflows/ci.yml`) runs the first four on every push and pull reque
 **The only unfinished phase, and the only item here that cannot be done at a desk.** §10 records why it matters: every Lighthouse run was against an *empty* IndexedDB, because the CLI cannot seed one. The heatmap rendered zero cells and no habit was ever ticked, so **the two budgets that bear directly on G1 and G2 — INP on a tick, and the paint cost of ~371 SVG cells — are both unmeasured.**
 
 §11 already prescribes the test: install to a home screen, add five habits, backfill a month, tick something, and watch. Decide §10's LCP question at the same time; the doc argues (a) *move the budget* is probably right, and explicitly records (c) as rejected rather than available.
+
+### Nobody watches the mail DLQ
+
+New with §13.16, and the honest cost of moving the SMTP attempt out of the request. A send that fails after a successful hand-off is retried three times and then parked in QStash's dead letter queue, and **that account exists the whole time** — someone signed up, is waiting for a link, and nothing anywhere raises a hand. §13.10 had no such state.
+
+This is the same shape as §8.5's Worker caveat and it is unresolved for the same reason: the fix is an alert, and there is nowhere in this app for an alert to go. `sendOnSignIn` means the person can rescue themselves by trying to sign in, which is the mitigation actually in place. **If somebody reports never receiving a link, read the DLQ first.** Wiring the QStash DLQ to something that mails whoever runs the deployment would close it properly, and needs a second mail path that does not depend on the one that just failed.
+
+Two smaller things left open beside it: `/api/email` has no test, because everything in it is either a signature check or an SMTP call and the decidable parts were split into `email-queue.ts` where they are covered; and `x-forwarded-for` is read first-entry-only, which is correct behind Vercel because its proxy overwrites the header, and is the line to revisit behind a proxy that appends.
 
 ### `lib/share-card.ts` has no rendering test
 
@@ -83,7 +91,8 @@ Record the decision; do not reopen the reasoning.
 
 - **Prettier, alone and on its own commit.** It would reformat the whole tree at once and bury the history of a codebase whose prose is load-bearing. Safe to do, because CI can prove it changed nothing.
 - **Test-only exports:** `lib/dates.ts:weekdayIndex` is used by `tests/` and by no application code. (`deckFor` in `lib/quotes.ts` and `lib/facts.ts` was on this list until §5.4 gave it a caller.) `lib/store.ts:hydrate` is exported for the same reason and says so. Fine, but worth knowing before someone "cleans them up".
-- **`@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0**, and all three carry either the schema or the suite that validates it. Only the lockfile pins them — `npm ci` is what makes CI honour it.
+- **`@electric-sql/pglite`, `drizzle-orm` and `drizzle-kit` are all pre-1.0**, and all three carry either the schema or the suite that validates it. Only the lockfile pins them — `npm ci` is what makes CI honour it. `@upstash/redis` and `@upstash/qstash` are past 1.0 and `@upstash/ratelimit` past 2.0, but they are pinned the same way and by the same mechanism; nothing in the tree reads a version number.
+- **Prettier is not a dependency and its defaults do not match this tree.** `npx prettier` reformats at 80 columns against a codebase written to ~100, so running it over an existing file produces a diff full of collateral. Format new files by hand.
 - **`@types/nodemailer` stays at `^8` against nodemailer `^9`.** nodemailer 9 ships no `.d.ts` of its own and 8.0.1 *is* the newest `@types/nodemailer`; the mismatch is DefinitelyTyped's numbering, not staleness.
 - **`0006` is part-generated and part hand-written.** The `ENABLE`/`CREATE POLICY` half comes from `schema.ts`; the five `FORCE ROW LEVEL SECURITY` statements and the superuser warning do not, because drizzle-kit cannot express them — and without the `FORCE` half the policies never fire for the table owner, which is the role in `DATABASE_URL`. `tests/server/rls.test.ts` asserts `relforcerowsecurity` so a regeneration cannot quietly drop them.
 - **The `drizzle/meta/` snapshot for `0005` was hand-edited**, because drizzle-kit cannot generate a schema move without an interactive answer and the answer it assumes is destructive. The check that it is right is `npm run db:generate` reporting no changes — run it after any schema edit, and treat output where you expected none as a real finding.

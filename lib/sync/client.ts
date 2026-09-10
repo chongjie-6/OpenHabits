@@ -159,6 +159,20 @@ async function handleError(response: Response): Promise<Outcome> {
       store.adoptAccount(null);
       return { kind: "retry" };
 
+    case 429:
+      /**
+       * Metered, not refused (§13.17). Deliberately not the 401 path: the
+       * session is fine and clearing the hint would sign a device out for being
+       * busy. Deliberately not `retry` either — that goes round the loop
+       * immediately, which is the one thing a rate limit is asking us not to do.
+       * So this run stops and `useSync` calls back on the next change, focus or
+       * reconnect, by which time the window has moved.
+       */
+      return {
+        kind: "stop",
+        status: { kind: "error", message: "Syncing too often; this device will try again shortly." },
+      };
+
     case 503:
       return { kind: "stop", status: { kind: "off" } };
 

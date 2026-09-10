@@ -714,7 +714,7 @@ The subscription table is the only one here not keyed by `(userId, …)` — see
 
 **Delivery is claimed before it is attempted.** `last_sent_day` is written by the same `UPDATE … RETURNING` that selects which devices to send to, so an at-least-once cron delivers once; the payload's fixed `tag` is the second line of defence, in the tray. A day on which everything was already done is claimed and left silent — finishing before nine should mean quiet, not a reminder held back until the hour ticks over.
 
-**Two new endpoints**, which is the first time §7.1's "`POST /api/sync` is the only one" has bent. Neither carries user data in the sync sense: `/api/reminders` registers a device fact that is deliberately *not* replicated (every device would otherwise hold a copy of every other device's push endpoint, for nothing), and `/api/cron/reminders` is the scheduler's entry point. The cron route fails closed — with no `CRON_SECRET` it refuses to run at all, because it reads every account's habits and sends to every registered device.
+**Two new endpoints** (a third since — `/api/email`, §13.16), which is the first time §7.1's "`POST /api/sync` is the only one" has bent. Neither carries user data in the sync sense: `/api/reminders` registers a device fact that is deliberately *not* replicated (every device would otherwise hold a copy of every other device's push endpoint, for nothing), and `/api/cron/reminders` is the scheduler's entry point. The cron route fails closed — with no `CRON_SECRET` it refuses to run at all, because it reads every account's habits and sends to every registered device.
 
 **What the honesty requirement bought.** `GET /api/reminders` is asked *before* `Notification.requestPermission()`: a browser grants that prompt once, and spending it on a deployment with no VAPID keypair leaves the user with a permission given for nothing. `lib/reminders.ts` names every way a reminder cannot arrive as its own status — no Push API (Safari on iOS until the app is installed), no service worker (a development build never registers one), deployment not configured, not signed in, notifications blocked — and `components/ReminderCard.tsx` says which one out loud instead of showing a switch over it. Six branches for what is nominally a checkbox, and that is the point.
 
@@ -835,11 +835,16 @@ lib/
     sync-store.ts         push/pull inside one locked transaction
     push.ts               VAPID + web-push, kept apart so the sweep is testable
     reminders.ts          who is due, in their own timezone, claimed once (§8.5)
+    redis.ts              the Upstash handle; lazy, like db.ts (§13.17)
+    email-queue.ts        mail handed to QStash instead of awaited (§13.16)
+    ratelimit.ts          the tiers, and the one gate here that fails open (§13.17)
 
 app/api/sync/route.ts     replication — the only endpoint touching user data
 app/api/auth/[...all]/    sign-up, sign-in, sign-out, session
 app/api/reminders/        push subscriptions — a device fact, never replicated
 app/api/cron/reminders/   the hourly sweep; fails closed without CRON_SECRET
+app/api/email/            the mail queue's worker; fails closed without its keys
+proxy.ts                  the global rate limit tier, matched on /api (§13.17)
 
 drizzle/                  generated, reviewed, committed migrations
 data/quotes.ts            168 attributed quotes
@@ -1396,3 +1401,54 @@ And it does not replace the `where` clauses. Both halves are load-bearing: the
 clauses are what makes the queries correct and fast — the policy is not a
 substitute for an index — and the policy is what makes them safe on the day one
 of the clauses is wrong. The redundancy is the design, not something to tidy up.
+### 13.16 Outbound mail leaves the request
+
+A partial reversal of §13.10, and the narrowing is the whole content of this section.
+
+§13.10 made a failed send fail the sign-up: Better Auth runs sign-up in a transaction, so throwing out of `sendVerificationEmail` rolls the row back and frees the address to try again. That was the right rule when the send *was* the sign-up's last step. It came with two costs that were easy to miss while the happy path worked. A sign-up waits on Gmail — `lib/email.ts` builds a fresh transport per send and, until now, set no timeouts at all, so a stalled relay stalled the handler until the platform killed it. And a transient hiccup is indistinguishable from a permanent one: the address is freed, which is correct, but the only retry available is a human doing the whole sign-up again.
+
+**What changed.** `lib/server/email-queue.ts` hands the mail to QStash and returns. `better-auth.ts:deliver` picks the branch, and which branch runs is a property of the deployment rather than of the caller — with no `QSTASH_TOKEN` the send is inline and awaited, exactly as before, and every one of these variables is optional in the sense `.env.example` means it.
+
+**The rule survives, one step earlier.** What the sign-up awaits is still real, and a failure still throws and still rolls back — but the thing that succeeded is the *hand-off*, not the send. That keeps the case worth keeping: a deployment that cannot accept the job at all — no store, no token, Upstash down — refuses the sign-up and frees the address, which is what §13.10 was protecting. What it gives up is the case where the hand-off succeeds and the send does not. QStash retries that three times and then parks it in the dead letter queue, and the account exists throughout.
+
+**That is a real loss and it should be written down as one.** After §13.10 there was no state in which an account existed with no verification mail sent; now there is. The person holding it sees a sign-up that worked and a mail that never came, and can ask for a resend — `sendOnSignIn` covers them — but **nothing alerts anybody** that the DLQ has something in it. This is the same shape as §8.5's warning about the Worker: someone still has to go and look. The trade was taken because the alternative failure — a sign-up that dies on a slow relay, with no retry — is both more likely and less visible than a queue somebody eventually reads.
+
+**The link does not travel in the message.** A verification URL is a session (§13.12), and a QStash message body is retained so the console and the DLQ can show it. So the envelope goes into Redis under a random id with an hour's TTL — matching `resetPasswordTokenExpiresIn`, since an envelope outliving its own token is a job whose only outcome is a dead link — and the message carries the id alone. The token is then readable by whoever holds the Redis credentials and nobody else, and it expires on its own whether or not the worker ever runs.
+
+`lib/server/base-url.ts:mailableOrigin` is checked on the way back out, and it is not paranoia about our own writes. §13.12 is entirely about this app being made to mail a genuine, correctly-branded link into an origin it does not own, and the envelope store is a second place that could be made to say so — a place the request no longer holds. Nothing in the threat model lets an attacker choose that value; the id travels only in a signed message. But the check costs one comparison and turns a compromise of the store into a refused send rather than a phishing relay, so it is there, and it lives in `base-url.ts` because that is the module that owns the question.
+
+**The envelope is read, not claimed, and that is the opposite of §8.5.** The reminder sweep claims a device with the same `UPDATE` that selects it, so an at-least-once cron sends at most once. Here the retry is the entire reason the queue exists, and a consumed envelope makes a failed send unretryable — so `dequeueEmail` reads, the send happens, and `completeEmail` deletes only afterwards. The cost is that a send whose 200 is lost produces a second mail. For a verification or reset link that is a duplicate in an inbox rather than a wrong outcome, and the alternative is a link that never arrives. A missing envelope on a later retry is therefore answered **200**, not an error: it means the mail already went, or the hour ran out and the token in it had expired too. Answering non-2xx would retry both to exhaustion.
+
+**`/api/email` is the fifth endpoint**, and the second whose caller is a machine. Its shape is the one `/api/cron/reminders` established: no signing keys means it refuses every request rather than trusting whoever asks, because it mails a link to an address its own body names. What differs is what a failure means — QStash retries a non-2xx, so a 500 there is a request to try again rather than an incident.
+
+**Nodemailer now has timeouts.** Independent of the queue and worth having either way: ten seconds to connect and greet, twenty on the socket. On the inline path that is the difference between a slow sign-up and a hung one; on the queued path a hang is strictly worse than a failure, because a failure is retried and a hang burns the invocation.
+
+**QStash cannot reach a laptop.** It delivers by making an HTTP request from its own network, so `queueConfigured()` answers false for a localhost origin whatever the token says, and mail is sent inline in development. Without that clause a developer holding a real token would fill the DLQ with undeliverable messages while no mail arrived — worse than not queueing, and silently so.
+
+### 13.17 Metering the endpoints
+
+Nothing was rate limited, and one endpoint made that worse than it sounds.
+
+`POST /api/auth/send-verification-email` takes any address with no session at all. That is deliberate and §13.12 explains why — "resend" then needs no second endpoint and cannot be used to enumerate accounts — and `request-password-reset` answers the same way for an address it has never seen, for the reason §13.13 gives. Both properties are worth keeping. Together and unmetered they are an outbound-mail primitive with somebody else's inbox on the far end, and the resource it spends first is not compute but one Gmail account's daily quota. `/api/sync` is the other expensive one: a 2 MB body, an account-wide advisory lock and a full-history pull, all reachable in a loop.
+
+**One generous tier in front of everything, and tight tiers where the cost is.** The global tier lives in `proxy.ts` — Next 16's rename of `middleware.ts`; it runs on the Node runtime and a `runtime` export there throws rather than being ignored. 300 requests a minute per IP, chosen so that nobody using the app ever meets it, which is what makes it safe to put in front of every endpoint at once.
+
+The matcher is `/api/:path*` and that is the point of it. Every route in this app but five prerenders to static HTML a CDN serves; a proxy with no matcher would put a function invocation in front of all of it and a Redis command in front of every stylesheet. Scoped to `/api`, it runs only where there was already going to be a function.
+
+| Tier | Key | Budget | What it bounds |
+|---|---|---|---|
+| Global, all `/api` | IP | 300 / min | Everything, generously |
+| Mail-sending auth paths | IP **and** address | 3 / min, 10 / day | An SMTP quota, and somebody's inbox |
+| Credential paths | IP | 10 / min | Password-hash verifies; brute force |
+| `POST /api/sync` | account | 60 / min | The advisory lock and a full pull |
+| `POST /api/reminders` | account | 30 / min | The subscription upsert |
+
+**The mail tier is keyed twice, and the second key is the one that matters.** Three a minute per IP is trivially defeated by rotating them. What is worth preventing is not load but one address being mailed over and over, so the budget that follows the *address* is a day long. Reading it means cloning the request body; the original still reaches Better Auth unread, and a body that does not parse is Better Auth's to answer for rather than the limiter's.
+
+**Two endpoints are excluded, and the exclusion is stated once.** `/api/email` and `/api/cron/reminders` both authenticate their caller by signature or shared secret, both are called by a machine on a schedule the app does not control, and a limiter in front of either can only ever refuse a legitimate request. That could have been a negative lookahead in the matcher; it is `ratelimit.ts:metered` instead, because two expressions of one rule have to agree and only one of them can be unit-tested. The cost is a proxy invocation that returns immediately without touching Redis.
+
+**`lib/server/ratelimit.ts` fails open, and it is the only gate on this server that does.** Everything else here refuses when it cannot answer: the cron route with no secret, `resolveUser` on a thrown session lookup, an RLS policy that is not true (§13.15). A limiter is the opposite case. Its store being unreachable is not evidence of abuse, and turning a Redis outage into a site-wide 429 would hand an attacker the outage as a denial of service — so a timeout or an error is a request allowed, and the timeout is 1.5 seconds so the failure costs latency rather than a hung handler. A request with no attributable IP is allowed for the same reason; the alternative is one limiter key shared by everyone the platform failed to label.
+
+**429 is not 401, and the client has to keep them apart.** `lib/sync/client.ts` handles the two very differently and deliberately: the 401 path clears the signed-in hint, which is what makes `syncEnabled()` trustworthy, and doing that on a 429 would sign a device out for being busy. Nor is it the `retry` path, which goes round the loop immediately — the one thing a rate limit is asking us not to do. So a 429 stops that run with a message saying so, and `useSync` calls back on the next change, focus or reconnect, by which time the window has moved. `rate-limited` is a `SyncErrorCode` for this reason: it is the only code in that union about the request's *rate* rather than its content, and so the only one worth trying again unchanged.
+
+**Analytics are on.** The limiters report to the Upstash dashboard, which is the only place a refusal is visible — the alternative is discovering the tiers are wrong from a user who cannot sign in.

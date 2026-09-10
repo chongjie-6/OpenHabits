@@ -19,7 +19,26 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getDb } from "./db";
 import { resolveBaseURL } from "./base-url";
 import * as authSchema from "./auth-schema";
+import { type EmailJob, enqueueEmail, queueConfigured } from "./email-queue";
 import { mailerConfigured, sendResetPasswordEmail, sendVerificationEmail } from "../email";
+
+/**
+ * Hand the mail to QStash where there is a queue, send it inline where there is
+ * not. See DESIGN.md §13.16.
+ *
+ * Which branch runs is a property of the deployment, never of the caller, and
+ * the awaiting below means the same thing either way: *this much succeeded*. On
+ * the inline branch that is the send; on the queued branch it is the hand-off,
+ * and everything after it — the SMTP attempt, its retries, the DLQ — happens
+ * where the request cannot see it.
+ */
+async function deliver(job: EmailJob): Promise<void> {
+  if (queueConfigured()) return enqueueEmail(job);
+
+  return job.kind === "verification"
+    ? sendVerificationEmail({ to: job.to, url: job.url })
+    : sendResetPasswordEmail({ to: job.to, url: job.url });
+}
 
 const globalForAuth = globalThis as unknown as {
   // `ReturnType<typeof build>` rather than `ReturnType<typeof betterAuth>`:
@@ -49,11 +68,20 @@ function build() {
      * (a reversal of §13.9 — see §13.10): Better Auth runs sign-up in a
      * transaction, so throwing rolls it back and frees the address to retry.
      * With no mailer nothing is required, so it logs and keeps the account.
+     *
+     * With a queue behind `deliver` the rule narrows rather than goes (§13.16):
+     * what fails the sign-up is a failed *hand-off*, and the address is still
+     * freed for the case that matters most — this deployment being unable to
+     * accept the job at all. A send that fails after a successful hand-off is
+     * retried instead, and ends in the DLQ rather than in a rolled-back
+     * transaction, which is the part that is genuinely new and genuinely worse:
+     * that account exists and its owner is waiting for mail nobody is watching
+     * for. §13.16 says where to look.
      */
     emailVerification: {
       sendVerificationEmail: async ({ user, url }) => {
         try {
-          await sendVerificationEmail({ to: user.email, url });
+          await deliver({ kind: "verification", to: user.email, url });
         } catch (error) {
           console.error("[openhabits] verification email failed", error);
           if (verificationRequired) throw error;
@@ -121,10 +149,12 @@ function build() {
        * is nothing to roll back, and the endpoint answers the same way for an
        * address it has never seen — so surfacing a send failure would turn this
        * into the account-enumeration oracle the endpoint is careful not to be.
+       * Unchanged by the queue: a failed hand-off is swallowed here for exactly
+       * the same reason a failed send was.
        */
       sendResetPassword: async ({ user, url }) => {
         try {
-          await sendResetPasswordEmail({ to: user.email, url });
+          await deliver({ kind: "reset", to: user.email, url });
         } catch (error) {
           console.error("[openhabits] password reset email failed", error);
         }
