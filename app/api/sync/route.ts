@@ -12,6 +12,7 @@
 
 import { resolveUser } from "@/lib/server/auth";
 import { getDb, syncConfigured } from "@/lib/server/db";
+import { readJson } from "@/lib/server/json";
 import { check } from "@/lib/server/ratelimit";
 import { AccountMismatchError, runSync } from "@/lib/server/sync-store";
 import type { SyncErrorBody, SyncErrorCode } from "@/lib/sync/protocol";
@@ -63,10 +64,8 @@ export async function POST(request: Request): Promise<Response> {
     return error(429, "rate-limited", "Syncing too often; this device will try again shortly.");
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
+  const body = await readJson(request);
+  if (body === undefined) {
     return error(400, "malformed", "Body is not valid JSON.");
   }
 

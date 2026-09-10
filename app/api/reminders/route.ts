@@ -17,6 +17,7 @@
 import { isTimeZone } from "@/lib/dates";
 import { resolveUser } from "@/lib/server/auth";
 import { getDb, syncConfigured } from "@/lib/server/db";
+import { readJson } from "@/lib/server/json";
 import { applicationServerKey, pushConfigured } from "@/lib/server/push";
 import { check, tooMany } from "@/lib/server/ratelimit";
 import { pushSubscriptions, users } from "@/lib/server/schema";
@@ -124,12 +125,8 @@ export async function POST(request: Request): Promise<Response> {
     return tooMany("Too many reminder updates. Try again shortly.", metered.retryAfter);
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return error(400, "Body is not valid JSON.");
-  }
+  const body = await readJson(request);
+  if (body === undefined) return error(400, "Body is not valid JSON.");
 
   const command = parse(body);
   if (!command) return error(400, "Malformed subscription.");

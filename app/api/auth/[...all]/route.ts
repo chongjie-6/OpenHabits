@@ -15,6 +15,7 @@
 import { toNextJsHandler } from "better-auth/next-js";
 import { syncConfigured } from "@/lib/server/db";
 import { getAuth } from "@/lib/server/better-auth";
+import { readJson } from "@/lib/server/json";
 import { authTier, check, checkMail, clientIp, tooMany } from "@/lib/server/ratelimit";
 
 /** postgres.js opens a TCP socket, which the edge runtime does not provide. */
@@ -88,13 +89,9 @@ async function meter(request: Request): Promise<Response | null> {
  * the per-IP half of the tier has already been spent either way.
  */
 async function addressOf(request: Request): Promise<string | null> {
-  try {
-    const body: unknown = await request.clone().json();
-    const email = (body as { email?: unknown } | null)?.email;
-    return typeof email === "string" && email.length > 0 && email.length <= 320 ? email : null;
-  } catch {
-    return null;
-  }
+  const body = await readJson(request.clone());
+  const email = (body as { email?: unknown } | null | undefined)?.email;
+  return typeof email === "string" && email.length > 0 && email.length <= 320 ? email : null;
 }
 
 export const { GET, POST } = toNextJsHandler(handler);
