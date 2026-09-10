@@ -12,7 +12,7 @@
  * is a beginning, this is a return.
  */
 
-import { button, hero, shell } from "./email-layout";
+import { button, hero, shell } from "./layout";
 
 export const RESET_SUBJECT = "A new password for OpenHabits";
 

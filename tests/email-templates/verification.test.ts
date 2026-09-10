@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { verificationEmail } from "@/lib/verification-email";
+import { verificationEmail } from "@/lib/email-templates/verification";
 
 const URL = "https://openhabits.app/api/auth/verify-email?token=abc123&callbackURL=/";
 

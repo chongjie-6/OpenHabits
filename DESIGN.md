@@ -812,7 +812,9 @@ lib/
   session.ts              the auth client + the local signed-in hint (§13.6)
   reminders.ts            subscribe/unsubscribe, and why a switch is not offered
   email.ts                nodemailer SMTP transport, built per send (§13.9)
-  verification-email.ts   the verification mail: tables, inline styles, no images
+  email-templates/        one pure module per mail: tables, inline styles, no images
+    index.ts              the kind → template table every send path reads
+    layout.ts             the shell the mails share
   use-swipe.ts            the swipe gesture, and the thresholds it turns on (§6.8)
   use-today.ts            the clock as external state
   use-media-query.ts
@@ -1114,7 +1116,7 @@ the request — a floating promise inside a serverless invocation may never leav
 the machine — and Better Auth's callback then catches and logs. An outage at the
 mail provider costs a mail, not an account.
 
-**The template is a separate, pure module.** `lib/verification-email.ts` takes a
+**The template is a separate, pure module.** `lib/email-templates/verification.ts` takes a
 URL and returns `{subject, html, text}`; `lib/email.ts` is transport and knows no
 markup. That split is what makes the mail testable at all, and the tests pin the
 things that are invisible until a real inbox shows them: the URL escaped into
@@ -1137,7 +1139,7 @@ even though it strips much else — worth doing, not done.
 
 > **Done.** Both mails now carry a `prefers-color-scheme` block in `<head>`, which is the only place Gmail's web client keeps one. The light values stay *inline* rather than moving into that block, because the media query is an enhancement and the mail has to be right without it: every client that ignores the block renders exactly what it rendered before. The hooks are classes rather than element selectors, so adding a row to a message cannot silently opt it out of dark mode.
 >
-> The shell the two mails share came out of the same work — `lib/email-layout.ts`. Two transactional mails that look like two different senders is the smell a phishing filter, and a person, reads as suspicious; they now differ only in the copy and in which square is lit.
+> The shell the two mails share came out of the same work — `lib/email-templates/layout.ts`. Two transactional mails that look like two different senders is the smell a phishing filter, and a person, reads as suspicious; they now differ only in the copy and in which square is lit.
 
 ---
 

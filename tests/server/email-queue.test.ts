@@ -71,6 +71,7 @@ describe("parseEmailJob", () => {
   it("rejects a kind it does not know", () => {
     expect(parseEmailJob({ ...job, kind: "invoice" }, configured)).toBeNull();
     expect(parseEmailJob({ ...job, kind: undefined }, configured)).toBeNull();
+    expect(parseEmailJob({ ...job, kind: "constructor" }, configured)).toBeNull();
   });
 
   it("rejects anything that is not an object", () => {

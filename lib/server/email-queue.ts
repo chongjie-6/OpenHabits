@@ -21,9 +21,7 @@ import { Client } from "@upstash/qstash";
 import { mailableOrigin } from "./base-url";
 import { getRedis, redisConfigured } from "./redis";
 import { siteURL } from "../site-url";
-
-export type EmailKind = "verification" | "reset";
-export type EmailJob = { kind: EmailKind; to: string; url: string };
+import { type EmailJob, isEmailKind } from "../email";
 
 /**
  * An hour, matching `resetPasswordTokenExpiresIn`. An envelope that outlives
@@ -124,7 +122,7 @@ export function parseEmailJob(
     return null;
   const job = value as Record<string, unknown>;
 
-  if (job.kind !== "verification" && job.kind !== "reset") return null;
+  if (!isEmailKind(job.kind)) return null;
   if (!isString(job.to, MAX_ADDRESS)) return null;
   if (!isString(job.url, MAX_URL)) return null;
   if (!mailableOrigin(job.url, env)) return null;

@@ -19,8 +19,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getDb } from "./db";
 import { resolveBaseURL } from "./base-url";
 import * as authSchema from "./auth-schema";
-import { type EmailJob, enqueueEmail, queueConfigured } from "./email-queue";
-import { mailerConfigured, sendResetPasswordEmail, sendVerificationEmail } from "../email";
+import { enqueueEmail, queueConfigured } from "./email-queue";
+import { type EmailJob, mailerConfigured, sendEmail } from "../email";
 
 /**
  * Hand the mail to QStash where there is a queue, send it inline where there is
@@ -33,11 +33,7 @@ import { mailerConfigured, sendResetPasswordEmail, sendVerificationEmail } from 
  * where the request cannot see it.
  */
 async function deliver(job: EmailJob): Promise<void> {
-  if (queueConfigured()) return enqueueEmail(job);
-
-  return job.kind === "verification"
-    ? sendVerificationEmail({ to: job.to, url: job.url })
-    : sendResetPasswordEmail({ to: job.to, url: job.url });
+  return queueConfigured() ? enqueueEmail(job) : sendEmail(job);
 }
 
 const globalForAuth = globalThis as unknown as {

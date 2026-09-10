@@ -2,7 +2,7 @@
  * The link-preview card. See DESIGN.md §8.6.
  *
  * Deliberately the same picture the verification email paints (see
- * `lib/verification-email.ts`): a contribution grid with one square lit, on the
+ * `lib/email-templates/verification.ts`): a contribution grid with one square lit, on the
  * light ground, in the accent green. Those two surfaces are the only places
  * OpenHabits is seen by someone who has not installed it, and they should not
  * look like two different products.

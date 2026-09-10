@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resetEmail } from "@/lib/reset-email";
-import { verificationEmail } from "@/lib/verification-email";
+import { resetEmail } from "@/lib/email-templates/reset";
+import { verificationEmail } from "@/lib/email-templates/verification";
 
 const URL = "https://openhabits.app/api/auth/reset-password/abc123?callbackURL=/reset-password";
 

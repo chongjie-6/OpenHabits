@@ -1,9 +1,9 @@
 /**
  * The verification email — the first thing OpenHabits ever says to a new
- * account. The chrome it sits in lives in `lib/email-layout.ts`.
+ * account. The chrome it sits in lives in `layout.ts`.
  */
 
-import { button, hero, shell } from "./email-layout";
+import { button, hero, shell } from "./layout";
 
 export const VERIFICATION_SUBJECT = "One square from day one";
 

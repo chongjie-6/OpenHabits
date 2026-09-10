@@ -14,7 +14,7 @@
 
 import { Receiver } from "@upstash/qstash";
 import { completeEmail, dequeueEmail } from "@/lib/server/email-queue";
-import { sendResetPasswordEmail, sendVerificationEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
 
 /** `nodemailer` opens a TCP socket, which the edge runtime does not provide. */
 export const runtime = "nodejs";
@@ -108,11 +108,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!job) return json(200, { done: true, envelope: "gone" });
 
   try {
-    if (job.kind === "verification") {
-      await sendVerificationEmail({ to: job.to, url: job.url });
-    } else {
-      await sendResetPasswordEmail({ to: job.to, url: job.url });
-    }
+    await sendEmail(job);
   } catch (cause) {
     // Logged in full, reported in outline — and the envelope is deliberately
     // left in place so the retry has something to read.

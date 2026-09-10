@@ -1,6 +1,8 @@
-import { resetEmail } from "./reset-email";
-import { verificationEmail } from "./verification-email";
+import { type EmailKind, type Rendered, TEMPLATES } from "./email-templates";
 import nodemailer from "nodemailer";
+
+export { type EmailKind, isEmailKind } from "./email-templates";
+export type EmailJob = { kind: EmailKind; to: string; url: string };
 
 /** Whether mail is configured at all. Lets callers answer honestly rather than throw. */
 export function mailerConfigured(): boolean {
@@ -48,17 +50,7 @@ function client(): nodemailer.Transporter {
   return transporter;
 }
 
-async function sendEmail({
-  to,
-  subject,
-  html,
-  text,
-}: {
-  to: string;
-  subject: string;
-  html: string;
-  text: string;
-}): Promise<void> {
+async function sendMessage(to: string, { subject, html, text }: Rendered): Promise<void> {
   let info: nodemailer.SentMessageInfo;
   try {
     info = await client().sendMail({ from: from(), to, subject, html, text });
@@ -71,24 +63,6 @@ async function sendEmail({
   }
 }
 
-export async function sendVerificationEmail({
-  to,
-  url,
-}: {
-  to: string;
-  url: string;
-}): Promise<void> {
-  const { subject, html, text } = verificationEmail(url);
-  await sendEmail({ to, subject, html, text });
-}
-
-export async function sendResetPasswordEmail({
-  to,
-  url,
-}: {
-  to: string;
-  url: string;
-}): Promise<void> {
-  const { subject, html, text } = resetEmail(url);
-  await sendEmail({ to, subject, html, text });
+export async function sendEmail({ kind, to, url }: EmailJob): Promise<void> {
+  await sendMessage(to, TEMPLATES[kind](url));
 }
