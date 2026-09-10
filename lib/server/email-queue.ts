@@ -47,6 +47,16 @@ const globalForQueue = globalThis as unknown as {
   openHabitsQStash?: Client;
 };
 
+/**
+ * `baseUrl` is passed rather than left to the SDK's default, and it is the
+ * difference between mail sending and mail vanishing: a QStash account belongs
+ * to one region, `https://qstash.upstash.io` *is* eu-central-1, and a token
+ * issued in us-east-1 gets a 404 from it — "user not found in this region",
+ * which reads like a bad token and is not one. `QSTASH_URL` is what the Upstash
+ * console and its Vercel integration hand out beside the token; unset, the
+ * default is kept, which is correct for a European account and wrong in a way
+ * only production reveals for every other one.
+ */
 function client(): Client {
   const token = process.env.QSTASH_TOKEN;
   if (!token) {
@@ -55,7 +65,10 @@ function client(): Client {
         "Mail is sent inline without it, which is what this app did before the queue existed.",
     );
   }
-  globalForQueue.openHabitsQStash ??= new Client({ token });
+  const baseUrl = process.env.QSTASH_URL;
+  globalForQueue.openHabitsQStash ??= new Client(
+    baseUrl ? { token, baseUrl } : { token },
+  );
   return globalForQueue.openHabitsQStash;
 }
 
@@ -67,7 +80,11 @@ export function workerURL(env: NodeJS.ProcessEnv = process.env): URL {
 }
 
 function reachable(url: URL): boolean {
-  return url.hostname !== "localhost" && url.hostname !== "127.0.0.1" && url.hostname !== "[::1]";
+  return (
+    url.hostname !== "localhost" &&
+    url.hostname !== "127.0.0.1" &&
+    url.hostname !== "[::1]"
+  );
 }
 
 /**
@@ -79,7 +96,11 @@ function reachable(url: URL): boolean {
  * mail is sent inline, which is the behaviour a developer wants anyway.
  */
 export function queueConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean(env.QSTASH_TOKEN) && redisConfigured(env) && reachable(workerURL(env));
+  return (
+    Boolean(env.QSTASH_TOKEN) &&
+    redisConfigured(env) &&
+    reachable(workerURL(env))
+  );
 }
 
 function isString(value: unknown, max: number): value is string {
@@ -95,8 +116,12 @@ function isString(value: unknown, max: number): value is string {
  * Hand-rolled like `app/api/reminders/route.ts:parse`, for the same reason:
  * there is no schema library in this tree and one predicate does not justify one.
  */
-export function parseEmailJob(value: unknown, env: NodeJS.ProcessEnv = process.env): EmailJob | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+export function parseEmailJob(
+  value: unknown,
+  env: NodeJS.ProcessEnv = process.env,
+): EmailJob | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return null;
   const job = value as Record<string, unknown>;
 
   if (job.kind !== "verification" && job.kind !== "reset") return null;
@@ -120,20 +145,23 @@ export async function enqueueEmail(job: EmailJob): Promise<void> {
   // before the worker has anything to read, spending a retry on a race.
   await getRedis().set(`${KEY_PREFIX}${id}`, job, { ex: ENVELOPE_TTL_SECONDS });
 
-  await client()
-    .queue({ queueName: QUEUE_NAME })
-    .enqueueJSON({
+  try {
+    await client().queue({ queueName: QUEUE_NAME }).enqueueJSON({
       url: workerURL().toString(),
       body: { id },
       retries: RETRIES,
-      /**
-       * Gmail throttles, and the relay is one account's SMTP quota rather than
-       * a mail service. `parallelism: 1` keeps two sends off it at once and the
-       * rate keeps a burst — a queue drained after an outage — from arriving as
-       * a burst. FIFO is a side effect here rather than the point.
-       */
-      flowControl: { key: QUEUE_NAME, parallelism: 1, rate: 20, period: "1m" },
     });
+  } catch (cause) {
+    // Nothing will ever read this envelope, and it holds a live link for the
+    // hour of its TTL. Dropping it also means an orphan in Redis is evidence of
+    // a lost *send* rather than of a rejected hand-off, which is the one signal
+    // that tells these two failures apart from the outside — the reset path
+    // reports nothing to its caller by design (§13.13).
+    await getRedis()
+      .del(`${KEY_PREFIX}${id}`)
+      .catch(() => {});
+    throw cause;
+  }
 }
 
 /**
