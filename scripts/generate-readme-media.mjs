@@ -33,7 +33,6 @@ const THEMES = {
 };
 
 const SANS = "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, Helvetica, Arial, sans-serif";
-const SERIF = "ui-serif, Georgia, Cambria, Times New Roman, serif";
 const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -78,14 +77,6 @@ function yearLevels(weeks = 53) {
   for (let w = 18; w < 20; w++) out[w] = [0, 0, 0, 0, 0, 0, 0];
   return out;
 }
-
-const check = (cx, cy, size, stroke) => {
-  const s = size / 24;
-  return `<path transform="translate(${cx - 12 * s} ${cy - 12 * s}) scale(${s.toFixed(4)})" d="M20 6 9 17l-5-5" fill="none" stroke="${stroke}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
-};
-
-const bookmark = (x, y, t, saved) =>
-  `<path transform="translate(${x} ${y})" d="M3 2h12a1 1 0 0 1 1 1v17l-7-4.2L2 20V3a1 1 0 0 1 1-1z" fill="${saved ? t.accent : "none"}" stroke="${saved ? t.accent : t.muted}" stroke-width="1.6" stroke-linejoin="round"/>`;
 
 const svg = (w, h, body) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img">\n${body}\n</svg>\n`;
