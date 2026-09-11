@@ -1,5 +1,6 @@
 /**
- * Payload validation for the sync endpoint.
+ * Payload validation for the sync endpoint, and for the backup files whose
+ * records it will go on to carry.
  *
  * The caps matter beyond rejecting malformed data: these records go back out to
  * the user's *other* devices, so a field accepted here is a field every one of
@@ -13,9 +14,11 @@
 
 import {
   DEFAULT_SETTINGS,
+  normaliseHabit,
   normaliseHabitColor,
   type Cadence,
   type Entry,
+  type ExportBundle,
   type Habit,
   type Settings,
 } from "../types";
@@ -229,10 +232,11 @@ function parseList<T>(
   value: unknown,
   field: string,
   parse: (item: unknown) => ParseResult<T>,
+  max: number = MAX_ROWS_PER_REQUEST,
 ): ParseResult<T[]> {
   if (!Array.isArray(value)) return fail(`${field} must be an array`);
-  if (value.length > MAX_ROWS_PER_REQUEST) {
-    return fail(`${field} has more than ${MAX_ROWS_PER_REQUEST} records`);
+  if (value.length > max) {
+    return fail(`${field} has more than ${max} records`);
   }
 
   const out: T[] = [];
@@ -244,6 +248,56 @@ function parseList<T>(
     out.push(parsed.value);
   }
   return { ok: true, value: out };
+}
+
+/**
+ * A backup file, held to the rules a sync push is held to. Everything an import
+ * brings in is pushed on the next sync, and a record the server refuses stops
+ * this device syncing anything at all (`lib/sync/client.ts`, the 400 branch)
+ * with no way for the user to find the one at fault. Checking here turns that
+ * into a message at the moment they chose the file.
+ *
+ * Uncapped where a push is capped: a year of history is one file, not one
+ * request. v1 habits get their sync metadata from `normaliseHabit` first, as
+ * `importBundle` always gave them. Tombstones are dropped — an export never
+ * writes one, and one arriving in `habits` would put a deleted habit on Today.
+ */
+export function parseBackup(value: unknown): ParseResult<ExportBundle> {
+  if (!isObject(value)) return fail("the file is not a backup");
+  if (value.version !== 1 && value.version !== 2) {
+    return fail(`unsupported backup version ${String(value.version)}`);
+  }
+  if (!Array.isArray(value.habits)) return fail("habits must be an array");
+
+  const habits = parseList(
+    value.habits.map((h) =>
+      isObject(h) ? normaliseHabit(h as Parameters<typeof normaliseHabit>[0]) : h,
+    ),
+    "habits",
+    parseHabit,
+    Infinity,
+  );
+  if (!habits.ok) return habits;
+
+  const entries = parseList(value.entries, "entries", parseEntry, Infinity);
+  if (!entries.ok) return entries;
+
+  // Over the defaults, as a replacing import always spread them: a file from
+  // before a setting existed does not carry it.
+  const stored = isObject(value.settings) ? value.settings : {};
+  const settings = parseSettings({ ...DEFAULT_SETTINGS, ...stored });
+  if (!settings.ok) return settings;
+
+  return {
+    ok: true,
+    value: {
+      version: 2,
+      exportedAt: typeof value.exportedAt === "string" ? value.exportedAt : "",
+      habits: habits.value.filter((h) => h.deletedAt === null),
+      entries: entries.value,
+      settings: settings.value,
+    },
+  };
 }
 
 export function parseSyncPush(body: unknown): ParseResult<SyncPush> {

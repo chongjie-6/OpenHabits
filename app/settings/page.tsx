@@ -25,6 +25,7 @@ import {
   useOpenHabits,
   type ImportMode,
 } from "@/lib/store";
+import { parseBackup } from "@/lib/sync/validate";
 import type { Theme } from "@/lib/theme";
 import type { AnyExportBundle, Habit, Settings } from "@/lib/types";
 
@@ -66,18 +67,11 @@ export default function SettingsPage() {
    */
   async function choose(file: File) {
     try {
-      // v1 and v2 files are both accepted; `importBundle` normalises the older one.
-      const bundle = JSON.parse(await file.text()) as AnyExportBundle;
-      if (bundle.version !== 1 && bundle.version !== 2) {
-        // Cast for the reason `importBundle` casts: both arms of the union are
-        // eliminated by the guard, so the value is `never` to the compiler and
-        // a real number at runtime.
-        throw new Error(
-          `unsupported backup version ${(bundle as { version: number }).version}`,
-        );
-      }
+      // Checked record by record, not just by version: see `parseBackup`.
+      const parsed = parseBackup(JSON.parse(await file.text()));
+      if (!parsed.ok) throw new Error(parsed.message);
       setNotice(null);
-      setPending(bundle);
+      setPending(parsed.value);
     } catch (error) {
       setPending(null);
       setNotice(

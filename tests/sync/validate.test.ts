@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSyncPush } from "@/lib/sync/validate";
+import { parseBackup, parseSyncPush } from "@/lib/sync/validate";
 
 const HABIT = {
   id: "h1",
@@ -192,5 +192,64 @@ describe("parseSyncPush", () => {
   it("accepts a tombstone", () => {
     expect(push({ habits: [{ ...HABIT, deletedAt: 2000 }] }).ok).toBe(true);
     expect(push({ habits: [{ ...HABIT, deletedAt: -5 }] }).ok).toBe(false);
+  });
+});
+
+describe("parseBackup", () => {
+  function backup(over: Record<string, unknown> = {}) {
+    return parseBackup({
+      version: 2,
+      exportedAt: "2026-09-01T00:00:00.000Z",
+      habits: [HABIT],
+      entries: [ENTRY],
+      settings: SETTINGS.value,
+      ...over,
+    });
+  }
+
+  it("accepts an export, dropping the appearance field a sync push drops", () => {
+    const result = backup();
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.settings).not.toHaveProperty("theme");
+  });
+
+  it("refuses a record the sync endpoint would refuse, naming it", () => {
+    const result = backup({ entries: [ENTRY, { ...ENTRY, date: "2026-02-30" }] });
+    expect(result).toEqual({ ok: false, message: expect.stringContaining("entries[1]") });
+  });
+
+  it("refuses a file that is not a backup at all", () => {
+    for (const file of [null, [], { version: 3, habits: [] }, { version: 2 }]) {
+      expect(parseBackup(file).ok).toBe(false);
+    }
+  });
+
+  it("takes more records than one sync request carries", () => {
+    const entries = Array.from({ length: 1200 }, (_, i) => ({
+      ...ENTRY,
+      date: new Date(Date.UTC(2023, 0, 1 + i)).toISOString().slice(0, 10),
+    }));
+    expect(backup({ entries }).ok).toBe(true);
+  });
+
+  it("fills in a v1 habit's sync metadata and a missing setting", () => {
+    const legacy: Record<string, unknown> = { ...HABIT };
+    delete legacy.updatedAt;
+    delete legacy.deletedAt;
+    const result = backup({
+      version: 1,
+      habits: [legacy],
+      settings: { weekStartsOn: 0, dayStartHour: 0, favourites: [] },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.version).toBe(2);
+    expect(result.value.habits[0].updatedAt).toBe(Date.parse("2026-08-01T00:00:00Z"));
+    expect(result.value.settings.reminderHour).toBe(9);
+  });
+
+  it("leaves tombstones out, which an export never writes", () => {
+    const result = backup({ habits: [HABIT, { ...HABIT, id: "gone", deletedAt: 5 }] });
+    expect(result.ok && result.value.habits.map((h) => h.id)).toEqual(["h1"]);
   });
 });
