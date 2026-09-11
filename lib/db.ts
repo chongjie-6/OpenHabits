@@ -46,13 +46,30 @@ function openDb(): Promise<IDBDatabase> {
       }
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      // Another tab is opening a newer version. Stepping aside is the only way
+      // it can: an open connection blocks the upgrade for as long as this tab
+      // lives. The next write here reopens, at the new version.
+      db.onversionchange = () => {
+        db.close();
+        if (dbPromise === opening) dbPromise = null;
+      };
+      resolve(db);
+    };
     request.onerror = () => reject(request.error);
     request.onblocked = () =>
       reject(new Error("OpenHabits database blocked by another open tab"));
   });
 
-  return dbPromise;
+  // A failed open is not cached: a blocked upgrade or a transient error would
+  // otherwise fail every write for the rest of the session.
+  const opening = dbPromise;
+  opening.catch(() => {
+    if (dbPromise === opening) dbPromise = null;
+  });
+
+  return opening;
 }
 
 /**
