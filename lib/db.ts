@@ -298,14 +298,44 @@ export async function applyMerge(input: {
   await Promise.all(pending);
 }
 
-export async function clearAll(): Promise<void> {
+/**
+ * Swap the whole store for new contents, as one transaction — the wipe and the
+ * writes commit together or not at all. As separate transactions, a tab closed
+ * between them leaves the device empty on disk: a replacing import loses both
+ * copies, and "Delete all data" loses its tombstones, so the next pull puts
+ * everything back.
+ */
+export async function replaceAll(input: {
+  habits: Habit[];
+  entries: Entry[];
+  settings: { value: Settings; updatedAt: number } | null;
+  sync: SyncMeta;
+}): Promise<void> {
   const db = await openDb();
   const t = tx(db, ["habits", "entries", "kv"], "readwrite");
-  await Promise.all([
-    promisify(t.objectStore("habits").clear()),
-    promisify(t.objectStore("entries").clear()),
-    promisify(t.objectStore("kv").clear()),
-  ]);
+  const habitStore = t.objectStore("habits");
+  const entryStore = t.objectStore("entries");
+  const kv = t.objectStore("kv");
+
+  // Requests on a store run in the order they were issued, so the clears land
+  // before the puts that follow them.
+  const pending: Promise<unknown>[] = [
+    promisify(habitStore.clear()),
+    promisify(entryStore.clear()),
+    promisify(kv.clear()),
+  ];
+  for (const habit of input.habits) pending.push(promisify(habitStore.put(habit)));
+  for (const entry of input.entries) pending.push(promisify(entryStore.put(entry)));
+  if (input.settings) {
+    pending.push(
+      promisify(
+        kv.put({ key: "settings", value: input.settings.value, updatedAt: input.settings.updatedAt }),
+      ),
+    );
+  }
+  pending.push(promisify(kv.put({ key: "sync", value: input.sync })));
+
+  await Promise.all(pending);
 }
 
 /**

@@ -58,7 +58,7 @@ vi.mock("@/lib/db", () => {
     deleteHabitRecord: record("deleteHabitRecord"),
     forgetHabits: record("forgetHabits"),
     applyMerge: record("applyMerge"),
-    clearAll: record("clearAll"),
+    replaceAll: record("replaceAll"),
     requestPersistence: record("requestPersistence"),
   };
 });
@@ -456,7 +456,7 @@ describe("importBundle, merging", () => {
 
     expect(store.currentState().settings.dayStartHour).toBe(4);
     expect(store.currentState().tombstones.map((h) => h.id)).toEqual(["dead"]);
-    expect(wrote("clearAll")).toHaveLength(0);
+    expect(wrote("replaceAll")).toHaveLength(0);
   });
 
   it("fills in the metadata a v1 file could not have carried", async () => {
@@ -554,7 +554,7 @@ describe("importBundle, replacing", () => {
     // A restore that silently re-deleted the habits it brought back would be
     // worse than losing tombstones a peer may not have seen.
     expect(state.tombstones).toEqual([]);
-    expect(wrote("clearAll")).toHaveLength(1);
+    expect(wrote("replaceAll")).toHaveLength(1);
   });
 });
 
@@ -605,7 +605,7 @@ describe("adoptAccount", () => {
     expect(state.settings).toEqual(DEFAULT_SETTINGS);
     // Reset, not merely re-pointed: bob's history arrives as a first sync.
     expect(state.sync).toEqual({ ...NO_SYNC, accountId: "bob" });
-    expect(wrote("clearAll")).toHaveLength(1);
+    expect(wrote("replaceAll")).toHaveLength(1);
   });
 
   it("leaves no tombstones behind for the next account to push", async () => {
@@ -631,6 +631,13 @@ describe("resetEverything", () => {
     // button would appear to work and then put a year of data back.
     expect(state.tombstones.map((h) => h.id).sort()).toEqual(["a", "b"]);
     expect(state.tombstones.every((h) => h.deletedAt !== null)).toBe(true);
+
+    // The wipe and the tombstones in one write: a wipe that commits without
+    // them is undone by the next pull.
+    const writes = wrote("replaceAll");
+    expect(writes).toHaveLength(1);
+    const { habits } = writes[0].args[0] as { habits: Habit[] };
+    expect(habits.map((h) => h.id).sort()).toEqual(["a", "b"]);
   });
 
   it("keeps a tombstone that was already there", async () => {

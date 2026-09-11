@@ -498,11 +498,18 @@ export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
   emit();
 
   persist(async () => {
-    if (replacing) await db.clearAll();
+    if (replacing) {
+      await db.replaceAll({
+        habits,
+        entries: [...entries.values()],
+        settings: { value: settings, updatedAt: settingsUpdatedAt },
+        sync: state.sync,
+      });
+      return;
+    }
     await db.putHabits(habits);
     await db.putEntries([...entries.values()]);
     await db.putSettings(settings, settingsUpdatedAt);
-    if (replacing) await db.putSyncMeta(state.sync);
   });
 }
 
@@ -593,10 +600,7 @@ export function adoptAccount(accountId: string | null): void {
   };
   emit();
 
-  persist(async () => {
-    await db.clearAll();
-    await db.putSyncMeta(meta);
-  });
+  persist(() => db.replaceAll({ habits: [], entries: [], settings: null, sync: meta }));
 }
 
 /**
@@ -624,10 +628,12 @@ export function resetEverything(): void {
   };
   emit();
 
-  persist(async () => {
-    await db.clearAll();
-    await db.putHabits(tombstones);
-    await db.putSettings(DEFAULT_SETTINGS, now);
-    await db.putSyncMeta(state.sync);
-  });
+  persist(() =>
+    db.replaceAll({
+      habits: tombstones,
+      entries: [],
+      settings: { value: DEFAULT_SETTINGS, updatedAt: now },
+      sync: state.sync,
+    }),
+  );
 }
