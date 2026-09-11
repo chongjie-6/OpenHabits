@@ -16,7 +16,8 @@ export function mailerConfigured(): boolean {
  * app around SMTP_USER rather than inventing an address the relay would drop.
  */
 function from(): string {
-  return process.env.MAIL_FROM ?? `OpenHabits <${process.env.SMTP_USER}>`;
+  // `||`, not `??`: `MAIL_FROM=` with nothing after it is `""`, not unset.
+  return process.env.MAIL_FROM || `OpenHabits <${process.env.SMTP_USER}>`;
 }
 
 function client(): nodemailer.Transporter {
@@ -58,8 +59,10 @@ async function sendMessage(to: string, { subject, html, text }: Rendered): Promi
     throw new Error(`${subject}: send failed`, { cause });
   }
 
+  // No address in the message: every caller logs this error, and the rest of
+  // the server keeps identifying details out of its logs.
   if (info.rejected?.length) {
-    throw new Error(`${subject}: rejected by the server for ${to}`);
+    throw new Error(`${subject}: rejected by the server for the recipient`);
   }
 }
 
