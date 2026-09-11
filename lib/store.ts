@@ -313,7 +313,8 @@ export function deleteHabit(id: string): DeletedHabit | null {
   const habit = state.habits.find((h) => h.id === id);
   if (!habit) return null;
 
-  const tombstone: Habit = { ...habit, deletedAt: Date.now(), updatedAt: Date.now() };
+  const now = Date.now();
+  const tombstone: Habit = { ...habit, deletedAt: now, updatedAt: now };
 
   const removed: Entry[] = [];
   const entries = new Map(state.entries);
