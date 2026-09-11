@@ -1350,11 +1350,15 @@ sentinel meaning "no restriction" — the same forgetfulness would return
 everybody. This is the only property here worth arguing about, and it is the
 reason the check is not `coalesce`.
 
-**Transaction-local is not a detail.** `db.ts` runs a pool of one connection
-across a serverless instance's requests. A session-scoped `SET` left behind on
-that connection is not stale state; it is the *next request's* identity. Hence
-the third argument to `set_config`, and hence scopes being functions that own a
-transaction rather than something a caller can set and forget.
+**Transaction-local is not a detail.** `db.ts` pools its connections across a
+serverless instance's requests. A session-scoped `SET` left behind on one of
+them is not stale state; it is the identity of *whichever request checks it
+out next*. (The pool was once a single connection, on the belief that an
+instance serves one request at a time. Fluid compute and `next start` both
+serve many, and one connection queued every request behind the sync in
+flight.) Hence the third argument to `set_config`, and hence scopes being
+functions that own a transaction rather than something a caller can set and
+forget.
 
 #### FORCE, and the role in DATABASE_URL
 

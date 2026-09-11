@@ -11,9 +11,9 @@ import "server-only";
  *
  * **Transaction-local, always** — the third argument to `set_config`. The
  * alternative is a session variable left behind on a pooled connection for
- * whichever request checks it out next, and `db.ts` runs a pool of one: a
- * session-scoped identity there is not a stale value, it is *the next
- * request's* identity.
+ * whichever request checks it out next, and `db.ts` pools connections across
+ * an instance's requests: a session-scoped identity there is not a stale value,
+ * it is *another request's* identity.
  *
  * The check fails closed. An unset setting reads as NULL, `user_id = NULL` is
  * NULL, and a policy that is not true denies the row — so code that forgets to
