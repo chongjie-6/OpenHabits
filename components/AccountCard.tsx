@@ -65,6 +65,21 @@ function useMounted(): boolean {
   );
 }
 
+const UNREACHABLE = "Could not reach the server. Check your connection and try again.";
+
+/**
+ * The auth client's answer, or null when the request threw instead of
+ * answering. Better Auth reports a refusal as `{ error }`; a dead network
+ * rejects, and every handler here sets `busy` before awaiting.
+ */
+async function attempt<T>(request: () => Promise<T>): Promise<T | null> {
+  try {
+    return await request();
+  } catch {
+    return null;
+  }
+}
+
 export function AccountCard() {
   const { data: session, isPending } = authClient.useSession();
   const { syncStatus } = useOpenHabits();
@@ -171,17 +186,25 @@ function SignedOut({
     setError(null);
 
     const credentials = { email: email.trim(), password };
-    const result =
+    // Guarded for the reason `finish` guards its sign-out: a request that
+    // throws instead of answering would leave the button on "Working…" for good.
+    const result = await attempt(() =>
       mode === "sign-up"
-        ? await authClient.signUp.email({
+        ? authClient.signUp.email({
             ...credentials,
             // The schema requires a name and this app never asks for one; an
             // empty string would look like a bug in any admin tool.
             name: credentials.email.split("@")[0] || "OpenHabits",
           })
-        : await authClient.signIn.email(credentials);
+        : authClient.signIn.email(credentials),
+    );
 
     setBusy(false);
+
+    if (!result) {
+      setError({ text: UNREACHABLE });
+      return;
+    }
 
     if (result.error) {
       // The server already resent the mail on its way out (`sendOnSignIn`), so
@@ -290,11 +313,20 @@ function SignedOut({
 
     setBusy(true);
     setError(null);
-    const result = await authClient.requestPasswordReset({
-      email: address,
-      redirectTo: "/reset-password",
-    });
+    const result = await attempt(() =>
+      authClient.requestPasswordReset({
+        email: address,
+        redirectTo: "/reset-password",
+      }),
+    );
     setBusy(false);
+
+    // A request that never arrived is not "sent", and saying so reveals
+    // nothing about the address.
+    if (!result) {
+      setError({ text: UNREACHABLE });
+      return;
+    }
 
     if (result.error?.code === "RESET_PASSWORD_DISABLED") {
       setError({
@@ -438,11 +470,17 @@ function AwaitingVerification({
     setBusy(true);
     setError(null);
     // Where the link lands once confirmed; the click signs that browser in.
-    const result = await authClient.sendVerificationEmail({
-      email,
-      callbackURL: "/",
-    });
+    const result = await attempt(() =>
+      authClient.sendVerificationEmail({
+        email,
+        callbackURL: "/",
+      }),
+    );
     setBusy(false);
+    if (!result) {
+      setError(UNREACHABLE);
+      return;
+    }
     if (result.error) {
       setError(result.error.message ?? "Could not send it. Try again shortly.");
       return;
