@@ -77,7 +77,7 @@ export function HabitForm({
       kind === "daily"
         ? { kind: "daily" }
         : kind === "weekdays"
-          ? { kind: "weekdays", days: days.length ? [...days].sort() : [1, 2, 3, 4, 5] }
+          ? { kind: "weekdays", days: days.length ? [...days].sort((a, b) => a - b) : [1, 2, 3, 4, 5] }
           : { kind: "weekly", times };
 
     onSubmit({ name: name.trim(), emoji, color, cadence, target });
