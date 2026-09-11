@@ -135,9 +135,13 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         try {
           const response = await fetch(request);
-          const cache = await caches.open(SHELL);
-          cache.put(routeKey(url.pathname), response.clone());
-          revalidate();
+          // Only a real page becomes the offline copy. A 500 during a deploy
+          // stored here would be what this route shows on the next plane.
+          if (response.ok) {
+            const cache = await caches.open(SHELL);
+            event.waitUntil(cache.put(routeKey(url.pathname), response.clone()).catch(() => null));
+            revalidate();
+          }
           return response;
         } catch {
           const shell = await caches.open(SHELL);
@@ -186,8 +190,12 @@ self.addEventListener("fetch", (event) => {
         const cached = await caches.match(request);
         if (cached) return cached;
         const response = await fetch(request);
-        const cache = await caches.open(ASSETS);
-        cache.put(request, response.clone());
+        // Served from cache forever once stored, so a 404 stored here would
+        // be permanent for that hash.
+        if (response.ok) {
+          const cache = await caches.open(ASSETS);
+          event.waitUntil(cache.put(request, response.clone()).catch(() => null));
+        }
         return response;
       })(),
     );
@@ -287,11 +295,17 @@ self.addEventListener("notificationclick", (event) => {
 /**
  * The payload is server-authored, but it arrives over a third-party push service
  * and ends up in `openWindow` — so it is treated as a same-origin path or not at
- * all. A leading `//` is rejected because `new URL("//evil.example", origin)`
- * resolves to another origin entirely.
+ * all. Decided by resolving it rather than by its spelling: `//evil.example` is
+ * the obvious escape, but the URL parser reads `\` as `/`, so `/\evil.example`
+ * leaves the origin too while starting with a single slash.
  */
 function safePath(value) {
-  if (typeof value !== "string") return "/";
-  if (!value.startsWith("/") || value.startsWith("//")) return "/";
-  return value;
+  if (typeof value !== "string" || !value.startsWith("/")) return "/";
+  try {
+    const url = new URL(value, self.location.origin);
+    if (url.origin !== self.location.origin) return "/";
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return "/";
+  }
 }
