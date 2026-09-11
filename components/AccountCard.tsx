@@ -13,6 +13,7 @@ import { disableReminders } from "@/lib/reminders";
 import { authClient, markSignedIn, markSignedOut } from "@/lib/session";
 import {
   adoptAccount,
+  currentState,
   syncMeta,
   useOpenHabits,
   type SyncStatus,
@@ -723,8 +724,9 @@ function SignedIn({
     setBusy(false);
 
     // `syncNow` reports through the store rather than throwing. Ask a second
-    // time instead of deciding for them.
-    if (syncStatus.kind === "error") {
+    // time instead of deciding for them. Read from the store, not the prop: the
+    // prop is this render's status, from before the sync just awaited.
+    if (currentState().syncStatus.kind === "error") {
       setWarned(true);
       return;
     }
