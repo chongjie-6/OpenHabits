@@ -1021,6 +1021,8 @@ The cursor reported under truncation is the lowest point at which *every* collec
 
 The push watermark is the newest stamp **actually sent**, never `Date.now()` — using the clock would skip any edit made while the request was in flight.
 
+*This originally truncated each collection on its own, which reintroduced on the push side the mistake the cursor paragraph above avoids on the pull side.* The watermark is one number across habits, entries and settings, so a push that cut entries off at 500 but carried a newer habit or settings stamp moved the watermark past every entry it had not sent — a first sign-in on a long history uploaded the oldest 500 days and quietly skipped the rest. `collectPush` now picks a single cutoff: just below the first record that does not fit in any collection, which also keeps a run of equal stamps from being split. The one case no single-number watermark can handle is more than 500 records sharing one stamp, which only `restore` of a very long history produces; there the first 500 go and the rest are stepped over, as before.
+
 ### 13.6 Identity: the seam, and what fills it
 
 Sync needs one thing from auth: a stable account id to scope rows by. Everything else about signing in is separate work with its own decisions, and the sync layer was built without waiting for it.

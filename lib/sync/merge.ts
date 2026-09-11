@@ -130,16 +130,43 @@ export function collectPush(
     .filter((e) => e.updatedAt > pushedThrough)
     .sort((a, b) => a.updatedAt - b.updatedAt);
 
-  // Oldest-first truncation, so a backlog drains in order and the watermark
-  // advances to the last row actually sent.
-  const complete = habits.length <= limit && entries.length <= limit;
+  const settings = local.settings.updatedAt > pushedThrough ? local.settings : null;
 
+  /**
+   * One cutoff for every collection, the push-side twin of the server's
+   * `resumePoint` (§13.5). The watermark is a single number, so truncating each
+   * collection on its own lets a newer habit or settings stamp carry it past
+   * entries that were never sent — a first sync of a long history would upload
+   * 500 days and silently skip the rest.
+   */
+  const cutoff = Math.min(cutAt(habits, limit), cutAt(entries, limit));
+  if (cutoff === Infinity) return { habits, entries, settings, complete: true };
+
+  const sent = (record: { updatedAt: number }) => record.updatedAt <= cutoff;
   return {
-    habits: habits.slice(0, limit),
-    entries: entries.slice(0, limit),
-    settings: local.settings.updatedAt > pushedThrough ? local.settings : null,
-    complete,
+    // Sliced as well as filtered for the one case `cutAt` cannot avoid.
+    habits: habits.filter(sent).slice(0, limit),
+    entries: entries.filter(sent).slice(0, limit),
+    settings: settings && sent(settings) ? settings : null,
+    complete: false,
   };
+}
+
+/**
+ * The highest stamp through which `rows` (sorted oldest-first) fits in one
+ * request: just below the first row that does not fit, so a run of equal stamps
+ * is never split — the watermark would land on that stamp and step over the half
+ * left behind.
+ *
+ * When more than `limit` rows share the oldest pending stamp no cut avoids a
+ * split, and the tie is broken the way it always was: the first `limit` go and
+ * the rest are stepped over. Only `restore` of a habit with a very long history
+ * stamps that many rows alike.
+ */
+function cutAt(rows: { updatedAt: number }[], limit: number): number {
+  if (rows.length <= limit) return Infinity;
+  const below = rows[limit].updatedAt - 1;
+  return below >= rows[0].updatedAt ? below : rows[limit - 1].updatedAt;
 }
 
 /**

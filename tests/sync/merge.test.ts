@@ -221,6 +221,51 @@ describe("collectPush", () => {
     expect(push.complete).toBe(false);
     expect(push.entries.map((e) => e.updatedAt)).toEqual([100, 101]);
   });
+
+  it("holds back newer records while older entries are still queued", () => {
+    // Sent together, the habit's stamp would carry the watermark past 102–104.
+    const entries = Array.from({ length: 5 }, (_, i) =>
+      entry("a", `2026-08-0${i + 1}`, 1, 100 + i),
+    );
+    const push = collectPush(snapshot([habit("a", 1000)], entries, 900), 0, 2);
+
+    expect(push.entries.map((e) => e.updatedAt)).toEqual([100, 101]);
+    expect(push.habits).toEqual([]);
+    expect(push.settings).toBeNull();
+    expect(watermarkAfterPush(push, 0)).toBe(101);
+  });
+
+  it("does not split a run of equal stamps across two pushes", () => {
+    const entries = [100, 101, 101, 102].map((stamp, i) =>
+      entry("a", `2026-08-0${i + 1}`, 1, stamp),
+    );
+    const first = collectPush(snapshot([], entries), 0, 2);
+    expect(first.entries.map((e) => e.updatedAt)).toEqual([100]);
+
+    const second = collectPush(snapshot([], entries), watermarkAfterPush(first, 0), 2);
+    expect(second.entries.map((e) => e.updatedAt)).toEqual([101, 101]);
+  });
+
+  it("drains a whole backlog, every record exactly once", () => {
+    const entries = Array.from({ length: 23 }, (_, i) =>
+      entry("a", `2026-07-${String(i + 1).padStart(2, "0")}`, 1, 100 + Math.floor(i / 2)),
+    );
+    const local = snapshot([habit("a", 500), habit("b", 105)], entries, 300);
+
+    const seen: string[] = [];
+    let watermark = 0;
+    for (let trip = 0; trip < 50; trip++) {
+      const push = collectPush(local, watermark, 4);
+      seen.push(...push.habits.map((h) => h.id), ...push.entries.map((e) => e.date));
+      if (push.settings) seen.push("settings");
+      watermark = watermarkAfterPush(push, watermark);
+      if (push.complete) break;
+    }
+
+    expect(seen.sort()).toEqual(
+      ["a", "b", "settings", ...entries.map((e) => e.date)].sort(),
+    );
+  });
 });
 
 describe("watermarkAfterPush", () => {
