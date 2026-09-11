@@ -54,7 +54,9 @@ export default function SettingsPage() {
     link.href = url;
     link.download = `openhabits-backup-${bundle.exportedAt.slice(0, 10)}.json`;
     link.click();
-    URL.revokeObjectURL(url);
+    // Deferred: revoking in the same task can cancel a download that has not
+    // started reading the blob yet, and holding the URL a while costs nothing.
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     setNotice("Backup downloaded.");
   }
 
