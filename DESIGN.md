@@ -661,6 +661,8 @@ Because the data layer is entirely client-side, "offline" is nearly the whole ap
 >
 > `VERSION` is bumped to `openhabits-v2`, which discards the old caches. A deploy does not bump it, so `install` cannot be what keeps the precache current; `revalidate()` re-runs it once per worker startup off the back of a successful network response — about once per launch, as conditional requests.
 
+> **The asset cache is swept.** The same fact — a deploy does not bump `VERSION` — meant `activate` never discarded anything either, and content-hashed names are never overwritten, so every deploy's chunks piled up beside the last. Each stored asset now carries an `x-openhabits-used` stamp, refreshed on a hit at most daily, and `revalidate()` follows the precache with a sweep that drops anything unused for 30 days. Entries from before the stamp age by their `Date` header. Whatever the cached shell documents name is exempt at any age — those are the files an offline relaunch needs first, when nothing can refill them — and reading them out of the HTML can only widen what survives, so a change in how Next spells asset URLs degrades to age alone rather than to deleting the live build. Versioning the cache per deploy was the alternative and is worse: the page that registers the new worker has already fetched its chunks through the old one, so dropping the old cache on `activate` drops the new build's files with it.
+
 It is registered only in production builds — a caching worker in development turns every HMR update into a debugging session about stale assets.
 
 `next.config.ts` gets the headers block from the guide's §8: `no-cache` on the service worker file, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`.

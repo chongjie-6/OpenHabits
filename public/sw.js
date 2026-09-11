@@ -24,6 +24,25 @@ const FLIGHT = `${VERSION}-flight`;
 const KEEP = new Set([SHELL, ASSETS, FLIGHT]);
 
 /**
+ * The asset cache is swept, not versioned. A deploy does not bump `VERSION`
+ * (see `revalidate()`), and content-hashed filenames mean nothing is ever
+ * overwritten — each deploy's chunks land beside the last one's. So every stored
+ * asset carries the time it was last served, and the sweep drops what nothing
+ * has asked for in `ASSET_TTL_MS`: an old build's files stop being requested
+ * once its HTML is replaced, and age out from there.
+ *
+ * Whatever the cached shell names is exempt at any age, because those are the
+ * files an offline relaunch asks for first, and offline is when nothing can
+ * refill them. Reading them out of the HTML only ever protects: if Next changes
+ * how it spells an asset URL the exemption shrinks and age alone decides.
+ */
+const ASSET_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+/** A hit rewrites its entry at most this often — a restamp copies the body. */
+const TOUCH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const USED_HEADER = "x-openhabits-used";
+const ASSET_URL = /\/_next\/static\/[^"'\\\s?#)]+/g;
+
+/**
  * Every route reachable from inside the app. `/reset-password` is deliberately
  * absent: it is an online-only flow — the link arrives by mail and the form
  * posts to the server — so precaching it would buy a shell with nothing behind
@@ -81,8 +100,61 @@ function revalidate() {
   if (revalidated) return;
   revalidated = true;
   // Conditional requests, not `reload` — the routes carry ETags and only the
-  // ones that actually changed cost a body.
-  precache("no-cache").catch(() => null);
+  // ones that actually changed cost a body. The sweep waits for it so the
+  // exemption is read from the current deploy's shell.
+  precache("no-cache")
+    .then(sweepAssets)
+    .catch(() => null);
+}
+
+async function sweepAssets() {
+  const [assets, exempt] = await Promise.all([caches.open(ASSETS), shellAssets()]);
+  const cutoff = Date.now() - ASSET_TTL_MS;
+
+  for (const request of await assets.keys()) {
+    // By pathname, so a `?dpl=` skew-protection suffix does not unprotect it.
+    if (exempt.has(new URL(request.url).pathname)) continue;
+    const response = await assets.match(request, { ignoreVary: true });
+    if (response && lastUsed(response) >= cutoff) continue;
+    await assets.delete(request, { ignoreVary: true });
+  }
+}
+
+async function shellAssets() {
+  const shell = await caches.open(SHELL);
+  const paths = new Set();
+  for (const request of await shell.keys()) {
+    const response = await shell.match(request);
+    if (!response) continue;
+    for (const [path] of (await response.text()).matchAll(ASSET_URL)) paths.add(path);
+  }
+  return paths;
+}
+
+/**
+ * Entries stored before stamping existed fall back to when the server sent
+ * them. Neither header reads as NaN, which the sweep treats as expired.
+ */
+function lastUsed(response) {
+  return (
+    Number(response.headers.get(USED_HEADER)) || Date.parse(response.headers.get("date") ?? "")
+  );
+}
+
+async function putAsset(request, response) {
+  const headers = new Headers(response.headers);
+  headers.set(USED_HEADER, String(Date.now()));
+  const body = await response.blob();
+  const cache = await caches.open(ASSETS);
+  await cache.put(
+    request,
+    new Response(body, { status: response.status, statusText: response.statusText, headers }),
+  );
+}
+
+async function touch(request, cached) {
+  if (Date.now() - lastUsed(cached) < TOUCH_INTERVAL_MS) return;
+  await putAsset(request, cached);
 }
 
 /**
@@ -188,13 +260,15 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       (async () => {
         const cached = await caches.match(request);
-        if (cached) return cached;
+        if (cached) {
+          event.waitUntil(touch(request, cached.clone()).catch(() => null));
+          return cached;
+        }
         const response = await fetch(request);
         // Served from cache forever once stored, so a 404 stored here would
         // be permanent for that hash.
         if (response.ok) {
-          const cache = await caches.open(ASSETS);
-          event.waitUntil(cache.put(request, response.clone()).catch(() => null));
+          event.waitUntil(putAsset(request, response.clone()).catch(() => null));
         }
         return response;
       })(),
@@ -207,11 +281,8 @@ self.addEventListener("fetch", (event) => {
     (async () => {
       const cached = await caches.match(request);
       const network = fetch(request)
-        .then(async (response) => {
-          if (response.ok) {
-            const cache = await caches.open(ASSETS);
-            cache.put(request, response.clone());
-          }
+        .then((response) => {
+          if (response.ok) putAsset(request, response.clone()).catch(() => null);
           return response;
         })
         .catch(() => cached);
