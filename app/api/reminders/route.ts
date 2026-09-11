@@ -33,6 +33,8 @@ export const dynamic = "force-dynamic";
 /** A push endpoint URL is long — FCM's run past 200 characters — but bounded. */
 const MAX_ENDPOINT = 1024;
 const MAX_KEY = 256;
+/** An endpoint, two keys and a zone name, with room to spare. */
+const MAX_BODY_BYTES = 8 * 1024;
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -125,8 +127,8 @@ export async function POST(request: Request): Promise<Response> {
     return tooMany("Too many reminder updates. Try again shortly.", metered.retryAfter);
   }
 
-  const body = await readJson(request);
-  if (body === undefined) return error(400, "Body is not valid JSON.");
+  const body = await readJson(request, MAX_BODY_BYTES);
+  if (body === undefined) return error(400, "Body is not valid JSON, or is too large.");
 
   const command = parse(body);
   if (!command) return error(400, "Malformed subscription.");

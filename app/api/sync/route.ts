@@ -64,9 +64,11 @@ export async function POST(request: Request): Promise<Response> {
     return error(429, "rate-limited", "Syncing too often; this device will try again shortly.");
   }
 
-  const body = await readJson(request);
+  // Bounded again while reading: the header check above trusts what was
+  // declared, and a chunked request declares nothing.
+  const body = await readJson(request, MAX_BODY_BYTES);
   if (body === undefined) {
-    return error(400, "malformed", "Body is not valid JSON.");
+    return error(400, "malformed", "Body is not valid JSON, or is too large.");
   }
 
   const push = parseSyncPush(body);
