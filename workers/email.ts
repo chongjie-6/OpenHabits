@@ -15,10 +15,13 @@ import "server-only";
 
 import { Receiver } from "@upstash/qstash";
 import { completeEmail, dequeueEmail } from "@/lib/server/email-queue";
-import { readJson } from "@/lib/server/json";
+import { readJson, readText } from "@/lib/server/json";
 import { sendEmail } from "@/lib/email";
 
 const NO_STORE = { "Cache-Control": "no-store" };
+
+/** The body is `{ "id": "<uuid>" }`; anything near this size is not ours. */
+const MAX_BODY_BYTES = 4 * 1024;
 
 /** A `randomUUID`, which is what `enqueueEmail` mints. Length-capped and
  * character-checked because it is concatenated into a Redis key. */
@@ -57,7 +60,10 @@ export async function handleEmailJob(request: Request): Promise<Response> {
   const signature = request.headers.get("upstash-signature");
   if (!signature) return json(401, { error: "Unauthorised." });
 
-  const raw = await request.text();
+  // Read before the signature can be checked, so bounded: until `verify`
+  // passes, whoever sent this is anyone.
+  const raw = await readText(request, MAX_BODY_BYTES);
+  if (raw === null) return json(413, { error: "Body too large." });
   try {
     // `url` is passed so the signature is bound to this endpoint: a message
     // signed for somewhere else is not one to act on here.
@@ -108,8 +114,14 @@ export async function handleEmailJob(request: Request): Promise<Response> {
   }
 
   // Only now. Until this line a retry is still possible, which is the whole
-  // reason `dequeueEmail` reads rather than claims.
-  await completeEmail(id);
+  // reason `dequeueEmail` reads rather than claims. Past it the mail has gone,
+  // so a failed delete is logged and still answered 200 — a 500 here would have
+  // QStash deliver the same mail again. The envelope's TTL tidies up after it.
+  try {
+    await completeEmail(id);
+  } catch (cause) {
+    console.error("[openhabits] mail envelope delete failed after send", cause);
+  }
 
   return json(200, { done: true, kind: job.kind });
 }
