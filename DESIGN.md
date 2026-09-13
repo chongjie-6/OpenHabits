@@ -80,13 +80,16 @@ Navigation is a fixed bottom tab bar (**Today · Week · Stats · Settings**) wi
 │  │  — SENECA          ♡  ⤴︎  │  │
 │  └───────────────────────────┘  │
 │                                 │
-│  TODAY            3 of 5 done   │
+│  TO DO (2)        3 of 5 done   │
 │  ┌───────────────────────────┐  │
+│  │ 💧  Water × 8    ○ 5/8 +  │  │  ← counted habit: + increments,
+│  │ ✍️  Journal        ○      │  │    to do until it reaches 8
+│  └───────────────────────────┘  │
+│  ▾ DONE (3)                     │  ← collapsible; a ticked row moves
+│  ┌───────────────────────────┐  │    once ticking pauses (§6.9)
 │  │ 🏃  Run            ● ✓    │  │  ← 56px row, whole row is the
 │  │ 📖  Read 20 pages  ● ✓    │  │    tap target
 │  │ 🧘  Meditate       ● ✓    │  │
-│  │ 💧  Water × 8    ○ 5/8 +  │  │  ← counted habit: + increments
-│  │ ✍️  Journal        ○      │  │
 │  └───────────────────────────┘  │
 │                                 │
 │  ▓▓▒▓▓░▓  7-day streak 🔥       │  ← mini strip, taps → /stats
@@ -518,6 +521,16 @@ Four decisions around it:
 
 No slide animation. §6.3 rules slides out for tab changes, and the reasoning holds here too — the content changes, the heading changes, and the gesture is its own feedback.
 
+### 6.9 To do above Done
+
+Today splits the day's scheduled habits into **To do**, at the top, and **Done** below it, so the rows still waiting for a tick are the ones nearest the thumb. Not scheduled stays last and collapsed, as before. A counted habit is to do until it reaches its target: Water at 5/8 has not been done.
+
+**Rows wait before they move.** `lib/today-split.ts` holds every row where it is on screen after a change, and releases the hold once ticking has paused for **700ms**. Moving a row the instant it is ticked fails twice: the pop that confirms the tick (§6.3) leaves with the row, and the row below slides up into the place the thumb is about to press. Any change renews the hold — a counted habit stepping from 5 to 6 included — so someone working down the list sees nothing move until they stop, and a mis-tap is undone in the place it happened. Another day, or the store finishing its load, is not a tick, and places rows at once. The move itself is not animated; §6.3 keeps motion for the tick. The state machine is pure and tested in `tests/today-split.test.ts`, because the timing is the whole feature.
+
+**Done is a collapsible `<details>`, open by default** — the same element Not scheduled has always used, which is why the split reaches all three skins without a new component: Classic and Grid get it as rows, Blocks as a second grid of tiles. Done rows are not dimmed. A done name is already struck through in `--muted`, and `--muted` passes AA with no headroom, so it cannot take an opacity as well.
+
+**Keyboard focus follows the habit.** Moving between sections remounts the button, and a removed element drops focus to `<body>`. `TodayList` puts focus back on the same habit in its new section, and only when the focused button is gone: a click on blank space also leaves focus on `<body>`, and must not be answered by jumping back to a row.
+
 ---
 
 ## 7. Architecture
@@ -818,6 +831,7 @@ lib/
     index.ts              the kind → template table every send path reads
     layout.ts             the shell the mails share
   use-swipe.ts            the swipe gesture, and the thresholds it turns on (§6.8)
+  today-split.ts          To do above Done, and the hold that keeps rows still (§6.9)
   use-today.ts            the clock as external state
   use-media-query.ts
   *.test.ts               tests over the pure logic

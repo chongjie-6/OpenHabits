@@ -42,6 +42,7 @@ function TickTarget({
       type="button"
       disabled={readOnly}
       onClick={() => toggleEntry(habit.id, day)}
+      data-habit-id={habit.id}
       aria-pressed={done}
       aria-label={
         counted

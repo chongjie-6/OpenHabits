@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AddHabit } from "@/components/AddHabit";
 import { HabitRow, HabitRowDense, HabitTile } from "@/components/HabitRow";
@@ -22,6 +22,7 @@ import {
 import { useSkin, type Skin } from "@/lib/skin";
 import { useOpenHabits } from "@/lib/store";
 import { computeStreaks } from "@/lib/streaks";
+import { useTodaySplit } from "@/lib/today-split";
 import { useSwipe } from "@/lib/use-swipe";
 import { useToday } from "@/lib/use-today";
 import type { DayKey } from "@/lib/types";
@@ -110,20 +111,24 @@ export function TodayList() {
     return habitsForDay(habits, entries, day, settings.weekStartsOn);
   }, [hydrated, day, habits, entries, settings.weekStartsOn]);
 
+  const scheduled = useMemo(() => states?.filter((s) => s.scheduled) ?? null, [states]);
+  const { todo, done: finished } = useTodaySplit(day, scheduled);
+  const sectionRef = useRef<HTMLElement>(null);
+  const onFocus = useFocusFollowsHabit(sectionRef);
+
   // Gate every data-dependent subtree on hydration: a checked box that renders
   // unchecked for 200ms reads as data loss. See DESIGN.md §7.1. It is also what
   // makes `useSkin` safe here — it reports `classic` until mount, and nothing it
   // decides is rendered before that.
-  if (!summary || !states || !day || !today) return <Skeleton />;
+  if (!summary || !states || !scheduled || !day || !today) return <Skeleton />;
 
   const { streaks, recent, strip, perHabit } = summary;
-  const scheduled = states.filter((s) => s.scheduled);
   const unscheduled = states.filter((s) => !s.scheduled);
   const done = scheduled.filter((s) => s.done).length;
   const future = day > today;
 
   return (
-    <section className="mt-6" {...swipe}>
+    <section className="mt-6" {...swipe} ref={sectionRef} onFocus={onFocus}>
       <Header skin={skin} day={day} today={today} done={done} total={scheduled.length} />
 
       <DayNav offset={offset} onOffset={setOffset} />
@@ -142,7 +147,8 @@ export function TodayList() {
         <EmptyState />
       ) : skin === "blocks" ? (
         <Tiles
-          scheduled={scheduled}
+          todo={todo}
+          finished={finished}
           unscheduled={unscheduled}
           day={day}
           readOnly={future}
@@ -151,7 +157,8 @@ export function TodayList() {
       ) : (
         <Rows
           skin={skin}
-          scheduled={scheduled}
+          todo={todo}
+          finished={finished}
           unscheduled={unscheduled}
           day={day}
           readOnly={future}
@@ -169,6 +176,32 @@ export function TodayList() {
       )}
     </section>
   );
+}
+
+/**
+ * Moving a row between To do and Done remounts its button, and a removed element
+ * drops keyboard focus to `<body>` (§6.9). This puts focus back on the same
+ * habit in its new section — but only when the focused button is gone, because
+ * a click on blank space also leaves focus on `<body>` and must not be answered
+ * by jumping back to a row.
+ */
+function useFocusFollowsHabit(container: React.RefObject<HTMLElement | null>) {
+  const last = useRef<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    const was = last.current;
+    if (!was || was.isConnected) return;
+    last.current = null;
+    if (document.activeElement !== document.body || !was.dataset.habitId) return;
+    container.current
+      ?.querySelector<HTMLElement>(`[data-habit-id="${CSS.escape(was.dataset.habitId)}"]`)
+      ?.focus({ preventScroll: true });
+  });
+
+  return (event: React.FocusEvent) => {
+    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-habit-id]");
+    if (target) last.current = target;
+  };
 }
 
 /**
@@ -358,14 +391,16 @@ function HeatStrip({ stats, rate }: { stats: DayStat[]; rate: number }) {
 
 function Rows({
   skin,
-  scheduled,
+  todo,
+  finished,
   unscheduled,
   day,
   readOnly,
   perHabit,
 }: {
   skin: Skin;
-  scheduled: HabitDayState[];
+  todo: HabitDayState[];
+  finished: HabitDayState[];
   unscheduled: HabitDayState[];
   day: DayKey;
   readOnly: boolean;
@@ -388,13 +423,29 @@ function Rows({
     return <HabitRow state={state} day={day} readOnly={readOnly} dimmed={dimmed} />;
   };
 
+  const item = (state: HabitDayState) => <li key={state.habit.id}>{render(state)}</li>;
+
   return (
     <>
-      <ul className="-mx-3 mt-2">
-        {scheduled.map((state) => (
-          <li key={state.habit.id}>{render(state)}</li>
-        ))}
-      </ul>
+      {todo.length + finished.length > 0 && (
+        <h2 className="mt-3 text-[11px] font-semibold uppercase tracking-[0.08em]">
+          To do ({todo.length})
+        </h2>
+      )}
+      {todo.length > 0 ? (
+        <ul className="-mx-3 mt-1">{todo.map(item)}</ul>
+      ) : (
+        finished.length > 0 && <AllDone />
+      )}
+
+      {finished.length > 0 && (
+        <details open className="-mx-3 mt-4">
+          <summary className="cursor-pointer px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+            Done ({finished.length})
+          </summary>
+          <ul className="mt-1">{finished.map(item)}</ul>
+        </details>
+      )}
 
       {unscheduled.length > 0 && (
         <details className="-mx-3 mt-4">
@@ -413,32 +464,52 @@ function Rows({
 }
 
 function Tiles({
-  scheduled,
+  todo,
+  finished,
   unscheduled,
   day,
   readOnly,
   perHabit,
 }: {
-  scheduled: HabitDayState[];
+  todo: HabitDayState[];
+  finished: HabitDayState[];
   unscheduled: HabitDayState[];
   day: DayKey;
   readOnly: boolean;
   perHabit: Map<string, PerHabit>;
 }) {
+  const tile = (state: HabitDayState) => (
+    <li key={state.habit.id} className="flex">
+      <HabitTile
+        state={state}
+        day={day}
+        streak={perHabit.get(state.habit.id)?.streak}
+        readOnly={readOnly}
+      />
+    </li>
+  );
+
   return (
     <>
-      <ul className="mt-4 grid grid-cols-2 gap-3">
-        {scheduled.map((state) => (
-          <li key={state.habit.id} className="flex">
-            <HabitTile
-              state={state}
-              day={day}
-              streak={perHabit.get(state.habit.id)?.streak}
-              readOnly={readOnly}
-            />
-          </li>
-        ))}
-      </ul>
+      {todo.length + finished.length > 0 && (
+        <h2 className="mt-4 text-[11px] font-bold uppercase tracking-[0.1em]">
+          To do ({todo.length})
+        </h2>
+      )}
+      {todo.length > 0 ? (
+        <ul className="mt-3 grid grid-cols-2 gap-3">{todo.map(tile)}</ul>
+      ) : (
+        finished.length > 0 && <AllDone />
+      )}
+
+      {finished.length > 0 && (
+        <details open className="mt-5">
+          <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+            Done ({finished.length})
+          </summary>
+          <ul className="mt-3 grid grid-cols-2 gap-3">{finished.map(tile)}</ul>
+        </details>
+      )}
 
       {unscheduled.length > 0 && (
         <details className="mt-4">
@@ -532,6 +603,14 @@ function StreakLink({
         )}
       </span>
     </Link>
+  );
+}
+
+function AllDone() {
+  return (
+    <p className="mt-2 surface-dashed px-4 py-4 text-center text-[13px] text-muted">
+      Everything&rsquo;s ticked.
+    </p>
   );
 }
 
