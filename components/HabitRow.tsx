@@ -19,23 +19,44 @@ import type { DayKey } from "@/lib/types";
  * `readOnly` is the one thing that disables it, and it is never about waiting:
  * a day that has not happened yet cannot be ticked (§6.8), the same rule the
  * week grid applies to its future columns.
+ *
+ * `onEdit` swaps what the press does rather than adding a second target beside
+ * it (§6.10): the row stays one button, and ticking and editing are never live
+ * at the same moment. It outranks `readOnly`, because a future day's habits are
+ * still the user's to change.
  */
 
 function TickTarget({
   state,
   day,
   readOnly = false,
+  onEdit,
   className,
   children,
 }: {
   state: HabitDayState;
   day: DayKey;
   readOnly?: boolean;
+  onEdit?: () => void;
   className: string;
   children: React.ReactNode;
 }) {
   const { habit, count, done } = state;
   const counted = habit.target > 1;
+
+  if (onEdit) {
+    return (
+      <button
+        type="button"
+        onClick={onEdit}
+        data-habit-id={habit.id}
+        aria-label={`Edit ${habit.name}`}
+        className={`${className} relative after:pointer-events-none after:absolute after:inset-1 after:rounded-[inherit] after:border after:border-dashed after:border-current after:opacity-30 after:content-['']`}
+      >
+        {children}
+      </button>
+    );
+  }
 
   return (
     <button
@@ -98,17 +119,52 @@ function Checkbox({
   );
 }
 
+/**
+ * Takes the checkbox's place in edit mode. The checkbox has to go rather than
+ * sit beside it: a row still showing its tick state reads as tickable.
+ */
+function EditMark({ color, size = 28 }: { color: string; size?: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex shrink-0 items-center justify-center rounded-md"
+      style={{
+        width: size,
+        height: size,
+        color,
+        background: `color-mix(in oklab, ${color} 14%, transparent)`,
+      }}
+    >
+      <svg
+        width={size * 0.54}
+        height={size * 0.54}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+    </span>
+  );
+}
+
 /** `classic` — emoji, name, checkbox, and a progress hairline when counted. */
 export function HabitRow({
   state,
   day,
   readOnly = false,
   dimmed = false,
+  onEdit,
 }: {
   state: HabitDayState;
   day: DayKey;
   readOnly?: boolean;
   dimmed?: boolean;
+  onEdit?: () => void;
 }) {
   const { habit, count, done } = state;
   const counted = habit.target > 1;
@@ -119,6 +175,7 @@ export function HabitRow({
       state={state}
       day={day}
       readOnly={readOnly}
+      onEdit={onEdit}
       className={`flex min-h-[56px] w-full items-center gap-3 rounded-control px-3 text-left transition-colors hover:bg-surface-2 ${
         dimmed ? "opacity-55" : ""
       }`}
@@ -154,7 +211,11 @@ export function HabitRow({
         </span>
       )}
 
-      <Checkbox count={count} done={done} accent={accent} />
+      {onEdit ? (
+        <EditMark color="var(--accent)" />
+      ) : (
+        <Checkbox count={count} done={done} accent={accent} />
+      )}
     </TickTarget>
   );
 }
@@ -173,6 +234,7 @@ export function HabitRowDense({
   streak,
   readOnly = false,
   dimmed = false,
+  onEdit,
 }: {
   state: HabitDayState;
   day: DayKey;
@@ -180,6 +242,7 @@ export function HabitRowDense({
   streak?: number;
   readOnly?: boolean;
   dimmed?: boolean;
+  onEdit?: () => void;
 }) {
   const { habit, count, done } = state;
   const counted = habit.target > 1;
@@ -190,6 +253,7 @@ export function HabitRowDense({
       state={state}
       day={day}
       readOnly={readOnly}
+      onEdit={onEdit}
       className={`flex min-h-[52px] w-full items-center gap-2.5 rounded-control px-3 text-left transition-colors hover:bg-surface-2 ${
         dimmed ? "opacity-55" : ""
       }`}
@@ -238,7 +302,11 @@ export function HabitRowDense({
         </span>
       )}
 
-      <Checkbox count={count} done={done} accent={accent} />
+      {onEdit ? (
+        <EditMark color="var(--accent)" />
+      ) : (
+        <Checkbox count={count} done={done} accent={accent} />
+      )}
     </TickTarget>
   );
 }
@@ -261,12 +329,14 @@ export function HabitTile({
   streak,
   readOnly = false,
   dimmed = false,
+  onEdit,
 }: {
   state: HabitDayState;
   day: DayKey;
   streak?: number;
   readOnly?: boolean;
   dimmed?: boolean;
+  onEdit?: () => void;
 }) {
   const { habit, count, done } = state;
   const counted = habit.target > 1;
@@ -277,6 +347,7 @@ export function HabitTile({
       state={state}
       day={day}
       readOnly={readOnly}
+      onEdit={onEdit}
       className={`surface-card flex h-full min-h-[128px] w-full flex-col justify-between gap-2 p-3 text-left transition-colors ${
         done ? "bg-accent-2 text-accent-2-fg" : "bg-surface text-foreground"
       } ${dimmed ? "opacity-55" : ""}`}
@@ -311,8 +382,13 @@ export function HabitTile({
               {streak !== undefined && streak > 0 ? `${streak} days` : "Not yet"}
             </span>
           )}
-          {!counted && (
-            <Checkbox count={count} done={done} accent={accent} size={28} />
+          {/* A done tile is filled with --accent-2, which the accent would
+              vanish into; the tile's own text colour is what was checked
+              against that fill. */}
+          {onEdit ? (
+            <EditMark color={done ? "currentColor" : "var(--accent)"} />
+          ) : (
+            !counted && <Checkbox count={count} done={done} accent={accent} size={28} />
           )}
         </span>
       </span>

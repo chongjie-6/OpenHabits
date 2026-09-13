@@ -3,6 +3,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AddHabit } from "@/components/AddHabit";
+import { HabitFormPanel } from "@/components/HabitFormPanel";
 import { HabitRow, HabitRowDense, HabitTile } from "@/components/HabitRow";
 import { levelColor } from "@/lib/colors";
 import {
@@ -20,9 +21,10 @@ import {
   type HabitDayState,
 } from "@/lib/history";
 import { useSkin, type Skin } from "@/lib/skin";
-import { useOpenHabits } from "@/lib/store";
+import { updateHabit, useOpenHabits } from "@/lib/store";
 import { computeStreaks } from "@/lib/streaks";
 import { useTodaySplit } from "@/lib/today-split";
+import { MOBILE, useMediaQuery } from "@/lib/use-media-query";
 import { useSwipe } from "@/lib/use-swipe";
 import { useToday } from "@/lib/use-today";
 import type { DayKey } from "@/lib/types";
@@ -49,14 +51,30 @@ const STRIP_WEEKS = 26;
 
 type PerHabit = { trail: DayStat[]; streak: number };
 
+/** Present only in edit mode (§6.10). */
+type Edit = {
+  open: (habitId: string) => void;
+  /** The habit whose inline form stands in for its row, on a pointer device. */
+  inlineId: string | null;
+  form: React.ReactNode;
+};
+
 export function TodayList() {
   const { hydrated, habits, entries, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
   const skin = useSkin();
+  const sheet = useMediaQuery(MOBILE);
   const [offset, setOffset] = useState(0);
-  const swipe = useSwipe((direction) =>
-    setOffset((o) => o + (direction === "left" ? 1 : -1)),
-  );
+  const [editMode, setEditMode] = useState(false);
+  // Kept after the editor closes, so the sheet animating out still has its habit.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  // See AddHabit: bumped on open only.
+  const [instance, setInstance] = useState(0);
+  const swipe = useSwipe((direction) => {
+    setOffset((o) => o + (direction === "left" ? 1 : -1));
+    setEditorOpen(false);
+  });
 
   const day = today === null ? null : addDays(today, offset);
 
@@ -127,16 +145,62 @@ export function TodayList() {
   const done = scheduled.filter((s) => s.done).length;
   const future = day > today;
 
+  const editingHabit = habits.find((h) => h.id === editingId);
+  const form = editingHabit && (
+    <HabitFormPanel
+      sheet={sheet}
+      open={editorOpen}
+      onClose={() => setEditorOpen(false)}
+      title="Edit habit"
+      instance={instance}
+      initial={editingHabit}
+      submitLabel="Save changes"
+      onSubmit={(values) => {
+        updateHabit(editingHabit.id, values);
+        setEditorOpen(false);
+      }}
+    />
+  );
+  const edit: Edit | null =
+    editMode && habits.length > 0
+      ? {
+          open: (habitId) => {
+            setEditingId(habitId);
+            setInstance((n) => n + 1);
+            setEditorOpen(true);
+          },
+          inlineId: !sheet && editorOpen ? editingId : null,
+          form,
+        }
+      : null;
+
   return (
     <section className="mt-6" {...swipe} ref={sectionRef} onFocus={onFocus}>
       <Header skin={skin} day={day} today={today} done={done} total={scheduled.length} />
 
-      <DayNav offset={offset} onOffset={setOffset} />
+      <DayNav
+        offset={offset}
+        onOffset={(next) => {
+          setOffset(next);
+          setEditorOpen(false);
+        }}
+        editMode={habits.length > 0 ? editMode : null}
+        onEditMode={(next) => {
+          setEditMode(next);
+          setEditorOpen(false);
+        }}
+      />
 
-      {future && (
+      {edit ? (
         <p className="mt-1 text-[12px] text-muted">
-          Nothing to tick yet — this day hasn&rsquo;t happened.
+          Tap a habit to edit it. Ticking is off until you press Done.
         </p>
+      ) : (
+        future && (
+          <p className="mt-1 text-[12px] text-muted">
+            Nothing to tick yet — this day hasn&rsquo;t happened.
+          </p>
+        )
       )}
 
       {skin === "grid" && habits.length > 0 && (
@@ -153,6 +217,7 @@ export function TodayList() {
           day={day}
           readOnly={future}
           perHabit={perHabit}
+          edit={edit}
         />
       ) : (
         <Rows
@@ -163,8 +228,11 @@ export function TodayList() {
           day={day}
           readOnly={future}
           perHabit={perHabit}
+          edit={edit}
         />
       )}
+
+      {sheet && form}
 
       {/* A habit created today is not active on the day being browsed, so it
           would be added into an empty screen. The button comes back with the
@@ -184,6 +252,9 @@ export function TodayList() {
  * habit in its new section — but only when the focused button is gone, because
  * a click on blank space also leaves focus on `<body>` and must not be answered
  * by jumping back to a row.
+ *
+ * The inline editor's wrapper carries the habit id for the same reason: closing
+ * it removes the focused field, and focus belongs on the row that comes back.
  */
 function useFocusFollowsHabit(container: React.RefObject<HTMLElement | null>) {
   const last = useRef<HTMLElement | null>(null);
@@ -212,12 +283,31 @@ function useFocusFollowsHabit(container: React.RefObject<HTMLElement | null>) {
 function DayNav({
   offset,
   onOffset,
+  editMode,
+  onEditMode,
 }: {
   offset: number;
   onOffset: (next: number) => void;
+  /** Null hides the toggle: with no habits there is nothing to edit. */
+  editMode: boolean | null;
+  onEditMode: (next: boolean) => void;
 }) {
   return (
     <div className="mt-2 flex items-center justify-end gap-0.5">
+      {/* Kept apart from the arrows, which get pressed in quick succession. */}
+      {editMode !== null && (
+        <button
+          type="button"
+          onClick={() => onEditMode(!editMode)}
+          className={`mr-auto h-9 rounded-control border px-3 text-[13px] font-medium transition-colors ${
+            editMode
+              ? "border-accent bg-accent text-accent-fg"
+              : "border-border text-foreground hover:bg-surface-2"
+          }`}
+        >
+          {editMode ? "Done" : "Edit"}
+        </button>
+      )}
       <NavButton label="Previous day" onClick={() => onOffset(offset - 1)}>
         ‹
       </NavButton>
@@ -397,6 +487,7 @@ function Rows({
   day,
   readOnly,
   perHabit,
+  edit,
 }: {
   skin: Skin;
   todo: HabitDayState[];
@@ -405,10 +496,20 @@ function Rows({
   day: DayKey;
   readOnly: boolean;
   perHabit: Map<string, PerHabit>;
+  edit: Edit | null;
 }) {
   const render = (state: HabitDayState, dimmed?: boolean) => {
+    const id = state.habit.id;
+    if (edit?.inlineId === id) {
+      return (
+        <div data-habit-id={id} className="px-3 py-2">
+          {edit.form}
+        </div>
+      );
+    }
+    const onEdit = edit ? () => edit.open(id) : undefined;
     if (skin === "grid") {
-      const own = perHabit.get(state.habit.id);
+      const own = perHabit.get(id);
       return (
         <HabitRowDense
           state={state}
@@ -417,10 +518,19 @@ function Rows({
           streak={own?.streak}
           readOnly={readOnly}
           dimmed={dimmed}
+          onEdit={onEdit}
         />
       );
     }
-    return <HabitRow state={state} day={day} readOnly={readOnly} dimmed={dimmed} />;
+    return (
+      <HabitRow
+        state={state}
+        day={day}
+        readOnly={readOnly}
+        dimmed={dimmed}
+        onEdit={onEdit}
+      />
+    );
   };
 
   const item = (state: HabitDayState) => <li key={state.habit.id}>{render(state)}</li>;
@@ -470,6 +580,7 @@ function Tiles({
   day,
   readOnly,
   perHabit,
+  edit,
 }: {
   todo: HabitDayState[];
   finished: HabitDayState[];
@@ -477,17 +588,31 @@ function Tiles({
   day: DayKey;
   readOnly: boolean;
   perHabit: Map<string, PerHabit>;
+  edit: Edit | null;
 }) {
-  const tile = (state: HabitDayState) => (
-    <li key={state.habit.id} className="flex">
-      <HabitTile
-        state={state}
-        day={day}
-        streak={perHabit.get(state.habit.id)?.streak}
-        readOnly={readOnly}
-      />
-    </li>
-  );
+  const tile = (state: HabitDayState, dimmed?: boolean) => {
+    const id = state.habit.id;
+    // A half-width cell is too narrow for the form, so it takes the whole row.
+    if (edit?.inlineId === id) {
+      return (
+        <li key={id} className="col-span-2">
+          <div data-habit-id={id}>{edit.form}</div>
+        </li>
+      );
+    }
+    return (
+      <li key={id} className="flex">
+        <HabitTile
+          state={state}
+          day={day}
+          streak={perHabit.get(id)?.streak}
+          readOnly={readOnly}
+          dimmed={dimmed}
+          onEdit={edit ? () => edit.open(id) : undefined}
+        />
+      </li>
+    );
+  };
 
   return (
     <>
@@ -497,7 +622,7 @@ function Tiles({
         </h2>
       )}
       {todo.length > 0 ? (
-        <ul className="mt-3 grid grid-cols-2 gap-3">{todo.map(tile)}</ul>
+        <ul className="mt-3 grid grid-cols-2 gap-3">{todo.map((state) => tile(state))}</ul>
       ) : (
         finished.length > 0 && <AllDone />
       )}
@@ -507,7 +632,9 @@ function Tiles({
           <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
             Done ({finished.length})
           </summary>
-          <ul className="mt-3 grid grid-cols-2 gap-3">{finished.map(tile)}</ul>
+          <ul className="mt-3 grid grid-cols-2 gap-3">
+            {finished.map((state) => tile(state))}
+          </ul>
         </details>
       )}
 
@@ -517,17 +644,7 @@ function Tiles({
             Not scheduled ({unscheduled.length})
           </summary>
           <ul className="mt-3 grid grid-cols-2 gap-3">
-            {unscheduled.map((state) => (
-              <li key={state.habit.id} className="flex">
-                <HabitTile
-                  state={state}
-                  day={day}
-                  streak={perHabit.get(state.habit.id)?.streak}
-                  readOnly={readOnly}
-                  dimmed
-                />
-              </li>
-            ))}
+            {unscheduled.map((state) => tile(state, true))}
           </ul>
         </details>
       )}

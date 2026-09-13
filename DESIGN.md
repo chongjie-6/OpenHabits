@@ -50,7 +50,7 @@ Everything else in the app is in service of that loop. A screen that doesn't fee
 
 | Route | Name | Purpose | Built |
 |---|---|---|---|
-| `/` | **Today** | Quote card + a day's scheduled habits as tappable rows, swipeable between days (§6.8) | ✅ |
+| `/` | **Today** | Quote card + a day's scheduled habits as tappable rows, swipeable between days (§6.8), with an edit mode (§6.10) | ✅ |
 | `/week` | **Week** | 7-day × N-habit grid; backfill and correct past days | ✅ |
 | `/stats` | **Stats** | The full contribution heatmap, streaks, completion rates | ✅ |
 | `/settings` | **Settings** | Theme, week start, habits, export/import, danger zone | ✅ |
@@ -530,6 +530,20 @@ Today splits the day's scheduled habits into **To do**, at the top, and **Done**
 **Done is a collapsible `<details>`, open by default** — the same element Not scheduled has always used, which is why the split reaches all three skins without a new component: Classic and Grid get it as rows, Blocks as a second grid of tiles. Done rows are not dimmed. A done name is already struck through in `--muted`, and `--muted` passes AA with no headroom, so it cannot take an opacity as well.
 
 **Keyboard focus follows the habit.** Moving between sections remounts the button, and a removed element drops focus to `<body>`. `TodayList` puts focus back on the same habit in its new section, and only when the focused button is gone: a click on blank space also leaves focus on `<body>`, and must not be answered by jumping back to a row.
+
+### 6.10 Editing from Today is a mode
+
+Today can edit a habit without leaving the list, and the whole design is about not costing anyone a tick. An **Edit** button at the start of the day nav switches the list into edit mode: every checkbox becomes a pencil, every row gets a dashed edge, the line under the nav says ticking is off, and a press on a row opens the habit form (§6.7) — the sheet on touch, the inline card in the row's place on a pointer. **Done** switches back, and closes a form still open.
+
+**A mode, because the row is already one button.** §6.5 makes the whole row the tick target, and a button cannot hold a second one. Three alternatives were prototyped and rejected:
+
+- **Long-press for a menu.** Nothing opens by accident, but nothing tells anyone it exists either — the same objection §6.8 raised against a swipe with no arrows. It remains a candidate *shortcut* on top of the mode, never a replacement for it.
+- **A `⋯` button on every row.** Visible, but it takes 45px from every row's tick target, crowds Grid's trail and Blocks' corner, and a stray tap still lands somewhere.
+- **Swipe a row to reveal Edit.** A horizontal swipe on Today already changes the day.
+
+**`onEdit` replaces the tick rather than sitting beside it.** `TickTarget` renders a different button when it is given one: no `aria-pressed`, labelled "Edit …", never calling `toggleEntry`. So ticking and editing are never live at the same moment, which is the property the mode exists for, and it holds in all three skins without any of them changing layout. It outranks `readOnly`: a future day cannot be ticked, but its habits can still be edited.
+
+The editor closes on any change of day rather than following the habit, because on the next day the habit may not be on the list to put a form in. Its habit id outlives the close, so the sheet sliding away keeps its contents. The inline form's wrapper carries `data-habit-id`, which is how §6.9's focus rule returns focus to the row once the form is gone.
 
 ---
 
