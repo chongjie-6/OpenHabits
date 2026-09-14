@@ -25,9 +25,6 @@ export type { SyncUser };
  * anywhere with a Request in hand.
  */
 export async function resolveUser(request: Request): Promise<SyncUser | null> {
-  const override = devUser();
-  if (override) return override;
-
   try {
     const session = await getAuth().api.getSession({ headers: request.headers });
     if (!session?.user?.email) return null;
@@ -39,20 +36,4 @@ export async function resolveUser(request: Request): Promise<SyncUser | null> {
     console.error("openhabits: session lookup failed", cause);
     return null;
   }
-}
-
-/**
- * A fixed single-user identity for local development. A bypass, not a stand-in:
- * set it and every request is that account, whoever is signed in.
- *
- * Guarded on `NODE_ENV` as well, because the failure to prevent is the variable
- * surviving into production and turning every visitor into the same account.
- */
-function devUser(): SyncUser | null {
-  if (process.env.NODE_ENV === "production") return null;
-
-  const id = process.env.OPENHABITS_DEV_USER_ID;
-  if (!id) return null;
-
-  return { id, email: process.env.OPENHABITS_DEV_USER_EMAIL ?? `${id}@openhabits.local` };
 }

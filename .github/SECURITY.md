@@ -43,8 +43,8 @@ The parts of this app worth looking at hardest:
   `asUser` is the only way in. A query that reads rows outside its scope, or a
   path that reaches Postgres without a scope, is a real finding.
 - **`lib/server/auth.ts:resolveUser`.** The identity seam. It fails closed:
-  anything but a valid session is 401. The `OPENHABITS_DEV_USER_ID` bypass is
-  ignored when `NODE_ENV=production` — a way around that is a finding.
+  anything but a valid session is 401, and there is no bypass — a way around
+  that is a finding.
 - **`lib/server/base-url.ts`.** The auth origin is configured, never inferred,
   because `/api/auth/send-verification-email` accepts any address with no
   session. Anything that lets a request's `Host` header decide where a

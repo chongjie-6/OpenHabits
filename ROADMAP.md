@@ -61,7 +61,7 @@ At 168. Purely additive, and slow on purpose — §5.2's verification bar matter
 
 ### Pin the deployment specifics
 
-- **The domain.** `SITE_URL` and `BETTER_AUTH_ALLOWED_HOSTS` both want it.
+- **The domain.** `SITE_URL` and `BETTER_AUTH_URL` both want it.
 - **The region.** `vercel.json` pins functions to `iad1`, which is a *guess* until the Neon database exists. Every sync is several round trips inside one advisory-locked transaction, so a mismatch is paid several times per request.
 - **The database role.** `DATABASE_URL` must not name a superuser, or row-level security (§13.15) is bypassed silently. Neon's default role is fine; check the warning `npm run db:migrate` prints.
 

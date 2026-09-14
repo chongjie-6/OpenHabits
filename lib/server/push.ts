@@ -32,9 +32,7 @@ export type PushResult = "sent" | "gone" | "failed";
  * about a misbehaving sender. Required by the VAPID spec, so a deployment with
  * keys but no subject is not configured for push.
  *
- * `BETTER_AUTH_URL` is accepted as a fallback only when it is a plain https
- * origin: `BETTER_AUTH_ALLOWED_HOSTS` deployments answer on several, and there is
- * no reason to prefer one of them as a contact address.
+ * `BETTER_AUTH_URL` is accepted as a fallback only when it is an https origin.
  */
 function subject(): string | null {
   const explicit = process.env.VAPID_SUBJECT?.trim();

@@ -1055,7 +1055,7 @@ The push watermark is the newest stamp **actually sent**, never `Date.now()` —
 
 Sync needs one thing from auth: a stable account id to scope rows by. Everything else about signing in is separate work with its own decisions, and the sync layer was built without waiting for it.
 
-`lib/server/auth.ts` defines that contract and nothing more. **It fails closed:** anything other than a valid session returns null and the endpoint answers 401 — no cookie, an expired one, a database that cannot be reached. A permissive default would pool every visitor's habits into one row set, and the first symptom would be a stranger's data on someone's phone. A `OPENHABITS_DEV_USER_ID` override exists for local development and is ignored when `NODE_ENV=production` — two conditions, because the failure worth preventing is that variable surviving into a real deployment.
+`lib/server/auth.ts` defines that contract and nothing more. **It fails closed:** anything other than a valid session returns null and the endpoint answers 401 — no cookie, an expired one, a database that cannot be reached. A permissive default would pool every visitor's habits into one row set, and the first symptom would be a stranger's data on someone's phone.
 
 *This section originally ended here, recording that no provider was wired in and that sync therefore ran for nobody. It now does.* **Better Auth** fills the seam, configured in `lib/server/better-auth.ts` and reached only through `resolveUser`. Email and password, self-hosted on the same Postgres the habits live in: no third-party dependency for an app whose whole argument is that your data is yours, and no outbound mail required to create the first account. Swapping providers still means rewriting one function.
 
@@ -1307,15 +1307,10 @@ anywhere Postgres does. A property that holds only on some hosts is not one to
 rest an account takeover on.
 
 **`lib/server/base-url.ts` decides, and fails closed.** `BETTER_AUTH_URL` is
-pinned when set. `BETTER_AUTH_ALLOWED_HOSTS` takes precedence when a deployment
-answers on several hosts — preview URLs beside a custom domain — because there
-is no single right answer to pin there and the wrong one mails half the
-visitors a link into an origin they are not using; Better Auth resolves per
-request against the list and refuses everything outside it, which is the
-property that matters, and the protocol is forced to `https` because a proxy
-terminating TLS leaves the app seeing plain http. With neither set, production
-throws and development infers, where the only `Host` on offer is the developer's
-own.
+pinned when set. Unset, production throws and development infers, where the
+only `Host` on offer is the developer's own. (A multi-host allow-list,
+`BETTER_AUTH_ALLOWED_HOSTS`, once took precedence for preview deployments; it
+was removed, so a preview that needs accounts pins its own `BETTER_AUTH_URL`.)
 
 **It does not cost §13.1.** The check lives inside `build()`, which is lazy and
 reached only through `getAuth()` — and every caller of that is already behind

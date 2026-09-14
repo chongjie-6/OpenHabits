@@ -16,40 +16,20 @@ import "server-only";
  * deployment has to say where it lives.
  */
 
-export type BaseURL =
-  | string
-  | { allowedHosts: string[]; fallback?: string; protocol?: "http" | "https" | "auto" }
-  | undefined;
-
 /**
  * `env` is a parameter rather than a read of `process.env`, so the production
  * branch can be tested without setting `NODE_ENV` for the whole run.
  */
-export function resolveBaseURL(env: NodeJS.ProcessEnv = process.env): BaseURL {
+export function resolveBaseURL(env: NodeJS.ProcessEnv = process.env): string | undefined {
   const url = env.BETTER_AUTH_URL?.trim() || undefined;
-  const allowedHosts = (env.BETTER_AUTH_ALLOWED_HOSTS ?? "")
-    .split(",")
-    .map((host) => host.trim())
-    .filter(Boolean);
-
-  /**
-   * Checked first, because a deployment serving several hosts — preview URLs
-   * beside a custom domain — has no single right answer for `BETTER_AUTH_URL`,
-   * and pinning one of them mails the other's visitors a link into the wrong
-   * origin. Better Auth resolves per request against this list and refuses every
-   * host outside it, which is the property that matters. `https` rather than
-   * `auto`: a proxy terminating TLS leaves the app seeing plain http, and a
-   * verification link is not a thing to downgrade.
-   */
-  if (allowedHosts.length > 0) return { allowedHosts, fallback: url, protocol: "https" };
   if (url) return url;
 
   if (env.NODE_ENV === "production") {
     throw new Error(
       "BETTER_AUTH_URL is not set. Accounts have to know their own public URL: " +
-        "with neither it nor BETTER_AUTH_ALLOWED_HOSTS, Better Auth takes the origin " +
-        "from the request's Host header, and mails verification links to wherever that " +
-        "points. See .env.example. Habits, sync and the rest of the app are unaffected.",
+        "without it, Better Auth takes the origin from the request's Host header, " +
+        "and mails verification links to wherever that points. See .env.example. " +
+        "Habits, sync and the rest of the app are unaffected.",
     );
   }
 
@@ -87,21 +67,6 @@ export function mailableOrigin(
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") return false;
 
-  const allowedHosts = (env.BETTER_AUTH_ALLOWED_HOSTS ?? "")
-    .split(",")
-    .map((host) => host.trim())
-    .filter(Boolean);
-
-  // Mirrors `resolveBaseURL`'s precedence, including its forced `https` — a
-  // link this app would only ever have built over TLS is not one to accept
-  // back over plain http.
-  if (allowedHosts.length > 0) {
-    return (
-      url.protocol === "https:" &&
-      allowedHosts.some((host) => hostMatches(url.hostname, host))
-    );
-  }
-
   const configured = env.BETTER_AUTH_URL?.trim();
   if (configured) {
     try {
@@ -111,29 +76,12 @@ export function mailableOrigin(
     }
   }
 
-  // Neither set: production already threw on the way in, so this is the
-  // development branch, where the only origin on offer is the developer's own.
+  // Unset: production already threw on the way in, so this is the development
+  // branch, where the only origin on offer is the developer's own.
   if (env.NODE_ENV === "production") return false;
   return (
     url.hostname === "localhost" ||
     url.hostname === "127.0.0.1" ||
     url.hostname === "[::1]"
   );
-}
-
-/**
- * A single leading `*.` wildcard, which is the form `.env.example` documents
- * (`*.vercel.app`). Matched against the label boundary rather than as a
- * substring, so `*.vercel.app` does not admit `evilvercel.app`, and it does not
- * match the bare apex either — `*.example.com` is not `example.com`, which is
- * how the allow-list is read elsewhere.
- */
-function hostMatches(hostname: string, pattern: string): boolean {
-  const host = hostname.toLowerCase();
-  const allowed = pattern.toLowerCase();
-  if (allowed.startsWith("*.")) {
-    const suffix = allowed.slice(1); // keeps the dot: ".vercel.app"
-    return host.endsWith(suffix) && host.length > suffix.length;
-  }
-  return host === allowed;
 }

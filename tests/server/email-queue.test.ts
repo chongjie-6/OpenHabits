@@ -156,36 +156,7 @@ describe("mailableOrigin", () => {
     expect(mailableOrigin("http://openhabits.app/x", env)).toBe(false);
   });
 
-  it("accepts any host on the allow-list, and refuses the rest", () => {
-    const env = {
-      NODE_ENV: "production",
-      BETTER_AUTH_ALLOWED_HOSTS: "openhabits.app, *.vercel.app",
-    } as NodeJS.ProcessEnv;
-    expect(mailableOrigin("https://openhabits.app/x", env)).toBe(true);
-    expect(mailableOrigin("https://openhabits.vercel.app/x", env)).toBe(true);
-    expect(mailableOrigin("https://attacker.example/x", env)).toBe(false);
-  });
-
-  /** A wildcard is matched at the label boundary, not as a suffix of the string. */
-  it("does not let a wildcard admit a lookalike host or the bare apex", () => {
-    const env = {
-      NODE_ENV: "production",
-      BETTER_AUTH_ALLOWED_HOSTS: "*.vercel.app",
-    } as NodeJS.ProcessEnv;
-    expect(mailableOrigin("https://evilvercel.app/x", env)).toBe(false);
-    expect(mailableOrigin("https://vercel.app/x", env)).toBe(false);
-  });
-
-  /** `resolveBaseURL` forces https on the allow-list path; so does this. */
-  it("refuses plain http against an allow-list", () => {
-    const env = {
-      NODE_ENV: "production",
-      BETTER_AUTH_ALLOWED_HOSTS: "openhabits.app",
-    } as NodeJS.ProcessEnv;
-    expect(mailableOrigin("http://openhabits.app/x", env)).toBe(false);
-  });
-
-  it("allows only localhost when neither is set, and only outside production", () => {
+  it("allows only localhost when it is unset, and only outside production", () => {
     const dev = { NODE_ENV: "development" } as NodeJS.ProcessEnv;
     expect(mailableOrigin("http://localhost:3000/verify-email", dev)).toBe(
       true,

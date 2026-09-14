@@ -16,7 +16,6 @@ missing.
 DATABASE_URL=postgres://…   # turns on sync and accounts; unset → 503, app unaffected
 BETTER_AUTH_SECRET=         # signs session cookies; required in production
 BETTER_AUTH_URL=            # the app's public origin; required in production
-BETTER_AUTH_ALLOWED_HOSTS=  # instead of the above, for a multi-host deployment
 SMTP_USER=                  # a Gmail app password, not the account password
 SMTP_PASSWORD=
 MAIL_FROM=                  # From header; defaults to "OpenHabits <SMTP_USER>"
@@ -48,7 +47,7 @@ means reading the request's `Host` header, and that origin is what verification
 links are built from — while `/api/auth/send-verification-email` takes any
 address and no session. A forged `Host` would have this app mail a genuine link
 into an attacker's server. Development still infers; production fails to start
-accounts until `BETTER_AUTH_URL` (or `BETTER_AUTH_ALLOWED_HOSTS`) is set.
+accounts until `BETTER_AUTH_URL` is set.
 
 **Email verification follows the mailer, not a flag.** With SMTP credentials
 set, sign-up creates no session — the link in the mail does, an unverified
@@ -85,15 +84,6 @@ allowed rather than refused, because a store outage that 429s the site would be
 a denial of service handed over for free. Refusals are visible only in the
 Upstash dashboard, which analytics are enabled for.
 
-### Local development against a real database, without signing in
-
-```bash
-OPENHABITS_DEV_USER_ID=dev                  # every request becomes this account
-OPENHABITS_DEV_USER_EMAIL=you@example.com   # optional; defaults to <id>@openhabits.local
-```
-
-This is a bypass, not a stand-in, and is ignored when `NODE_ENV=production`.
-
 ---
 
 ## Vercel
@@ -108,7 +98,7 @@ Set these on the project, for Production **and** Preview:
 ```bash
 DATABASE_URL=                # Neon's *pooled* connection string, ?sslmode=require
 BETTER_AUTH_SECRET=          # a different value per environment
-BETTER_AUTH_ALLOWED_HOSTS=openhabits.example,*.vercel.app
+BETTER_AUTH_URL=https://openhabits.example   # per environment
 SITE_URL=https://openhabits.example   # link previews only; Production, not Preview
 SMTP_USER=
 SMTP_PASSWORD=
@@ -127,9 +117,10 @@ daily below Pro. So `workers/reminders.ts` holds the schedule and calls the endp
 deployment has to be reachable without Vercel Authentication, which answers a
 sweep with an SSO redirect rather than a 200.
 
-**`BETTER_AUTH_ALLOWED_HOSTS`, not `BETTER_AUTH_URL`.** Every preview deployment
-answers on its own `*.vercel.app` host, and one pinned origin would mail a
-preview's visitors a verification link into production.
+**`BETTER_AUTH_URL` is one origin.** Every preview deployment answers on its
+own `*.vercel.app` host, so a Preview value pointing at production mails a
+preview's visitors a verification link into production. Give Preview its own
+value, or leave accounts off there.
 
 **`regions` in `vercel.json` must match the Neon region.** It's pinned to `iad1`
 — every sync request is several round trips to Postgres inside one
