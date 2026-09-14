@@ -203,10 +203,59 @@ prerendered (`lib/site-url.ts`), so after setting `BETTER_AUTH_URL` or `SITE_URL
 rebuild with `docker compose up -d --build`, not just a restart.
 
 **Behind a domain, terminate TLS in front of it.** Set
-`BETTER_AUTH_URL=https://habits.example` and point a reverse proxy at port 3000.
+`BETTER_AUTH_URL=https://habits.example` in `.env` and point a reverse proxy at port 3000.
 A secure context is not optional here: the service worker, install and push all
 need one, and `localhost` counts while a LAN address like `http://192.168.1.20`
 does not — so the app works there, but offline and install silently don't.
+
+#### Example: Caddy (automatic HTTPS)
+
+Caddy terminates TLS and provisions Let's Encrypt certificates automatically:
+
+```caddy
+# Caddyfile
+habits.example.com {
+    reverse_proxy localhost:3000
+}
+```
+
+If Caddy runs in a sibling container sharing a Docker network with OpenHabits:
+
+```caddy
+# Caddyfile
+habits.example.com {
+    reverse_proxy app:3000
+}
+```
+
+#### Example: Nginx
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name habits.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/habits.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/habits.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+#### Applying domain updates
+
+Because metadata and origins are baked into the Next.js production build:
+1. Update `BETTER_AUTH_URL=https://habits.example.com` in `.env`.
+2. Rebuild and restart the containers with `docker compose up -d --build`.
 
 **Reminders are a profile.** With the VAPID pair and `CRON_SECRET` set,
 `docker compose --profile reminders up -d` adds a container that calls the sweep
