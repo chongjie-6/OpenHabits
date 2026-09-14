@@ -151,14 +151,29 @@ Appearance is per device, so your phone can be dark `blocks` while your laptop s
 
 The fastest way is **[openhabits.vercel.app](https://openhabits.vercel.app/)** — no sign-up, and your browser's "Install app" puts it on your home screen.
 
-To run your own:
+### Host your own
+
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fchongjie-6%2FOpenHabits&project-name=openhabits&repository-name=openhabits"><img alt="Deploy with Vercel" src="https://vercel.com/button"></a>
+
+**No environment variables are required**: with none set the app is fully functional and sync is simply off.
+
+Or run all of it, accounts and sync included, on your own machine with Docker:
+
+```bash
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" > .env
+docker compose up -d          # http://localhost:3000
+```
+
+That starts the app, its own Postgres and the migrations. Mail, reminders, a real domain and backups are in **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)**.
+
+### Develop
 
 ```bash
 npm install
 npm run dev          # http://localhost:3000
 ```
 
-Needs Node 24 (`.nvmrc`). **No environment variables are required**: with none set the app is fully functional and sync is simply off. To turn on accounts, sync or reminders, see **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)**.
+Needs Node 24 (`.nvmrc`).
 
 ---
 

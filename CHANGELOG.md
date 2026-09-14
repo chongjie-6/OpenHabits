@@ -6,6 +6,13 @@ All notable changes to OpenHabits are listed here. The format follows
 
 ## [Unreleased]
 
+### Self-hosting
+
+- `docker compose up` runs the app with its own Postgres and migrations, as an
+  ordinary database role so row-level security holds. Reminders are an opt-in
+  profile.
+- A Deploy to Vercel button in the README.
+
 ## [1.0.0] — 2026-09-14
 
 The first release. Everything below works with no account and no network.

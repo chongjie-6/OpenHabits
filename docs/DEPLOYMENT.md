@@ -162,6 +162,67 @@ vercel deploy --prebuilt --prod
 It needs three repository secrets — `VERCEL_TOKEN`, `VERCEL_ORG_ID`,
 `VERCEL_PROJECT_ID`. Preview branches still deploy from Git, ungated.
 
+**A copy made with the README's Deploy button inherits that switch.** The
+button clones the repository into your account and deploys it with nothing set,
+but your copy has no CI secrets, so nothing replaces the trigger `vercel.json`
+turned off. If the first deployment does not start, or a later push to `main`
+does not deploy, delete the `git` block from `vercel.json` in your copy — or add
+the three secrets above and let CI deploy it.
+
+---
+
+## Docker
+
+`docker-compose.yml` runs the app, a Postgres of its own and a one-shot
+migration, with accounts and sync switched on. The only thing it insists on is
+the session secret:
+
+```bash
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" > .env
+docker compose up -d          # http://localhost:3000
+```
+
+Every other variable from the [configuration](#configuration) above is passed
+through from `.env` when set, and left off when not.
+
+**The app connects as an ordinary role, not the image's superuser.** The
+`postgres` image starts with a superuser, and a superuser bypasses row-level
+security with no error to notice (§13.15). `docker/postgres-init.sh` creates an
+`openhabits` role that owns the database, and both the migration and the app use
+it. The script runs only on an empty volume: changing `OPENHABITS_DB_PASSWORD`
+afterwards means an `ALTER ROLE` by hand.
+
+**Migrations run on every `up`, and the app waits for them.** `migrate` is a
+container that runs `npm run db:migrate` and exits; the app starts only if it
+exits 0, so a failed migration leaves the site down rather than serving new code
+against the old schema. Unlike Vercel above, nothing else shares this database
+— there is no preview deployment for a migration to get ahead of.
+
+**The public origin is baked in at build time.** Link-preview metadata is
+prerendered (`lib/site-url.ts`), so after setting `BETTER_AUTH_URL` or `SITE_URL`
+rebuild with `docker compose up -d --build`, not just a restart.
+
+**Behind a domain, terminate TLS in front of it.** Set
+`BETTER_AUTH_URL=https://habits.example` and point a reverse proxy at port 3000.
+A secure context is not optional here: the service worker, install and push all
+need one, and `localhost` counts while a LAN address like `http://192.168.1.20`
+does not — so the app works there, but offline and install silently don't.
+
+**Reminders are a profile.** With the VAPID pair and `CRON_SECRET` set,
+`docker compose --profile reminders up -d` adds a container that calls the sweep
+a minute past every hour — the same request the Cloudflare Worker below makes.
+
+**Mail is sent inline.** The QStash queue delivers by calling the app from
+QStash's network, so it is not wired into the compose file; set the SMTP
+variables and a failed send fails the sign-up, as described above.
+
+**Back up as the superuser.** `pg_dump` refuses to read a table whose policies
+would filter it, and `FORCE ROW LEVEL SECURITY` applies them to the owning role:
+
+```bash
+docker compose exec db pg_dump -U postgres openhabits > openhabits.sql
+```
+
 ---
 
 ## Cloudflare — the reminder schedule
