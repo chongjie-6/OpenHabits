@@ -149,7 +149,7 @@ Appearance is per device, so your phone can be dark `blocks` while your laptop s
 
 ## Try it
 
-The fastest way is **[habit-a.vercel.app](https://habit-a.vercel.app/)** — no sign-up, and your browser's "Install app" puts it on your home screen.
+The fastest way is **[openhabits.vercel.app](https://openhabits.vercel.app/)** — no sign-up, and your browser's "Install app" puts it on your home screen.
 
 To run your own:
 

@@ -118,7 +118,7 @@ describe("mailableOrigin", () => {
       BETTER_AUTH_ALLOWED_HOSTS: "openhabits.app, *.vercel.app",
     } as NodeJS.ProcessEnv;
     expect(mailableOrigin("https://openhabits.app/x", env)).toBe(true);
-    expect(mailableOrigin("https://habit-a.vercel.app/x", env)).toBe(true);
+    expect(mailableOrigin("https://openhabits.vercel.app/x", env)).toBe(true);
     expect(mailableOrigin("https://attacker.example/x", env)).toBe(false);
   });
 
