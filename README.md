@@ -20,8 +20,15 @@ Your habits live on your device, it works offline, and a tick is saved before yo
 ![MIT](https://img.shields.io/badge/license-MIT-216e39?style=flat-square)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16.3-000?style=flat-square&logo=nextdotjs)
 ![React 19](https://img.shields.io/badge/React-19.2-087ea4?style=flat-square&logo=react)
-![Tests](https://img.shields.io/badge/tests-433%20passing-30a14e?style=flat-square)
+[![CI](https://img.shields.io/github/actions/workflow/status/chongjie-6/OpenHabits/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/chongjie-6/OpenHabits/actions/workflows/ci.yml)
 ![PWA](https://img.shields.io/badge/PWA-installable-6741d9?style=flat-square)
+
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/demo-dark.gif">
+  <img alt="Ticking off the rest of today's habits, then the year grid filling in on Stats, then the share card the app draws from it" src="docs/media/demo-light.gif" width="360">
+</picture>
 
 </div>
 
