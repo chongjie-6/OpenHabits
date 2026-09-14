@@ -13,7 +13,7 @@ Your habits live on your device, it works offline, and a tick is saved before yo
 
 <br>
 
-<a href="https://habit-a.vercel.app/"><img alt="Try it live — no install, no sign-up" src="https://img.shields.io/badge/Try_it_live-no_install%2C_no_sign--up-216e39?style=for-the-badge"></a>
+<a href="https://openhabits.vercel.app/"><img alt="Try it live — no install, no sign-up" src="https://img.shields.io/badge/Try_it_live-no_install%2C_no_sign--up-216e39?style=for-the-badge"></a>
 
 <br><br>
 
