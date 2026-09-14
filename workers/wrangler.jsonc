@@ -4,11 +4,11 @@
   "compatibility_date": "2026-09-01",
 
   "triggers": {
-    "crons": ["0 * * * *"]
+    "crons": ["0 * * * *"],
   },
 
   "vars": {
-    "SITE_URL": "https://openhabits.vercel.app/"
+    "SITE_URL": "https://openhabits.vercel.app/",
   },
 
   // There is no fetch handler and nothing here should answer HTTP: the Worker's
@@ -18,6 +18,6 @@
   // The failure this feature cannot afford is a silent one, and these logs are
   // the only place a failed sweep is visible.
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }

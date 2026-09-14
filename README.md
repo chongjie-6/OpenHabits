@@ -48,16 +48,16 @@ Share the whole year as one image, drawn on a canvas in your browser from your o
 
 Most habit apps make you wait: a tick posts to a server, a spinner appears, and a half-second habit becomes one you quit. **OpenHabits never waits.** Your data lives on your device, every page is static HTML, and nothing between you and a tick touches the network.
 
-|  | |
-|---|---|
-| ⚡ **Instant ticks** | Every write is local and optimistic. The UI never waits on the network. |
-| 📴 **Truly offline** | An installable PWA. Nothing is fetched to render your day. |
-| 🔒 **Private by default** | No account, no telemetry, no third parties. Export everything as JSON. |
-| 🟩 **Your year at a glance** | A contribution grid, streaks, perfect days, weekday and monthly trends. |
-| 💬 **A daily card** | 168 quotes and 85 fun facts, every one traceably sourced. |
+|                                 |                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| ⚡ **Instant ticks**            | Every write is local and optimistic. The UI never waits on the network.      |
+| 📴 **Truly offline**            | An installable PWA. Nothing is fetched to render your day.                   |
+| 🔒 **Private by default**       | No account, no telemetry, no third parties. Export everything as JSON.       |
+| 🟩 **Your year at a glance**    | A contribution grid, streaks, perfect days, weekday and monthly trends.      |
+| 💬 **A daily card**             | 168 quotes and 85 fun facts, every one traceably sourced.                    |
 | 🎨 **Three skins, any palette** | Three layouts in light and dark, plus a custom palette from a single colour. |
-| 🔔 **Reminders on your clock** | 9am means 9am where you are, not where the server is. |
-| ☁️ **Sync if you want it** | Optional accounts. Skip them and you lose a second device, nothing else. |
+| 🔔 **Reminders on your clock**  | 9am means 9am where you are, not where the server is.                        |
+| ☁️ **Sync if you want it**      | Optional accounts. Skip them and you lose a second device, nothing else.     |
 
 ---
 
@@ -97,7 +97,7 @@ Most habit apps make you wait: a tick posts to a server, a spinner appears, and 
 
 Most quote apps hash the date, which gets you repeats, gaps, and a different quote on your phone than on your laptop.
 
-OpenHabits deals from a shuffled deck instead. **Every entry appears once per pass, nothing repeats within 21 days, and every device shows the same card, with no server involved.** Because the order is known in advance, the Collection screen can tell you when a saved quote comes round next: *in 5 weeks*, *in 12 weeks*.
+OpenHabits deals from a shuffled deck instead. **Every entry appears once per pass, nothing repeats within 21 days, and every device shows the same card, with no server involved.** Because the order is known in advance, the Collection screen can tell you when a saved quote comes round next: _in 5 weeks_, _in 12 weeks_.
 
 Narrow it by tag, or swap quotes for fun facts with one setting. Filter down to nothing and you get the whole deck back, because the card is never empty.
 

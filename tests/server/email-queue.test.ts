@@ -8,7 +8,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { parseEmailJob, queueConfigured, workerURL } from "@/lib/server/email-queue";
+import {
+  parseEmailJob,
+  queueConfigured,
+  workerURL,
+} from "@/lib/server/email-queue";
 import { mailableOrigin } from "@/lib/server/base-url";
 
 const site = "https://openhabits.app";
@@ -29,14 +33,20 @@ describe("queueConfigured", () => {
   });
 
   it("is off with no QStash token", () => {
-    expect(queueConfigured({ ...configured, QSTASH_TOKEN: undefined })).toBe(false);
+    expect(queueConfigured({ ...configured, QSTASH_TOKEN: undefined })).toBe(
+      false,
+    );
   });
 
   /** The envelope store is Redis, so a queue without one has nowhere to put the
    * link — which is the whole reason the link does not travel in the message. */
   it("is off with no store, even holding a token", () => {
-    expect(queueConfigured({ ...configured, UPSTASH_REDIS_REST_URL: undefined })).toBe(false);
-    expect(queueConfigured({ ...configured, UPSTASH_REDIS_REST_TOKEN: undefined })).toBe(false);
+    expect(
+      queueConfigured({ ...configured, UPSTASH_REDIS_REST_URL: undefined }),
+    ).toBe(false);
+    expect(
+      queueConfigured({ ...configured, UPSTASH_REDIS_REST_TOKEN: undefined }),
+    ).toBe(false);
   });
 
   /**
@@ -49,7 +59,9 @@ describe("queueConfigured", () => {
   it("is off on localhost, where QStash cannot call back", () => {
     const local = { ...configured, SITE_URL: "http://localhost:3000" };
     expect(queueConfigured(local)).toBe(false);
-    expect(queueConfigured({ ...configured, SITE_URL: "http://127.0.0.1:3000" })).toBe(false);
+    expect(
+      queueConfigured({ ...configured, SITE_URL: "http://127.0.0.1:3000" }),
+    ).toBe(false);
   });
 });
 
@@ -60,18 +72,28 @@ describe("workerURL", () => {
 });
 
 describe("parseEmailJob", () => {
-  const job = { kind: "verification", to: "someone@example.com", url: `${site}/verify-email?token=abc` };
+  const job = {
+    kind: "verification",
+    to: "someone@example.com",
+    url: `${site}/verify-email?token=abc`,
+  };
 
   it("accepts both kinds", () => {
     expect(parseEmailJob(job, configured)).toEqual(job);
-    const reset = { ...job, kind: "reset", url: `${site}/reset-password?token=abc` };
+    const reset = {
+      ...job,
+      kind: "reset",
+      url: `${site}/reset-password?token=abc`,
+    };
     expect(parseEmailJob(reset, configured)).toEqual(reset);
   });
 
   it("rejects a kind it does not know", () => {
     expect(parseEmailJob({ ...job, kind: "invoice" }, configured)).toBeNull();
     expect(parseEmailJob({ ...job, kind: undefined }, configured)).toBeNull();
-    expect(parseEmailJob({ ...job, kind: "constructor" }, configured)).toBeNull();
+    expect(
+      parseEmailJob({ ...job, kind: "constructor" }, configured),
+    ).toBeNull();
   });
 
   it("rejects anything that is not an object", () => {
@@ -82,11 +104,21 @@ describe("parseEmailJob", () => {
 
   it("rejects a missing or over-long address", () => {
     expect(parseEmailJob({ ...job, to: "" }, configured)).toBeNull();
-    expect(parseEmailJob({ ...job, to: `${"a".repeat(320)}@example.com` }, configured)).toBeNull();
+    expect(
+      parseEmailJob(
+        { ...job, to: `${"a".repeat(320)}@example.com` },
+        configured,
+      ),
+    ).toBeNull();
   });
 
   it("rejects an over-long URL", () => {
-    expect(parseEmailJob({ ...job, url: `${site}/?t=${"a".repeat(2048)}` }, configured)).toBeNull();
+    expect(
+      parseEmailJob(
+        { ...job, url: `${site}/?t=${"a".repeat(2048)}` },
+        configured,
+      ),
+    ).toBeNull();
   });
 
   /**
@@ -95,20 +127,32 @@ describe("parseEmailJob", () => {
    * into somebody else's origin. See §13.12.
    */
   it("refuses a URL this deployment could not have produced", () => {
-    expect(parseEmailJob({ ...job, url: "https://attacker.example/verify-email?token=abc" }, configured)).toBeNull();
+    expect(
+      parseEmailJob(
+        { ...job, url: "https://attacker.example/verify-email?token=abc" },
+        configured,
+      ),
+    ).toBeNull();
   });
 
   it("refuses a URL that is not a URL", () => {
-    expect(parseEmailJob({ ...job, url: "javascript:alert(1)" }, configured)).toBeNull();
+    expect(
+      parseEmailJob({ ...job, url: "javascript:alert(1)" }, configured),
+    ).toBeNull();
     expect(parseEmailJob({ ...job, url: "not a url" }, configured)).toBeNull();
   });
 });
 
 describe("mailableOrigin", () => {
   it("pins to BETTER_AUTH_URL's origin when one is configured", () => {
-    const env = { NODE_ENV: "production", BETTER_AUTH_URL: site } as NodeJS.ProcessEnv;
+    const env = {
+      NODE_ENV: "production",
+      BETTER_AUTH_URL: site,
+    } as NodeJS.ProcessEnv;
     expect(mailableOrigin(`${site}/verify-email`, env)).toBe(true);
-    expect(mailableOrigin("https://openhabits.app.attacker.example/x", env)).toBe(false);
+    expect(
+      mailableOrigin("https://openhabits.app.attacker.example/x", env),
+    ).toBe(false);
     expect(mailableOrigin("http://openhabits.app/x", env)).toBe(false);
   });
 
@@ -124,23 +168,33 @@ describe("mailableOrigin", () => {
 
   /** A wildcard is matched at the label boundary, not as a suffix of the string. */
   it("does not let a wildcard admit a lookalike host or the bare apex", () => {
-    const env = { NODE_ENV: "production", BETTER_AUTH_ALLOWED_HOSTS: "*.vercel.app" } as NodeJS.ProcessEnv;
+    const env = {
+      NODE_ENV: "production",
+      BETTER_AUTH_ALLOWED_HOSTS: "*.vercel.app",
+    } as NodeJS.ProcessEnv;
     expect(mailableOrigin("https://evilvercel.app/x", env)).toBe(false);
     expect(mailableOrigin("https://vercel.app/x", env)).toBe(false);
   });
 
   /** `resolveBaseURL` forces https on the allow-list path; so does this. */
   it("refuses plain http against an allow-list", () => {
-    const env = { NODE_ENV: "production", BETTER_AUTH_ALLOWED_HOSTS: "openhabits.app" } as NodeJS.ProcessEnv;
+    const env = {
+      NODE_ENV: "production",
+      BETTER_AUTH_ALLOWED_HOSTS: "openhabits.app",
+    } as NodeJS.ProcessEnv;
     expect(mailableOrigin("http://openhabits.app/x", env)).toBe(false);
   });
 
   it("allows only localhost when neither is set, and only outside production", () => {
     const dev = { NODE_ENV: "development" } as NodeJS.ProcessEnv;
-    expect(mailableOrigin("http://localhost:3000/verify-email", dev)).toBe(true);
-    expect(mailableOrigin("https://attacker.example/x", dev)).toBe(false);
-    expect(mailableOrigin("http://localhost:3000/x", { NODE_ENV: "production" } as NodeJS.ProcessEnv)).toBe(
-      false,
+    expect(mailableOrigin("http://localhost:3000/verify-email", dev)).toBe(
+      true,
     );
+    expect(mailableOrigin("https://attacker.example/x", dev)).toBe(false);
+    expect(
+      mailableOrigin("http://localhost:3000/x", {
+        NODE_ENV: "production",
+      } as NodeJS.ProcessEnv),
+    ).toBe(false);
   });
 });
