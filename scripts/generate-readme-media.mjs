@@ -123,7 +123,7 @@ function banner(t) {
     rect(0, 0, W, H, { fill: t.bg }),
     rect(gx, 92, 3, 46, { fill: t.accent, rx: 1.5 }),
     text(gx + 18, 132, "OpenHabits", { size: 46, fill: t.fg, weight: 700, spacing: "-1.2" }),
-    text(gx, 170, "A quote worth reading, a habit worth keeping, and the year you actually had.", { size: 17, fill: t.muted }),
+    text(gx, 170, "A habit tracker that draws your year as a contribution grid.", { size: 17, fill: t.muted }),
     pills,
     monthLabels,
     cells,
