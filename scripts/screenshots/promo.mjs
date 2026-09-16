@@ -1,23 +1,21 @@
 /**
- * Records the short demo GIF into docs/media/: a morning's ticks, the year grid,
- * and the share card the app draws from it. The README carries promo.mjs's
- * longer cut now, so nothing references this one's output — it is the three-beat
- * version, kept for anywhere that wants a loop rather than a reel. Same setup as
- * shoot.mjs, plus two encoders it does not need:
+ * Records the README banner and launch-post reel into docs/media/: a morning's
+ * ticks, the same ticks with the network genuinely off, the year grid, the
+ * share card, the three designs and a repainted palette — one scene per claim
+ * the post makes.
  *
  *   npm run build && npx next start -p 3210
  *   npm i --no-save puppeteer-core gifenc pngjs
  *   node scripts/screenshots/seed.mjs
- *   node scripts/screenshots/demo.mjs
+ *   node scripts/screenshots/promo.mjs
  *
- * Every frame is a screenshot of the real app driven through its own buttons.
- * Two things are staged on top and nothing else: a tap marker, because a GIF
- * cannot show a finger, and the grid's cells are blanked and revealed week by
- * week, because a year of data arrives in one import rather than over a year.
+ * Deliberately a copy of demo.mjs's harness rather than an import of it: the
+ * two are cut to different lengths for different places, and a shared module
+ * would make every re-cut of one a re-cut of the other.
  *
- * Frames are captured as discrete states under reduced motion rather than as a
- * screencast: a screenshot takes longer than the app's animations, so recording
- * them would capture a random point in each.
+ * The staging rules are demo.mjs's, plus one: the airplane pill is a caption on
+ * a real condition, not a prop. `setOfflineMode(true)` is on for those frames,
+ * so what the pill claims is what the browser is actually doing.
  */
 import puppeteer from "puppeteer-core";
 import gifenc from "gifenc";
@@ -28,7 +26,7 @@ import { writeFileSync } from "node:fs";
 const { GIFEncoder, quantize, applyPalette } = gifenc;
 const { PNG } = pngjs;
 
-const CHROME ="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const BASE = "http://localhost:3210";
 const OUT = new URL("../../docs/media/", import.meta.url);
 const BACKUP = fileURLToPath(new URL("./backup.json", import.meta.url));
@@ -36,6 +34,9 @@ const BACKUP = fileURLToPath(new URL("./backup.json", import.meta.url));
 const W = 390;
 const H = 760;
 const SCALE = 1.5;
+
+/** How long a tap marker sits on screen before the press lands. */
+const MARK = 180;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -62,8 +63,6 @@ function recorder(page) {
   return {
     frames,
     async shot(delay) {
-      // The viewport, not a clip: a clip is in document coordinates and would
-      // stay pinned to the top of the page through every scroll.
       const png = await page.screenshot();
       const { data, width, height } = PNG.sync.read(png);
       frames.push({ data, width, height, delay });
@@ -71,7 +70,6 @@ function recorder(page) {
   };
 }
 
-/** Where a selector's centre is, in viewport coordinates. */
 const centre = (page, handle) =>
   page.evaluate((el) => {
     const r = el.getBoundingClientRect();
@@ -96,22 +94,77 @@ const showTap = (page, { x, y }) =>
 
 const hideTap = (page) => page.evaluate(() => document.getElementById("__tap")?.remove());
 
-/** Marker on, frame, click, marker off, frame. */
-async function tap(page, rec, handle, { hold = 900 } = {}) {
+async function tap(page, rec, handle, { hold = 650 } = {}) {
   const at = await centre(page, handle);
   await showTap(page, at);
-  await rec.shot(260);
+  await rec.shot(MARK);
   await hideTap(page);
   await handle.click();
   await sleep(250);
   if (hold) await rec.shot(hold);
 }
 
-const habitButton = (page, name) =>
-  page.evaluateHandle(
-    (n) => document.querySelector(`button[aria-label^="${n}:"], button[aria-label^="${n},"]`),
-    name,
+/** Caption pill, pinned above the tab bar so it never sits on a habit row. */
+const showPill = (page, label) =>
+  page.evaluate((text) => {
+    const el = document.createElement("div");
+    el.id = "__pill";
+    el.textContent = text;
+    Object.assign(el.style, {
+      position: "fixed", left: "50%", bottom: "84px", transform: "translateX(-50%)",
+      padding: "7px 14px", borderRadius: "999px", whiteSpace: "nowrap",
+      background: "rgba(20,20,20,.86)", color: "#fff", zIndex: 2147483646,
+      font: "600 12px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif",
+      boxShadow: "0 6px 20px rgba(0,0,0,.28)",
+    });
+    document.body.appendChild(el);
+  }, label);
+
+const hidePill = (page) => page.evaluate(() => document.getElementById("__pill")?.remove());
+
+/**
+ * The first row that is not already done. Named habits are the wrong handle
+ * here: the seed finishes some of today, and tapping one of those records a
+ * tick that clears a box — which under the offline pill would be a caption
+ * claiming the opposite of what the frame shows. A counted habit stays undone
+ * until its target, so repeating this walks Water up rather than past it.
+ */
+const firstUndone = (page) =>
+  page.evaluateHandle(() =>
+    [...document.querySelectorAll("button[aria-pressed]")].find(
+      // The daily card's favourite heart is a toggle too, and it sits above the
+      // list — without the <figure> test the reel opens by saving a quote.
+      (b) => b.getAttribute("aria-pressed") === "false" && !b.closest("figure"),
+    ),
   );
+
+const tabLink = (page, href) =>
+  page.evaluateHandle((h) => document.querySelector(`nav a[href="${h}"]`), href);
+
+const byText = (page, label) =>
+  page.evaluateHandle(
+    (l) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim().includes(l)),
+    label,
+  );
+
+/** The skin buttons share their markup with Theme — scope to the Design fieldset. */
+const skinButton = (page, label) =>
+  page.evaluateHandle((l) => {
+    const set = [...document.querySelectorAll("fieldset")].find(
+      (f) => f.querySelector("legend")?.textContent.trim() === "Design",
+    );
+    return [...set.querySelectorAll("button")].find((b) => b.textContent.trim() === l);
+  }, label);
+
+/** Re-queried each time: the 700ms hold in lib/today-split.ts moves rows between taps. */
+async function tapUndone(page, rec, count) {
+  for (let i = 0; i < count; i++) {
+    const button = await firstUndone(page);
+    if (!(await button.evaluate((b) => b !== undefined))) return;
+    await button.evaluate((b) => b.scrollIntoView({ block: "nearest" }));
+    await tap(page, rec, button.asElement());
+  }
+}
 
 async function record(browser, theme) {
   const page = await browser.newPage();
@@ -151,27 +204,28 @@ async function record(browser, theme) {
   await page.goto(`${BASE}/`, { waitUntil: "networkidle0" });
   await page.waitForSelector("figure blockquote");
   await sleep(600);
-  await rec.shot(1400);
-
-  for (const name of ["Meditate", "Journal", "Water", "Water", "Stretch"]) {
-    const button = await habitButton(page, name);
-    if (!(await button.evaluate((b) => b !== null))) continue;
-    await button.evaluate((b) => b.scrollIntoView({ block: "nearest" }));
-    await tap(page, rec, button.asElement());
-  }
   await rec.shot(900);
 
-  const statsTab = await page.evaluateHandle(() => document.querySelector('nav a[href="/stats"]'));
-  await tap(page, rec, statsTab.asElement(), { hold: 0 });
+  await tapUndone(page, rec, 3);
+  await rec.shot(350);
+
+  // The claim the whole post rests on, proved rather than asserted: Chrome is
+  // offline for these frames, and the ticks land at the same speed.
+  await page.setOfflineMode(true);
+  await showPill(page, "Airplane mode — network off");
+  await rec.shot(1000);
+  await tapUndone(page, rec, 2);
+  await rec.shot(1100);
+  await hidePill(page);
+  await page.setOfflineMode(false);
+
+  const stats = await tabLink(page, "/stats");
+  await tap(page, rec, stats.asElement(), { hold: 0 });
   await page.waitForSelector("main svg rect[data-date]");
   await sleep(700);
 
-  // Blank the grid and let the weeks arrive one row at a time — rows, because a
-  // phone draws the year transposed (components/Heatmap.tsx).
   const rows = await page.evaluate(() => {
     const groups = [...document.querySelectorAll("main svg g[role=row]")];
-    // The legend's "Less" swatch is levelColor(0), resolved; copying it keeps
-    // blank cells identical to an empty day rather than a guess at one.
     const swatch = document.querySelector("main .surface-card span.rounded-xs");
     const empty = getComputedStyle(swatch).backgroundColor;
     for (const g of groups) {
@@ -182,7 +236,7 @@ async function record(browser, theme) {
     }
     return groups.length;
   });
-  await rec.shot(500);
+  await rec.shot(350);
   const per = Math.max(1, Math.ceil(rows / 16));
   for (let shown = per; shown < rows + per; shown += per) {
     await page.evaluate((n) => {
@@ -190,29 +244,22 @@ async function record(browser, theme) {
         for (const r of g.querySelectorAll("rect")) if (r.dataset.fill) r.setAttribute("fill", r.dataset.fill);
       });
     }, shown);
-    await rec.shot(70);
+    await rec.shot(55);
   }
-  rec.frames.at(-1).delay = 1500;
+  rec.frames.at(-1).delay = 1000;
 
-  // A phone shows 19 weeks until asked, and the card is drawn from the weeks on
-  // screen — expand first, or the image says "my year" over four months.
-  const button = (label) =>
-    page.evaluateHandle(
-      (l) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim().includes(l)),
-      label,
-    );
-  const expand = await button("Show full year");
+  const expand = await byText(page, "Show full year");
   await expand.evaluate((b) => b.scrollIntoView({ block: "center" }));
   await sleep(200);
   await tap(page, rec, expand.asElement(), { hold: 0 });
   await sleep(500);
 
-  const share = await button("Share");
+  const share = await byText(page, "Share");
   await share.evaluate((b) => b.scrollIntoView({ block: "end" }));
   await page.evaluate(() => window.scrollBy(0, 120));
   await sleep(300);
-  await rec.shot(900);
-  await tap(page, rec, share.asElement(), { hold: 150 });
+  await rec.shot(450);
+  await tap(page, rec, share.asElement(), { hold: 120 });
   await page.waitForFunction(() => window.__blobs.length > 0, { timeout: 20000 });
   const dataUrl = await page.evaluate(
     () =>
@@ -222,9 +269,6 @@ async function record(browser, theme) {
         fr.readAsDataURL(window.__blobs[0]);
       }),
   );
-
-  // The card is the app's own PNG, shown on the app's own ground: a still frame
-  // is the honest way to present a file the share sheet would have received.
   const colours = await page.evaluate(() => {
     const s = getComputedStyle(document.documentElement);
     const v = (name) => s.getPropertyValue(name).trim();
@@ -239,19 +283,57 @@ async function record(browser, theme) {
     </body>`);
   await stage.waitForFunction(() => document.images[0].complete);
   const stageRec = recorder(stage);
-  await stageRec.shot(3000);
+  await stageRec.shot(1700);
   rec.frames.push(...stageRec.frames);
-
   await stage.close();
+
+  // Designs and palette last, so the reel ends on the app looking like someone
+  // else's rather than on a screenshot of a file.
+  for (const skin of ["Grid", "Blocks"]) {
+    const settingsTab = await tabLink(page, "/settings");
+    await tap(page, rec, settingsTab.asElement(), { hold: 0 });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll("legend")].some((l) => l.textContent.trim() === "Design"),
+    );
+    await sleep(300);
+    const choice = await skinButton(page, skin);
+    await choice.evaluate((b) => b.scrollIntoView({ block: "center" }));
+    await sleep(200);
+    await tap(page, rec, choice.asElement(), { hold: 450 });
+    const todayTab = await tabLink(page, "/");
+    await tap(page, rec, todayTab.asElement(), { hold: 0 });
+    await sleep(700);
+    await rec.shot(1050);
+  }
+
+  const settingsTab = await tabLink(page, "/settings");
+  await tap(page, rec, settingsTab.asElement(), { hold: 0 });
+  await page.waitForSelector('a[href="/settings/colours"]');
+  await sleep(300);
+  const colourLink = await page.evaluateHandle(() =>
+    document.querySelector('a[href="/settings/colours"]'),
+  );
+  await colourLink.evaluate((a) => a.scrollIntoView({ block: "center" }));
+  await sleep(200);
+  await tap(page, rec, colourLink.asElement(), { hold: 0 });
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Ember"),
+  );
+  await sleep(500);
+  await rec.shot(500);
+  const ember = await byText(page, "Ember");
+  await ember.evaluate((b) => b.scrollIntoView({ block: "center" }));
+  await sleep(200);
+  await tap(page, rec, ember.asElement(), { hold: 900 });
+  const homeTab = await tabLink(page, "/");
+  await tap(page, rec, homeTab.asElement(), { hold: 0 });
+  await sleep(700);
+  await rec.shot(1700);
+
   await page.close();
   return rec.frames;
 }
 
-/**
- * One global palette, and every pixel unchanged since the previous frame written
- * as transparent: the UI holds still between taps, and runs of one index are what
- * LZW compresses to almost nothing.
- */
 function encode(frames) {
   const { width, height } = frames[0];
   const sample = new Uint8Array(Math.ceil(frames.length * (width * height) / 16) * 4);
@@ -295,7 +377,8 @@ const browser = await puppeteer.launch({
   args: ["--force-color-profile=srgb", "--font-render-hinting=none", "--hide-scrollbars"],
 });
 
-for (const theme of ["light", "dark"]) {
+const themes = process.env.THEMES ? process.env.THEMES.split(",") : ["light", "dark"];
+for (const theme of themes) {
   const frames = await record(browser, theme);
   if (process.env.FRAMES) {
     frames.forEach((f, i) => {
@@ -305,9 +388,11 @@ for (const theme of ["light", "dark"]) {
     });
   }
   const bytes = encode(frames);
-  const file = new URL(`demo-${theme}.gif`, OUT);
-  writeFileSync(file, bytes);
-  console.log(`demo-${theme}.gif  ${frames.length} frames, ${(bytes.length / 1024).toFixed(0)} KB`);
+  writeFileSync(new URL(`promo-${theme}.gif`, OUT), bytes);
+  const seconds = frames.reduce((n, f) => n + f.delay, 0) / 1000;
+  console.log(
+    `promo-${theme}.gif  ${frames.length} frames, ${seconds.toFixed(1)}s, ${(bytes.length / 1024).toFixed(0)} KB`,
+  );
 }
 
 await browser.close();

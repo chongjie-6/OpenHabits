@@ -26,8 +26,8 @@ Your habits live on your device, it works offline, and a tick is saved before yo
 <br>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/media/demo-dark.gif">
-  <img alt="Ticking off the rest of today's habits, then the year grid filling in on Stats, then the share card the app draws from it" src="docs/media/demo-light.gif" width="360">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/promo-dark.gif">
+  <img alt="Ticking off today's habits, then the same ticks landing with the network switched off, the year grid filling in on Stats, the share card the app draws from it, the Grid and Blocks designs, and a custom palette repainting the app" src="docs/media/promo-light.gif" width="360">
 </picture>
 
 </div>
