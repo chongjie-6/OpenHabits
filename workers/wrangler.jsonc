@@ -8,7 +8,7 @@
   },
 
   "vars": {
-    "SITE_URL": "https://openhabits.vercel.app/",
+    "SITE_URL": "https://openhabits.app/",
   },
 
   // There is no fetch handler and nothing here should answer HTTP: the Worker's
