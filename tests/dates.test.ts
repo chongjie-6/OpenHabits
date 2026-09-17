@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addDays,
   daysBetween,
+  formatWeekRange,
   relativeDayLabel,
   startOfMonth,
   startOfWeek,
@@ -115,6 +116,24 @@ describe("startOfMonth", () => {
   it("is idempotent", () => {
     const once = startOfMonth("2026-08-14");
     expect(startOfMonth(once)).toBe(once);
+  });
+});
+
+describe("formatWeekRange", () => {
+  const range = (start: string) => formatWeekRange(start).replace(/\s+/g, " ");
+
+  it("spans seven days, naming the month once within one month", () => {
+    const text = range("2026-09-14");
+    expect(text).toMatch(/14/);
+    expect(text).toMatch(/20/);
+    expect(text.match(/Sep/g)).toHaveLength(1);
+  });
+
+  it("names both months when the week crosses one", () => {
+    const text = range("2026-09-28");
+    expect(text).toMatch(/Sep/);
+    expect(text).toMatch(/Oct/);
+    expect(text).toMatch(/\b4\b/);
   });
 });
 

@@ -3,6 +3,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AddHabit } from "@/components/AddHabit";
+import { useBrowseDay } from "@/components/BrowseDay";
 import { HabitFormPanel } from "@/components/HabitFormPanel";
 import { HabitRow, HabitRowDense, HabitTile } from "@/components/HabitRow";
 import { levelColor } from "@/lib/colors";
@@ -64,7 +65,7 @@ export function TodayList() {
   const today = useToday(settings.dayStartHour);
   const skin = useSkin();
   const sheet = useMediaQuery(MOBILE);
-  const [offset, setOffset] = useState(0);
+  const { offset, setOffset } = useBrowseDay();
   const [editMode, setEditMode] = useState(false);
   // Kept after the editor closes, so the sheet animating out still has its habit.
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -187,29 +188,21 @@ export function TodayList() {
         total={scheduled.length}
       />
 
-      <DayNav
-        offset={offset}
-        onOffset={(next) => {
-          setOffset(next);
-          setEditorOpen(false);
-        }}
-        editMode={habits.length > 0 ? editMode : null}
-        onEditMode={(next) => {
-          setEditMode(next);
-          setEditorOpen(false);
-        }}
-      />
+      {/* With no habits there is nothing to edit. */}
+      {habits.length > 0 && (
+        <EditToggle
+          editMode={editMode}
+          onEditMode={(next) => {
+            setEditMode(next);
+            setEditorOpen(false);
+          }}
+        />
+      )}
 
-      {edit ? (
+      {edit && (
         <p className="mt-1 text-[12px] text-muted">
           Tap a habit to edit it. Ticking is off until you press Done.
         </p>
-      ) : (
-        future && (
-          <p className="mt-1 text-[12px] text-muted">
-            Nothing to tick yet — this day hasn&rsquo;t happened.
-          </p>
-        )
       )}
 
       {skin === "grid" && habits.length > 0 && (
@@ -290,75 +283,30 @@ function useFocusFollowsHabit(container: React.RefObject<HTMLElement | null>) {
 }
 
 /**
- * The keyboard and screen-reader half of the swipe (§6.8). A gesture announces
- * itself to neither, so the arrows are not a fallback — they are the control,
- * and the swipe is the shortcut.
+ * Kept apart from the week strip, whose buttons are pressed in quick
+ * succession.
  */
-function DayNav({
-  offset,
-  onOffset,
+function EditToggle({
   editMode,
   onEditMode,
 }: {
-  offset: number;
-  onOffset: (next: number) => void;
-  /** Null hides the toggle: with no habits there is nothing to edit. */
-  editMode: boolean | null;
+  editMode: boolean;
   onEditMode: (next: boolean) => void;
 }) {
   return (
-    <div className="mt-2 flex items-center justify-end gap-0.5">
-      {/* Kept apart from the arrows, which get pressed in quick succession. */}
-      {editMode !== null && (
-        <button
-          type="button"
-          onClick={() => onEditMode(!editMode)}
-          className={`mr-auto h-9 rounded-control border px-3 text-[13px] font-medium transition-colors ${
-            editMode
-              ? "border-accent bg-accent text-accent-fg"
-              : "border-border text-foreground hover:bg-surface-2"
-          }`}
-        >
-          {editMode ? "Done" : "Edit"}
-        </button>
-      )}
-      <NavButton label="Previous day" onClick={() => onOffset(offset - 1)}>
-        ‹
-      </NavButton>
-      {offset !== 0 && (
-        <button
-          type="button"
-          onClick={() => onOffset(0)}
-          className="h-9 rounded-control px-2 text-[12px] text-muted transition-colors hover:text-foreground"
-        >
-          Today
-        </button>
-      )}
-      <NavButton label="Next day" onClick={() => onOffset(offset + 1)}>
-        ›
-      </NavButton>
+    <div className="mt-2 flex items-center">
+      <button
+        type="button"
+        onClick={() => onEditMode(!editMode)}
+        className={`h-9 rounded-control border px-3 text-[13px] font-medium transition-colors ${
+          editMode
+            ? "border-accent bg-accent text-accent-fg"
+            : "border-border text-foreground hover:bg-surface-2"
+        }`}
+      >
+        {editMode ? "Done" : "Edit"}
+      </button>
     </div>
-  );
-}
-
-function NavButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-control border border-border text-muted transition-colors hover:text-foreground"
-    >
-      {children}
-    </button>
   );
 }
 
@@ -422,8 +370,8 @@ function Header({
 
   return (
     <header className="flex items-baseline justify-between gap-3">
-      {/* Today keeps its date rather than saying so twice: the reset button in
-          the nav is already the thing that names the offset. */}
+      {/* Today keeps its date rather than saying so twice: the week strip
+          already marks which circle is today. */}
       <h1 className="display-type min-w-0 truncate text-[15px]">
         {day === today ? formatDayLong(day) : (relative ?? formatDayLong(day))}
       </h1>
@@ -764,7 +712,7 @@ function EmptyState() {
     <div className="mt-3 surface-dashed px-4 py-8 text-center">
       <p className="text-[15px] font-medium">Nothing to track yet</p>
       <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-muted">
-        Add one habit you could do today. One is enough to start a grid.
+        Add one habit you could do today.
       </p>
     </div>
   );

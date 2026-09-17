@@ -132,6 +132,20 @@ export function relativeDayLabel(key: DayKey, today: DayKey): string | null {
   }
 }
 
+/**
+ * "Sep 14 – 20", "Sep 28 – Oct 4" — the seven days from `start`.
+ *
+ * `formatRange` rather than two formatted days joined by a dash, because it is
+ * what drops the repeated month (and orders day and month) the way the locale
+ * expects.
+ */
+export function formatWeekRange(start: DayKey): string {
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+  }).formatRange(dateFromDayKey(start), dateFromDayKey(addDays(start, 6)));
+}
+
 /** "Aug" */
 export function formatMonthShort(key: DayKey): string {
   return dateFromDayKey(key).toLocaleDateString(undefined, { month: "short" });
