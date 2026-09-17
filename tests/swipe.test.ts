@@ -8,9 +8,10 @@ describe("resolveSwipe", () => {
   });
 
   it("treats anything short of the threshold as a tap", () => {
-    expect(resolveSwipe(55, 0, 200)).toBeNull();
-    expect(resolveSwipe(-55, 0, 200)).toBeNull();
+    expect(resolveSwipe(39, 0, 200)).toBeNull();
+    expect(resolveSwipe(-39, 0, 200)).toBeNull();
     expect(resolveSwipe(0, 0, 0)).toBeNull();
+    expect(resolveSwipe(40, 0, 200)).toBe("right");
   });
 
   it("lets a habit list scroll: vertical travel disqualifies the gesture", () => {
