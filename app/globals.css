@@ -550,23 +550,37 @@ body {
 @keyframes openhabits-week-next {
   from {
     opacity: 0;
-    transform: translateX(32px);
+    transform: translateX(16px);
   }
 }
 
 @keyframes openhabits-week-prev {
   from {
     opacity: 0;
-    transform: translateX(-32px);
+    transform: translateX(-16px);
   }
 }
 
 .animate-week-next {
-  animation: openhabits-week-next 700ms cubic-bezier(0.32, 0.72, 0, 1);
+  animation: openhabits-week-next 500ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .animate-week-prev {
-  animation: openhabits-week-prev 700ms cubic-bezier(0.32, 0.72, 0, 1);
+  animation: openhabits-week-prev 500ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/**
+ * Both ends of a drag, and nothing else: the spring back from one let go of
+ * early, and the slide that carries a neighbouring week into place when one
+ * commits. While the finger is down the row carries an inline transform and
+ * none of this, because the timing of a drag is the hand doing it.
+ *
+ * Its end is the handover — `WeekStrip` changes the day on `transitionend` —
+ * so this is the duration a committed drag waits before the week changes, and
+ * the reduced-motion block above shortening it to nothing is exactly right.
+ */
+.transition-week {
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* ---------------------------------------------------------------------------

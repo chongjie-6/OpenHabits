@@ -14,20 +14,27 @@ import { useRef } from "react";
 export type SwipeDirection = "left" | "right";
 
 /** Below this the gesture is a tap, and a tap on a habit must still tick it. */
-const MIN_DISTANCE = 40;
+export const MIN_DISTANCE = 40;
 
 /** How far off the horizontal a swipe may wander, as a fraction of its length. */
-const MAX_OFF_AXIS = 0.6;
+export const MAX_OFF_AXIS = 0.6;
 
 /** A slow drag is a scroll that changed its mind, not a flick. */
 const MAX_DURATION_MS = 800;
 
+/**
+ * `dt` is omitted by a gesture that followed the finger the whole way
+ * (`lib/use-drag.ts`): there a slow drag is not a scroll that changed its mind,
+ * it is someone taking their time over something they can see moving. The other
+ * two thresholds still apply, which is why this is an argument rather than a
+ * second copy of the rule.
+ */
 export function resolveSwipe(
   dx: number,
   dy: number,
-  dt: number,
+  dt?: number,
 ): SwipeDirection | null {
-  if (dt > MAX_DURATION_MS) return null;
+  if (dt !== undefined && dt > MAX_DURATION_MS) return null;
   if (Math.abs(dx) < MIN_DISTANCE) return null;
   if (Math.abs(dy) > Math.abs(dx) * MAX_OFF_AXIS) return null;
   return dx < 0 ? "left" : "right";
@@ -46,7 +53,7 @@ export function resolveSwipe(
  * holds no sideways scroller may claim an axis itself, and `WeekStrip` does:
  * a page scroll started on it cancels the pointer and the swipe is never read.
  */
-function insideHorizontalScroller(
+export function insideHorizontalScroller(
   target: EventTarget | null,
   container: Element,
 ): boolean {

@@ -27,4 +27,10 @@ describe("resolveSwipe", () => {
     expect(resolveSwipe(200, 0, 801)).toBeNull();
     expect(resolveSwipe(200, 0, 800)).toBe("right");
   });
+
+  it("drops the clock for a gesture that followed the finger", () => {
+    expect(resolveSwipe(200, 0)).toBe("right");
+    expect(resolveSwipe(39, 0)).toBeNull();
+    expect(resolveSwipe(100, 61)).toBeNull();
+  });
 });
