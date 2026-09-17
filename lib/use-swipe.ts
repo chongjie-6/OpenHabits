@@ -14,7 +14,7 @@ import { useRef } from "react";
 export type SwipeDirection = "left" | "right";
 
 /** Below this the gesture is a tap, and a tap on a habit must still tick it. */
-const MIN_DISTANCE = 56;
+const MIN_DISTANCE = 40;
 
 /** How far off the horizontal a swipe may wander, as a fraction of its length. */
 const MAX_OFF_AXIS = 0.6;
