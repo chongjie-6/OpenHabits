@@ -539,6 +539,36 @@ body {
   animation: openhabits-pop 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/**
+ * Week turnover — DESIGN.md §6.8.
+ *
+ * 16px is chosen against the layout, not for feel: the row sits between two
+ * 28px arrows inside a 16px page gutter, so at this distance it cannot reach
+ * past them and the page cannot gain a horizontal scrollbar mid-animation.
+ * The names are the direction of travel — a later week arrives from the right.
+ */
+@keyframes openhabits-week-next {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes openhabits-week-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+.animate-week-next {
+  animation: openhabits-week-next 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.animate-week-prev {
+  animation: openhabits-week-prev 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 /* ---------------------------------------------------------------------------
    Skin treatments that are not tokens.
 

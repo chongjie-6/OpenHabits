@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useBrowseDay } from "@/components/BrowseDay";
 import {
   addDays,
@@ -34,6 +35,11 @@ import { useToday } from "@/lib/use-today";
  * the claim a thumb drifting downwards turns the touch into a page scroll,
  * which cancels the pointer and loses the swipe before it can be read. The
  * price is that the strip cannot be dragged to scroll the page.
+ *
+ * A week that turns over slides in from the direction of travel. That direction
+ * comes from comparing the weeks rather than from the swipe handler, because
+ * the list below turns the strip over too, whenever its own swipe crosses a
+ * week boundary.
  */
 export function WeekStrip() {
   const { hydrated, settings } = useOpenHabits();
@@ -43,13 +49,33 @@ export function WeekStrip() {
     setOffset((o) => o + (direction === "left" ? 7 : -7)),
   );
 
+  const start =
+    hydrated && today
+      ? startOfWeek(addDays(today, offset), settings.weekStartsOn)
+      : null;
+
+  // Adjusted during render rather than from an effect, so the arriving week is
+  // never painted once in its resting place before it slides. A `DayKey` sorts
+  // as a date, which is what decides the direction.
+  const [shown, setShown] = useState(start);
+  const [turn, setTurn] = useState<"next" | "prev" | null>(null);
+  if (shown !== start) {
+    setTurn(!shown || !start ? null : start > shown ? "next" : "prev");
+    setShown(start);
+  }
+
   // Same height as the real strip, so hydration does not push the page down.
-  if (!hydrated || !today) {
+  if (!hydrated || !today || !start) {
     return <div aria-hidden="true" className="h-22" />;
   }
 
   const day = addDays(today, offset);
-  const start = startOfWeek(day, settings.weekStartsOn);
+  const turning =
+    turn === "next"
+      ? "animate-week-next"
+      : turn === "prev"
+        ? "animate-week-prev"
+        : "";
   const initials = weekdayInitials(settings.weekStartsOn);
   const thisWeek = start === startOfWeek(today, settings.weekStartsOn);
 
@@ -76,7 +102,12 @@ export function WeekStrip() {
         <WeekButton label="Previous week" onClick={() => setOffset(offset - 7)}>
           ‹
         </WeekButton>
-        <ol className="grid min-w-0 flex-1 grid-cols-7 gap-1">
+        {/* Keyed on the week so the slide restarts; the circles inside are
+          keyed by day and remount with it either way. */}
+        <ol
+          key={start}
+          className={`${turning} grid min-w-0 flex-1 grid-cols-7 gap-1`}
+        >
           {initials.map((initial, i) => {
             const key = addDays(start, i);
             const selected = key === day;

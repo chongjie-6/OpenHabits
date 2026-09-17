@@ -522,7 +522,7 @@ Four decisions around it:
 
 **A future day is readable, not tickable.** `TickTarget` takes a `readOnly` prop and the header says why, which is the rule the week grid has always applied to its future columns. `AddHabit` hides itself off today for a related reason: a habit created now is not active on the day being browsed, so it would be added into a screen that cannot show it.
 
-No slide animation. §6.3 rules slides out for tab changes, and the reasoning holds here too — the content changes, the heading changes, and the gesture is its own feedback.
+No slide animation. §6.3 rules slides out for tab changes, and the reasoning holds here too — the content changes, the heading changes, and the gesture is its own feedback. _Reversed for the week strip:_ its seven circles fade in across 16px in the direction of travel, over 200ms. §6.3's objection is to a slide that moves a whole screen, which is what competes with the browser's back gesture; a nudge inside one row competes with nothing. And the strip is the case the paragraph above gets wrong: the circles hold their positions and only the numerals under them change, so a week that turned over looks a great deal like one that did not — which is the same worry the range line was added for. The distance is bounded by the layout rather than chosen for feel, so the row cannot reach past the arrows beside it and give the page a horizontal scrollbar for the length of the animation. The direction is read from the two weeks, not from the swipe handler, because the list's own swipe turns the strip over as well by crossing a boundary. The day list and Week still change without motion.
 
 ### 6.9 To do above Done
 
