@@ -46,7 +46,11 @@ export class AccountMismatchError extends Error {
   }
 }
 
-export async function runSync(db: Db, user: SyncUser, push: SyncPush): Promise<SyncPull> {
+export async function runSync(
+  db: Db,
+  user: SyncUser,
+  push: SyncPush,
+): Promise<SyncPull> {
   // Before the transaction opens: nothing to roll back, and no reason to take a
   // lock for a request that cannot proceed.
   if (push.accountId !== null && push.accountId !== user.id) {
@@ -120,7 +124,11 @@ async function collectTombstones(tx: Tx, userId: string): Promise<void> {
     );
 }
 
-async function applyPush(tx: Tx, userId: string, push: SyncPush): Promise<void> {
+async function applyPush(
+  tx: Tx,
+  userId: string,
+  push: SyncPush,
+): Promise<void> {
   const tombstoned = await pushHabits(tx, userId, push.habits);
   await pushEntries(tx, userId, push.entries, tombstoned.live);
 
@@ -129,7 +137,12 @@ async function applyPush(tx: Tx, userId: string, push: SyncPush): Promise<void> 
   if (tombstoned.newlyDeleted.length > 0) {
     await tx
       .delete(entries)
-      .where(and(eq(entries.userId, userId), inArray(entries.habitId, tombstoned.newlyDeleted)));
+      .where(
+        and(
+          eq(entries.userId, userId),
+          inArray(entries.habitId, tombstoned.newlyDeleted),
+        ),
+      );
   }
 
   await pushSettings(tx, userId, push.settings);
@@ -142,7 +155,11 @@ type HabitState = {
   newlyDeleted: string[];
 };
 
-async function pushHabits(tx: Tx, userId: string, incoming: Habit[]): Promise<HabitState> {
+async function pushHabits(
+  tx: Tx,
+  userId: string,
+  incoming: Habit[],
+): Promise<HabitState> {
   // Every habit on the account, not just the pushed ones: `pushEntries` needs to
   // know about habits this device has never sent. A handful of rows either way.
   const current = await tx
@@ -160,7 +177,8 @@ async function pushHabits(tx: Tx, userId: string, incoming: Habit[]): Promise<Ha
 
     winners.push(habit);
     byId.set(habit.id, habit);
-    if (habit.deletedAt !== null && existing?.deletedAt == null) newlyDeleted.push(habit.id);
+    if (habit.deletedAt !== null && existing?.deletedAt == null)
+      newlyDeleted.push(habit.id);
   }
 
   if (winners.length > 0) {
@@ -239,7 +257,9 @@ async function pushEntries(
       ),
     );
 
-  const byKey = new Map(current.map((row) => [`${row.habitId}:${row.date}`, toEntry(row)]));
+  const byKey = new Map(
+    current.map((row) => [`${row.habitId}:${row.date}`, toEntry(row)]),
+  );
 
   const winners = candidates.filter((entry) =>
     wins(entry, byKey.get(`${entry.habitId}:${entry.date}`), fingerprintEntry),
@@ -275,8 +295,14 @@ async function pushSettings(
 ): Promise<void> {
   if (!incoming) return;
 
-  const [current] = await tx.select().from(settings).where(eq(settings.userId, userId)).limit(1);
-  const existing = current ? { value: current.value, updatedAt: current.updatedAt } : undefined;
+  const [current] = await tx
+    .select()
+    .from(settings)
+    .where(eq(settings.userId, userId))
+    .limit(1);
+  const existing = current
+    ? { value: current.value, updatedAt: current.updatedAt }
+    : undefined;
   if (!wins(incoming, existing, fingerprintSettings)) return;
 
   await tx
@@ -319,7 +345,8 @@ async function pull(tx: Tx, userId: string, since: number): Promise<SyncPull> {
   ]);
 
   const truncated =
-    habitRows.length === MAX_ROWS_PER_REQUEST || entryRows.length === MAX_ROWS_PER_REQUEST;
+    habitRows.length === MAX_ROWS_PER_REQUEST ||
+    entryRows.length === MAX_ROWS_PER_REQUEST;
   const cursor = resumePoint(since, [habitRows, entryRows], [settingsRows]);
 
   return {

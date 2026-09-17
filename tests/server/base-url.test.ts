@@ -11,9 +11,9 @@ const dev = { NODE_ENV: "development" } as NodeJS.ProcessEnv;
 
 describe("resolveBaseURL", () => {
   it("pins the configured URL", () => {
-    expect(resolveBaseURL({ ...prod, BETTER_AUTH_URL: "https://openhabits.app" })).toBe(
-      "https://openhabits.app",
-    );
+    expect(
+      resolveBaseURL({ ...prod, BETTER_AUTH_URL: "https://openhabits.app" }),
+    ).toBe("https://openhabits.app");
   });
 
   it("treats a blank variable as unset", () => {

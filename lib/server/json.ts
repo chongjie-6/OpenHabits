@@ -16,7 +16,8 @@ export async function readJson(
   maxBytes = Infinity,
 ): Promise<unknown> {
   try {
-    const text = typeof source === "string" ? source : await readText(source, maxBytes);
+    const text =
+      typeof source === "string" ? source : await readText(source, maxBytes);
     return text === null ? undefined : JSON.parse(text);
   } catch {
     return undefined;
@@ -24,7 +25,10 @@ export async function readJson(
 }
 
 /** The body as text, or null once it passes `maxBytes` — read no further than that. */
-export async function readText(request: Request, maxBytes = Infinity): Promise<string | null> {
+export async function readText(
+  request: Request,
+  maxBytes = Infinity,
+): Promise<string | null> {
   if (!request.body) return "";
   if (maxBytes === Infinity) return request.text();
 

@@ -34,7 +34,13 @@ function habit(over: Partial<Habit> = {}): Habit {
 }
 
 function entry(over: Partial<Entry> = {}): Entry {
-  return { habitId: "h", date: "2026-08-01", count: 1, updatedAt: 100, ...over };
+  return {
+    habitId: "h",
+    date: "2026-08-01",
+    count: 1,
+    updatedAt: 100,
+    ...over,
+  };
 }
 
 const print = (record: { updatedAt: number; tag?: string }) => record.tag ?? "";
@@ -91,9 +97,9 @@ describe("fingerprintHabit", () => {
   it("ignores the fields that are fixed for the life of a record", () => {
     // `id` and `createdAt` cannot differ between two copies of the same habit,
     // so including them would only add noise to the tiebreak.
-    expect(fingerprintHabit(habit({ id: "other", createdAt: "2020-01-01" }))).toBe(
-      fingerprintHabit(habit()),
-    );
+    expect(
+      fingerprintHabit(habit({ id: "other", createdAt: "2020-01-01" })),
+    ).toBe(fingerprintHabit(habit()));
   });
 
   it("tells two weekday cadences apart", () => {
@@ -117,8 +123,12 @@ describe("fingerprintHabit", () => {
 
 describe("fingerprintEntry", () => {
   it("is the count, which is all an entry carries", () => {
-    expect(fingerprintEntry(entry({ count: 2 }))).not.toBe(fingerprintEntry(entry({ count: 3 })));
-    expect(fingerprintEntry(entry({ updatedAt: 999 }))).toBe(fingerprintEntry(entry()));
+    expect(fingerprintEntry(entry({ count: 2 }))).not.toBe(
+      fingerprintEntry(entry({ count: 3 })),
+    );
+    expect(fingerprintEntry(entry({ updatedAt: 999 }))).toBe(
+      fingerprintEntry(entry()),
+    );
   });
 });
 
@@ -147,7 +157,11 @@ describe("fingerprintSettings", () => {
     // Theme left the synced blob with §13.8 #1. A stale field riding along on an
     // older device's push must not change the fingerprint, or the two would
     // disagree about a value neither of them stores.
-    const withTheme = { value: { ...DEFAULT_SETTINGS, theme: "dark" } as never };
-    expect(fingerprintSettings(withTheme)).toBe(fingerprintSettings({ value: DEFAULT_SETTINGS }));
+    const withTheme = {
+      value: { ...DEFAULT_SETTINGS, theme: "dark" } as never,
+    };
+    expect(fingerprintSettings(withTheme)).toBe(
+      fingerprintSettings({ value: DEFAULT_SETTINGS }),
+    );
   });
 });

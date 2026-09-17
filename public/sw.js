@@ -48,7 +48,15 @@ const ASSET_URL = /\/_next\/static\/[^"'\\\s?#)]+/g;
  * posts to the server — so precaching it would buy a shell with nothing behind
  * it.
  */
-const ROUTES = ["/", "/week", "/stats", "/settings", "/settings/colours", "/quotes", "/habit"];
+const ROUTES = [
+  "/",
+  "/week",
+  "/stats",
+  "/settings",
+  "/settings/colours",
+  "/quotes",
+  "/habit",
+];
 
 self.addEventListener("install", (event) => {
   // Precaching must not gate activation: a worker that fails to install leaves
@@ -60,7 +68,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const names = await caches.keys();
-      await Promise.all(names.filter((n) => !KEEP.has(n)).map((n) => caches.delete(n)));
+      await Promise.all(
+        names.filter((n) => !KEEP.has(n)).map((n) => caches.delete(n)),
+      );
       await self.clients.claim();
     })(),
   );
@@ -73,7 +83,10 @@ self.addEventListener("activate", (event) => {
  * online navigation refreshes what is missing.
  */
 async function precache(cacheMode) {
-  const [shell, flight] = await Promise.all([caches.open(SHELL), caches.open(FLIGHT)]);
+  const [shell, flight] = await Promise.all([
+    caches.open(SHELL),
+    caches.open(FLIGHT),
+  ]);
 
   await Promise.all(
     ROUTES.map(async (path) => {
@@ -108,7 +121,10 @@ function revalidate() {
 }
 
 async function sweepAssets() {
-  const [assets, exempt] = await Promise.all([caches.open(ASSETS), shellAssets()]);
+  const [assets, exempt] = await Promise.all([
+    caches.open(ASSETS),
+    shellAssets(),
+  ]);
   const cutoff = Date.now() - ASSET_TTL_MS;
 
   for (const request of await assets.keys()) {
@@ -126,7 +142,8 @@ async function shellAssets() {
   for (const request of await shell.keys()) {
     const response = await shell.match(request);
     if (!response) continue;
-    for (const [path] of (await response.text()).matchAll(ASSET_URL)) paths.add(path);
+    for (const [path] of (await response.text()).matchAll(ASSET_URL))
+      paths.add(path);
   }
   return paths;
 }
@@ -137,7 +154,8 @@ async function shellAssets() {
  */
 function lastUsed(response) {
   return (
-    Number(response.headers.get(USED_HEADER)) || Date.parse(response.headers.get("date") ?? "")
+    Number(response.headers.get(USED_HEADER)) ||
+    Date.parse(response.headers.get("date") ?? "")
   );
 }
 
@@ -148,7 +166,11 @@ async function putAsset(request, response) {
   const cache = await caches.open(ASSETS);
   await cache.put(
     request,
-    new Response(body, { status: response.status, statusText: response.statusText, headers }),
+    new Response(body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    }),
   );
 }
 
@@ -211,14 +233,19 @@ self.addEventListener("fetch", (event) => {
           // stored here would be what this route shows on the next plane.
           if (response.ok) {
             const cache = await caches.open(SHELL);
-            event.waitUntil(cache.put(routeKey(url.pathname), response.clone()).catch(() => null));
+            event.waitUntil(
+              cache
+                .put(routeKey(url.pathname), response.clone())
+                .catch(() => null),
+            );
             revalidate();
           }
           return response;
         } catch {
           const shell = await caches.open(SHELL);
           const cached =
-            (await shell.match(routeKey(url.pathname))) || (await shell.match(routeKey("/")));
+            (await shell.match(routeKey(url.pathname))) ||
+            (await shell.match(routeKey("/")));
           return cached ?? Response.error();
         }
       })(),
@@ -249,7 +276,7 @@ self.addEventListener("fetch", (event) => {
         // The refresh has to outlive the response, or a cache hit lets the
         // worker be killed before the new payload lands.
         event.waitUntil(network);
-        return (cached ?? (await network)) ?? Response.error();
+        return cached ?? (await network) ?? Response.error();
       })(),
     );
     return;
@@ -268,7 +295,9 @@ self.addEventListener("fetch", (event) => {
         // Served from cache forever once stored, so a 404 stored here would
         // be permanent for that hash.
         if (response.ok) {
-          event.waitUntil(putAsset(request, response.clone()).catch(() => null));
+          event.waitUntil(
+            putAsset(request, response.clone()).catch(() => null),
+          );
         }
         return response;
       })(),
@@ -282,7 +311,8 @@ self.addEventListener("fetch", (event) => {
       const cached = await caches.match(request);
       const network = fetch(request)
         .then((response) => {
-          if (response.ok) putAsset(request, response.clone()).catch(() => null);
+          if (response.ok)
+            putAsset(request, response.clone()).catch(() => null);
           return response;
         })
         .catch(() => cached);
@@ -314,9 +344,12 @@ self.addEventListener("push", (event) => {
         // costs the app its push permission on Chrome.
       }
 
-      const title = typeof payload.title === "string" ? payload.title : FALLBACK_TITLE;
+      const title =
+        typeof payload.title === "string" ? payload.title : FALLBACK_TITLE;
       const body =
-        typeof payload.body === "string" ? payload.body : "You have habits left today.";
+        typeof payload.body === "string"
+          ? payload.body
+          : "You have habits left today.";
 
       await self.registration.showNotification(title, {
         body,

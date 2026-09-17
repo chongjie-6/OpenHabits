@@ -44,7 +44,9 @@ export function Hydrator() {
 
     navigator.serviceWorker
       .register("/sw.js", { scope: "/", updateViaCache: "none" })
-      .catch((error) => console.error("openhabits: service worker failed", error));
+      .catch((error) =>
+        console.error("openhabits: service worker failed", error),
+      );
   }, []);
 
   return null;
@@ -68,7 +70,8 @@ export function BottomNav() {
     >
       <ul className="mx-auto flex max-w-2xl">
         {TABS.map(({ href, label, icon: Icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const active =
+            href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <li key={href} className="flex-1">
               <Link

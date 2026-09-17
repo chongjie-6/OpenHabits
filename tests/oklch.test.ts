@@ -19,7 +19,14 @@ describe("parseHex", () => {
   });
 
   it("rejects anything it cannot measure", () => {
-    for (const value of ["transparent", "rgb(0 0 0)", "#ff", "#ffff", "216e39", ""]) {
+    for (const value of [
+      "transparent",
+      "rgb(0 0 0)",
+      "#ff",
+      "#ffff",
+      "216e39",
+      "",
+    ]) {
       expect(parseHex(value)).toBeNull();
     }
   });

@@ -86,18 +86,25 @@ type Palette = {
 };
 
 function palette(ramp: Ramp): Palette {
-  const [background, foreground, muted, border, l0, l1, l2, l3, l4] = resolveColors([
-    "var(--background)",
-    "var(--foreground)",
-    "var(--muted)",
-    "var(--border)",
-    levelColor(0, ramp),
-    levelColor(1, ramp),
-    levelColor(2, ramp),
-    levelColor(3, ramp),
-    levelColor(4, ramp),
-  ]);
-  return { background, foreground, muted, border, levels: [l0, l1, l2, l3, l4] };
+  const [background, foreground, muted, border, l0, l1, l2, l3, l4] =
+    resolveColors([
+      "var(--background)",
+      "var(--foreground)",
+      "var(--muted)",
+      "var(--border)",
+      levelColor(0, ramp),
+      levelColor(1, ramp),
+      levelColor(2, ramp),
+      levelColor(3, ramp),
+      levelColor(4, ramp),
+    ]);
+  return {
+    background,
+    foreground,
+    muted,
+    border,
+    levels: [l0, l1, l2, l3, l4],
+  };
 }
 
 export type Geometry = {
@@ -164,7 +171,11 @@ export async function renderShareCard(card: ShareCard): Promise<Blob | null> {
     if (!first) continue;
     const month = first.date.slice(0, 7);
     if (month !== previousMonth && week - lastLabelled >= 3) {
-      ctx.fillText(formatMonthShort(first.date), left + week * STEP, GRID_TOP - 18);
+      ctx.fillText(
+        formatMonthShort(first.date),
+        left + week * STEP,
+        GRID_TOP - 18,
+      );
       lastLabelled = week;
     }
     previousMonth = month;
@@ -232,7 +243,11 @@ function roundRect(
 }
 
 /** Trim to fit the measured width, with an ellipsis, using the current font. */
-function truncate(ctx: CanvasRenderingContext2D, text: string, max: number): string {
+function truncate(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  max: number,
+): string {
   if (ctx.measureText(text).width <= max) return text;
   let cut = text;
   while (cut.length > 1 && ctx.measureText(`${cut}…`).width > max) {
@@ -250,7 +265,10 @@ function truncate(ctx: CanvasRenderingContext2D, text: string, max: number): str
  * share sheet throws `AbortError`, which is a completed interaction rather than
  * a failure to report.
  */
-export async function shareImage(blob: Blob, filename: string): Promise<"shared" | "saved"> {
+export async function shareImage(
+  blob: Blob,
+  filename: string,
+): Promise<"shared" | "saved"> {
   const file = new File([blob], filename, { type: "image/png" });
 
   if (navigator.canShare?.({ files: [file] })) {
@@ -258,7 +276,8 @@ export async function shareImage(blob: Blob, filename: string): Promise<"shared"
       await navigator.share({ files: [file] });
       return "shared";
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return "shared";
+      if (error instanceof DOMException && error.name === "AbortError")
+        return "shared";
       // Anything else — a share target that rejected the file, a permissions
       // policy — falls through to the download, which always works.
     }

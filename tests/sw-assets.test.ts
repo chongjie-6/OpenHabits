@@ -32,7 +32,8 @@ class MemoryCache {
 }
 
 function key(request: RequestInfo) {
-  return new URL(typeof request === "string" ? request : request.url, ORIGIN).href;
+  return new URL(typeof request === "string" ? request : request.url, ORIGIN)
+    .href;
 }
 
 function boot() {
@@ -62,7 +63,8 @@ function boot() {
   const sandbox: Record<string, unknown> = {
     self: {
       location: new URL(ORIGIN),
-      addEventListener: (type: string, fn: (event: unknown) => void) => (listeners[type] = fn),
+      addEventListener: (type: string, fn: (event: unknown) => void) =>
+        (listeners[type] = fn),
     },
     caches,
     fetch: async () => new Response("network"),
@@ -71,7 +73,10 @@ function boot() {
     Headers,
     URL,
   };
-  runInNewContext(readFileSync(new URL("../public/sw.js", import.meta.url), "utf8"), sandbox);
+  runInNewContext(
+    readFileSync(new URL("../public/sw.js", import.meta.url), "utf8"),
+    sandbox,
+  );
 
   // Top-level `const`s are not properties of the sandbox, but a second script
   // in the same context can still name them.
@@ -95,8 +100,14 @@ describe("the asset cache sweep", () => {
   it("drops what nothing has asked for in a month and keeps the rest", async () => {
     const sw = boot();
     const assets = await sw.assets();
-    await assets.put(`${ORIGIN}/_next/static/chunks/old.js`, asset({ [USED]: String(Date.now() - 40 * DAY) }));
-    await assets.put(`${ORIGIN}/_next/static/chunks/new.js`, asset({ [USED]: String(Date.now() - DAY) }));
+    await assets.put(
+      `${ORIGIN}/_next/static/chunks/old.js`,
+      asset({ [USED]: String(Date.now() - 40 * DAY) }),
+    );
+    await assets.put(
+      `${ORIGIN}/_next/static/chunks/new.js`,
+      asset({ [USED]: String(Date.now() - DAY) }),
+    );
 
     await sw.sweep();
 
@@ -114,9 +125,18 @@ describe("the asset cache sweep", () => {
       ),
     );
     const stale = String(Date.now() - 400 * DAY);
-    await assets.put(`${ORIGIN}/_next/static/chunks/entry.js?dpl=dpl_1`, asset({ [USED]: stale }));
-    await assets.put(`${ORIGIN}/_next/static/chunks/lazy.js`, asset({ [USED]: stale }));
-    await assets.put(`${ORIGIN}/_next/static/chunks/gone.js`, asset({ [USED]: stale }));
+    await assets.put(
+      `${ORIGIN}/_next/static/chunks/entry.js?dpl=dpl_1`,
+      asset({ [USED]: stale }),
+    );
+    await assets.put(
+      `${ORIGIN}/_next/static/chunks/lazy.js`,
+      asset({ [USED]: stale }),
+    );
+    await assets.put(
+      `${ORIGIN}/_next/static/chunks/gone.js`,
+      asset({ [USED]: stale }),
+    );
 
     await sw.sweep();
 
@@ -129,13 +149,21 @@ describe("the asset cache sweep", () => {
   it("ages an entry stored before stamping by its Date header", async () => {
     const sw = boot();
     const assets = await sw.assets();
-    await assets.put(`${ORIGIN}/_next/static/chunks/legacy-old.js`, asset({ date: new Date(Date.now() - 90 * DAY).toUTCString() }));
-    await assets.put(`${ORIGIN}/_next/static/chunks/legacy-new.js`, asset({ date: new Date().toUTCString() }));
+    await assets.put(
+      `${ORIGIN}/_next/static/chunks/legacy-old.js`,
+      asset({ date: new Date(Date.now() - 90 * DAY).toUTCString() }),
+    );
+    await assets.put(
+      `${ORIGIN}/_next/static/chunks/legacy-new.js`,
+      asset({ date: new Date().toUTCString() }),
+    );
     await assets.put(`${ORIGIN}/_next/static/chunks/undated.js`, asset({}));
 
     await sw.sweep();
 
-    expect(await cachedPaths(assets)).toEqual(["/_next/static/chunks/legacy-new.js"]);
+    expect(await cachedPaths(assets)).toEqual([
+      "/_next/static/chunks/legacy-new.js",
+    ]);
   });
 
   it("restamps a cache hit so an asset in use is never swept", async () => {

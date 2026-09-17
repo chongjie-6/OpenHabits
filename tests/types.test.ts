@@ -8,7 +8,12 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { isHexColor, normaliseHabit, normaliseHabitColor, type Habit } from "@/lib/types";
+import {
+  isHexColor,
+  normaliseHabit,
+  normaliseHabitColor,
+  type Habit,
+} from "@/lib/types";
 
 /** A v1 habit: everything except the sync metadata `Synced` adds. */
 function legacy(over: Record<string, unknown> = {}) {
@@ -38,7 +43,9 @@ describe("normaliseHabit", () => {
   });
 
   it("falls back to the stamp that loses every merge when the date is unreadable", () => {
-    expect(normaliseHabit(legacy({ createdAt: "not a date" })).updatedAt).toBe(0);
+    expect(normaliseHabit(legacy({ createdAt: "not a date" })).updatedAt).toBe(
+      0,
+    );
     expect(normaliseHabit(legacy({ createdAt: "" })).updatedAt).toBe(0);
   });
 

@@ -168,7 +168,14 @@ export function buildHabitHistory(
     const state = habitsForDay(only, entries, day, weekStartsOn)[0];
 
     if (!state || !state.scheduled) {
-      out.push({ date: day, scheduled: 0, completed: 0, score: null, level: "rest", preStart });
+      out.push({
+        date: day,
+        scheduled: 0,
+        completed: 0,
+        score: null,
+        level: "rest",
+        preStart,
+      });
       continue;
     }
 
@@ -197,7 +204,8 @@ export function perHabitTotals(
   weekStartsOn: 0 | 1,
 ): Map<string, HabitTotals> {
   const totals = new Map<string, HabitTotals>();
-  for (const habit of habits) totals.set(habit.id, { scheduled: 0, completed: 0 });
+  for (const habit of habits)
+    totals.set(habit.id, { scheduled: 0, completed: 0 });
 
   const span = daysBetween(from, to);
   for (let i = 0; i <= span; i++) {
@@ -226,7 +234,9 @@ export function buildHistory(
   const span = daysBetween(from, to);
   const out: DayStat[] = [];
   for (let i = 0; i <= span; i++) {
-    out.push(statFor(habits, entries, addDays(from, i), weekStartsOn, firstDay));
+    out.push(
+      statFor(habits, entries, addDays(from, i), weekStartsOn, firstDay),
+    );
   }
   return out;
 }

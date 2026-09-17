@@ -39,12 +39,20 @@ function error(status: number, code: SyncErrorCode, message: string): Response {
 export async function POST(request: Request): Promise<Response> {
   if (!syncConfigured()) {
     // The client treats this as "sync is off" rather than retrying forever.
-    return error(503, "server-error", "Sync is not configured on this deployment.");
+    return error(
+      503,
+      "server-error",
+      "Sync is not configured on this deployment.",
+    );
   }
 
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) {
-    return error(413, "payload-too-large", "Sync payload is too large. Send fewer records.");
+    return error(
+      413,
+      "payload-too-large",
+      "Sync payload is too large. Send fewer records.",
+    );
   }
 
   const user = await resolveUser(request);
@@ -61,7 +69,11 @@ export async function POST(request: Request): Promise<Response> {
    */
   const metered = await check("sync", user.id);
   if (!metered.ok) {
-    return error(429, "rate-limited", "Syncing too often; this device will try again shortly.");
+    return error(
+      429,
+      "rate-limited",
+      "Syncing too often; this device will try again shortly.",
+    );
   }
 
   // Bounded again while reading: the header check above trusts what was
@@ -83,12 +95,20 @@ export async function POST(request: Request): Promise<Response> {
     if (cause instanceof AccountMismatchError) {
       // News rather than an error: the client is holding someone else's data
       // and needs to hand the device over. Nothing was written.
-      return error(409, "account-mismatch", "Local data belongs to a different account.");
+      return error(
+        409,
+        "account-mismatch",
+        "Local data belongs to a different account.",
+      );
     }
 
     // Logged in full, reported in outline: a driver error can quote the SQL it
     // failed on, and that SQL contains row values.
     console.error("openhabits: sync failed", cause);
-    return error(500, "server-error", "Sync failed. Your data is safe on this device.");
+    return error(
+      500,
+      "server-error",
+      "Sync failed. Your data is safe on this device.",
+    );
   }
 }

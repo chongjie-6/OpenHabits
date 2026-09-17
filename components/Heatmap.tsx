@@ -118,7 +118,8 @@ export function Heatmap({
       event.preventDefault();
       const index = cursor ?? stats.findIndex((s) => s.date === today);
       const stat = stats[index];
-      if (stat && !stat.preStart) onSelect(stat.date === selected ? null : stat.date);
+      if (stat && !stat.preStart)
+        onSelect(stat.date === selected ? null : stat.date);
     }
   }
 
@@ -279,6 +280,7 @@ function labelFor(stat: DayStat, isFuture: boolean): string {
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  for (let i = 0; i < items.length; i += size)
+    out.push(items.slice(i, i + size));
   return out;
 }

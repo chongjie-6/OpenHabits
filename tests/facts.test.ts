@@ -28,9 +28,10 @@ describe("the fact deck", () => {
       const { id } = factForDay(day);
       const previous = lastSeen.get(id);
       if (previous !== undefined) {
-        expect(i - previous, `${id} repeated after ${i - previous} days`).toBeGreaterThan(
-          window,
-        );
+        expect(
+          i - previous,
+          `${id} repeated after ${i - previous} days`,
+        ).toBeGreaterThan(window);
       }
       lastSeen.set(id, i);
       day = addDays(day, 1);
@@ -85,8 +86,14 @@ describe("the fact corpus", () => {
   it("has no duplicated fact text", () => {
     const seen = new Map<string, string>();
     for (const fact of FACTS) {
-      const key = fact.text.toLowerCase().replace(/[^a-z]/g, "").slice(0, 60);
-      expect(seen.get(key), `${fact.id} duplicates ${seen.get(key)}`).toBeUndefined();
+      const key = fact.text
+        .toLowerCase()
+        .replace(/[^a-z]/g, "")
+        .slice(0, 60);
+      expect(
+        seen.get(key),
+        `${fact.id} duplicates ${seen.get(key)}`,
+      ).toBeUndefined();
       seen.set(key, fact.id);
     }
   });

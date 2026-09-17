@@ -85,10 +85,17 @@ export const metadata: Metadata = {
    * anyway, so a build with no environment set stays warning-free.
    */
   metadataBase: siteURL(),
-  title: { default: "OpenHabits — daily quotes & habits", template: "%s · OpenHabits" },
+  title: {
+    default: "OpenHabits — daily quotes & habits",
+    template: "%s · OpenHabits",
+  },
   description: DESCRIPTION,
   applicationName: "OpenHabits",
-  appleWebApp: { capable: true, title: "OpenHabits", statusBarStyle: "default" },
+  appleWebApp: {
+    capable: true,
+    title: "OpenHabits",
+    statusBarStyle: "default",
+  },
   formatDetection: { telephone: false, date: false, address: false },
   openGraph: {
     type: "website",

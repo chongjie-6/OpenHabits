@@ -33,14 +33,19 @@ export const FALLBACK_SITE_URL = "http://localhost:3000";
 
 export function siteURL(env: NodeJS.ProcessEnv = process.env): URL {
   const candidate =
-    env.SITE_URL?.trim() || env.BETTER_AUTH_URL?.trim() || fromVercel(env) || FALLBACK_SITE_URL;
+    env.SITE_URL?.trim() ||
+    env.BETTER_AUTH_URL?.trim() ||
+    fromVercel(env) ||
+    FALLBACK_SITE_URL;
 
   try {
     return new URL(candidate);
   } catch {
     // A typo'd origin should not fail a build that would otherwise be fine:
     // the cost is a wrong image URL in a link preview, not a broken app.
-    console.warn(`[openhabits] SITE_URL is not a valid URL (${candidate}); falling back.`);
+    console.warn(
+      `[openhabits] SITE_URL is not a valid URL (${candidate}); falling back.`,
+    );
     return new URL(FALLBACK_SITE_URL);
   }
 }

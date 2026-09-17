@@ -18,6 +18,8 @@ export const metadata: Metadata = {
 };
 
 /** See the note in `app/week/layout.tsx` — `page.tsx` is a client component. */
-export default function ResetPasswordLayout({ children }: LayoutProps<"/reset-password">) {
+export default function ResetPasswordLayout({
+  children,
+}: LayoutProps<"/reset-password">) {
   return children;
 }

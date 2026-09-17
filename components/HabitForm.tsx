@@ -26,9 +26,24 @@ import {
  */
 
 export const EMOJI = [
-  "🏃", "📖", "🧘", "💧", "✍️", "🏋️",
-  "🥗", "🛏️", "🎸", "🧹", "💊", "🌱",
-  "🚴", "🧠", "☎️", "🪥", "🐕", "🧊",
+  "🏃",
+  "📖",
+  "🧘",
+  "💧",
+  "✍️",
+  "🏋️",
+  "🥗",
+  "🛏️",
+  "🎸",
+  "🧹",
+  "💊",
+  "🌱",
+  "🚴",
+  "🧠",
+  "☎️",
+  "🪥",
+  "🐕",
+  "🧊",
 ];
 
 /** Where the wheel opens when the habit is still on a palette key. */
@@ -60,9 +75,13 @@ export function HabitForm({
   const [name, setName] = useState(initial?.name ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? EMOJI[0]);
   const [color, setColor] = useState<HabitColor>(initial?.color ?? "green");
-  const [kind, setKind] = useState<Cadence["kind"]>(initial?.cadence?.kind ?? "daily");
+  const [kind, setKind] = useState<Cadence["kind"]>(
+    initial?.cadence?.kind ?? "daily",
+  );
   const [days, setDays] = useState<number[]>(
-    initial?.cadence?.kind === "weekdays" ? initial.cadence.days : [1, 2, 3, 4, 5],
+    initial?.cadence?.kind === "weekdays"
+      ? initial.cadence.days
+      : [1, 2, 3, 4, 5],
   );
   const [times, setTimes] = useState(
     initial?.cadence?.kind === "weekly" ? initial.cadence.times : 3,
@@ -77,7 +96,12 @@ export function HabitForm({
       kind === "daily"
         ? { kind: "daily" }
         : kind === "weekdays"
-          ? { kind: "weekdays", days: days.length ? [...days].sort((a, b) => a - b) : [1, 2, 3, 4, 5] }
+          ? {
+              kind: "weekdays",
+              days: days.length
+                ? [...days].sort((a, b) => a - b)
+                : [1, 2, 3, 4, 5],
+            }
           : { kind: "weekly", times };
 
     onSubmit({ name: name.trim(), emoji, color, cadence, target });
@@ -86,7 +110,8 @@ export function HabitForm({
   const custom = isHexColor(color);
 
   // Weekday chips start from the user's chosen week start.
-  const order = settings.weekStartsOn === 1 ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6];
+  const order =
+    settings.weekStartsOn === 1 ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6];
   const names = weekdayShortNames(settings.weekStartsOn);
 
   return (
@@ -125,7 +150,9 @@ export function HabitForm({
               aria-label={key}
               aria-pressed={color === key}
               className={`h-8 w-8 rounded-full border-2 transition-transform ${
-                color === key ? "scale-110 border-foreground" : "border-transparent"
+                color === key
+                  ? "scale-110 border-foreground"
+                  : "border-transparent"
               }`}
               style={{ background: habitColor(key) }}
             />
@@ -161,7 +188,10 @@ export function HabitForm({
           <Chip active={kind === "daily"} onClick={() => setKind("daily")}>
             Every day
           </Chip>
-          <Chip active={kind === "weekdays"} onClick={() => setKind("weekdays")}>
+          <Chip
+            active={kind === "weekdays"}
+            onClick={() => setKind("weekdays")}
+          >
             Certain days
           </Chip>
           <Chip active={kind === "weekly"} onClick={() => setKind("weekly")}>
@@ -187,7 +217,9 @@ export function HabitForm({
                     )
                   }
                   className={`h-10 flex-1 rounded-control border text-[12px] font-medium ${
-                    on ? "border-accent bg-accent text-accent-fg" : "border-border text-muted"
+                    on
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border text-muted"
                   }`}
                 >
                   {names[i]}
@@ -270,7 +302,8 @@ export function describeCadence(
       base = `${cadence.times}× per week`;
       break;
     case "weekdays": {
-      const order = weekStartsOn === 1 ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6];
+      const order =
+        weekStartsOn === 1 ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6];
       const picked = order.filter((d) => cadence.days.includes(d));
       base =
         picked.length === 7
@@ -285,7 +318,13 @@ export function describeCadence(
   return target > 1 ? `${base} · ${target}× a day` : base;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -311,7 +350,9 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={`h-10 flex-1 rounded-control border px-2 text-[12px] font-medium transition-colors ${
-        active ? "border-accent bg-accent text-accent-fg" : "border-border text-muted"
+        active
+          ? "border-accent bg-accent text-accent-fg"
+          : "border-border text-muted"
       }`}
     >
       {children}

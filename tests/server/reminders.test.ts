@@ -41,7 +41,9 @@ beforeEach(async () => {
   }
   db = drizzle(pglite, { schema }) as unknown as Db;
 
-  await db.insert(schema.users).values({ id: "alice", email: "alice@example.com" });
+  await db
+    .insert(schema.users)
+    .values({ id: "alice", email: "alice@example.com" });
 });
 
 /** 23:00Z is 09:00 the next morning in Sydney, and 16:00 the same day in LA. */
@@ -111,7 +113,10 @@ type Delivery = { endpoint: string; payload: PushPayload };
 /** Records what would have been sent, and can be told to fail a given endpoint. */
 function recorder(results: Record<string, PushResult> = {}) {
   const sent: Delivery[] = [];
-  const send = async (target: PushTarget, payload: PushPayload): Promise<PushResult> => {
+  const send = async (
+    target: PushTarget,
+    payload: PushPayload,
+  ): Promise<PushResult> => {
     const result = results[target.endpoint] ?? "sent";
     if (result === "sent") sent.push({ endpoint: target.endpoint, payload });
     return result;
@@ -130,26 +135,48 @@ async function lastSentDay(endpoint: string): Promise<string | null> {
 describe("runReminderSweep", () => {
   it("drops a device that has not opened the app in longer than the window", async () => {
     await addHabit("read");
-    const dormant = new Date(NINE_IN_SYDNEY.getTime() - SUBSCRIPTION_TTL_MS - 1000);
-    await addDevice("https://push.example/dormant", "Australia/Sydney", null, dormant);
+    const dormant = new Date(
+      NINE_IN_SYDNEY.getTime() - SUBSCRIPTION_TTL_MS - 1000,
+    );
+    await addDevice(
+      "https://push.example/dormant",
+      "Australia/Sydney",
+      null,
+      dormant,
+    );
     await addDevice("https://push.example/live", "Australia/Sydney");
 
     const push = recorder();
-    const summary = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
+    const summary = await runReminderSweep(db, {
+      now: NINE_IN_SYDNEY,
+      send: push.send,
+    });
 
     // Collected before it was ever considered, so it neither counts as a device
     // nor takes a slot from one that is still in use.
     expect(summary).toMatchObject({ expired: 1, considered: 1, sent: 1 });
     expect(await endpoints()).toEqual(["https://push.example/live"]);
-    expect(push.sent.map((d) => d.endpoint)).toEqual(["https://push.example/live"]);
+    expect(push.sent.map((d) => d.endpoint)).toEqual([
+      "https://push.example/live",
+    ]);
   });
 
   it("keeps a device that has been quiet but not for long enough", async () => {
     await addHabit("read");
-    const recent = new Date(NINE_IN_SYDNEY.getTime() - SUBSCRIPTION_TTL_MS + 60_000);
-    await addDevice("https://push.example/sydney", "Australia/Sydney", null, recent);
+    const recent = new Date(
+      NINE_IN_SYDNEY.getTime() - SUBSCRIPTION_TTL_MS + 60_000,
+    );
+    await addDevice(
+      "https://push.example/sydney",
+      "Australia/Sydney",
+      null,
+      recent,
+    );
 
-    const summary = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: recorder().send });
+    const summary = await runReminderSweep(db, {
+      now: NINE_IN_SYDNEY,
+      send: recorder().send,
+    });
     expect(summary).toMatchObject({ expired: 0, considered: 1, sent: 1 });
   });
 
@@ -159,9 +186,18 @@ describe("runReminderSweep", () => {
     await addDevice("https://push.example/sydney", "Australia/Sydney");
 
     const push = recorder();
-    const summary = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
+    const summary = await runReminderSweep(db, {
+      now: NINE_IN_SYDNEY,
+      send: push.send,
+    });
 
-    expect(summary).toMatchObject({ considered: 1, due: 1, sent: 1, quiet: 0, failed: 0 });
+    expect(summary).toMatchObject({
+      considered: 1,
+      due: 1,
+      sent: 1,
+      quiet: 0,
+      failed: 0,
+    });
     expect(push.sent).toHaveLength(1);
     expect(push.sent[0].payload.title).toBe("2 habits left today");
     expect(push.sent[0].payload.body).toBe("✅ read · ✅ run");
@@ -173,7 +209,10 @@ describe("runReminderSweep", () => {
     await addDevice("https://push.example/la", "America/Los_Angeles");
 
     const push = recorder();
-    const summary = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
+    const summary = await runReminderSweep(db, {
+      now: NINE_IN_SYDNEY,
+      send: push.send,
+    });
 
     expect(summary).toMatchObject({ considered: 1, due: 0, sent: 0 });
     expect(push.sent).toEqual([]);
@@ -186,7 +225,10 @@ describe("runReminderSweep", () => {
 
     const push = recorder();
     await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
-    const second = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
+    const second = await runReminderSweep(db, {
+      now: NINE_IN_SYDNEY,
+      send: push.send,
+    });
 
     expect(second).toMatchObject({ due: 0, sent: 0 });
     expect(push.sent).toHaveLength(1);
@@ -198,7 +240,10 @@ describe("runReminderSweep", () => {
     await addDevice("https://push.example/sydney", "Australia/Sydney");
 
     const push = recorder();
-    const summary = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
+    const summary = await runReminderSweep(db, {
+      now: NINE_IN_SYDNEY,
+      send: push.send,
+    });
 
     expect(summary).toMatchObject({ due: 1, sent: 0, quiet: 1 });
     expect(push.sent).toEqual([]);
@@ -213,13 +258,17 @@ describe("runReminderSweep", () => {
     await addDevice("https://push.example/sydney", "Australia/Sydney");
 
     const push = recorder();
-    expect(await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send })).toMatchObject({
+    expect(
+      await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send }),
+    ).toMatchObject({
       due: 0,
     });
 
     // 11:00Z is 21:00 in Sydney on the same civil day.
     const evening = new Date("2026-09-05T11:00:00Z");
-    expect(await runReminderSweep(db, { now: evening, send: push.send })).toMatchObject({
+    expect(
+      await runReminderSweep(db, { now: evening, send: push.send }),
+    ).toMatchObject({
       due: 1,
       sent: 1,
     });
@@ -232,7 +281,9 @@ describe("runReminderSweep", () => {
     const push = recorder();
     // The left join is what makes this work; an inner join would silently skip
     // every account that has pushed habits but no settings blob.
-    expect(await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send })).toMatchObject({
+    expect(
+      await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send }),
+    ).toMatchObject({
       sent: 1,
     });
   });
@@ -262,7 +313,9 @@ describe("runReminderSweep", () => {
     await addDevice("https://push.example/sydney", "Australia/Sydney");
 
     const push = recorder();
-    expect(await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send })).toMatchObject({
+    expect(
+      await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send }),
+    ).toMatchObject({
       due: 1,
       quiet: 1,
       sent: 0,
@@ -286,11 +339,16 @@ describe("runReminderSweep", () => {
     await addDevice("https://push.example/live", "Australia/Sydney");
 
     const push = recorder({ "https://push.example/dead": "gone" });
-    const summary = await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
+    const summary = await runReminderSweep(db, {
+      now: NINE_IN_SYDNEY,
+      send: push.send,
+    });
 
     expect(summary).toMatchObject({ sent: 1, removed: 1 });
     const rows = await db.select().from(schema.pushSubscriptions);
-    expect(rows.map((row) => row.endpoint)).toEqual(["https://push.example/live"]);
+    expect(rows.map((row) => row.endpoint)).toEqual([
+      "https://push.example/live",
+    ]);
   });
 
   it("keeps a subscription whose delivery merely failed", async () => {
@@ -298,7 +356,9 @@ describe("runReminderSweep", () => {
     await addDevice("https://push.example/flaky", "Australia/Sydney");
 
     const push = recorder({ "https://push.example/flaky": "failed" });
-    expect(await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send })).toMatchObject({
+    expect(
+      await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send }),
+    ).toMatchObject({
       failed: 1,
       removed: 0,
     });
@@ -314,7 +374,10 @@ describe("runReminderSweep", () => {
     const push = recorder();
     await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
     // 16:00Z the next day is 09:00 in LA on 2026-09-05.
-    await runReminderSweep(db, { now: new Date("2026-09-05T16:00:00Z"), send: push.send });
+    await runReminderSweep(db, {
+      now: new Date("2026-09-05T16:00:00Z"),
+      send: push.send,
+    });
 
     expect(push.sent.map((delivery) => delivery.endpoint)).toEqual([
       "https://push.example/sydney",

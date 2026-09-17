@@ -51,8 +51,10 @@ const globalForLimits = globalThis as unknown as {
 
 function build(): Limiters {
   const shared = { redis: getRedis(), timeout: TIMEOUT_MS, analytics: true };
-  const window = (tokens: number, span: Parameters<typeof Ratelimit.slidingWindow>[1]) =>
-    Ratelimit.slidingWindow(tokens, span);
+  const window = (
+    tokens: number,
+    span: Parameters<typeof Ratelimit.slidingWindow>[1],
+  ) => Ratelimit.slidingWindow(tokens, span);
 
   return {
     tiers: {
@@ -63,16 +65,28 @@ function build(): Limiters {
        * using the app ever meets it, which is what makes it safe to put in
        * front of everything.
        */
-      global: new Ratelimit({ ...shared, prefix: `${PREFIX}:global`, limiter: window(300, "60 s") }),
+      global: new Ratelimit({
+        ...shared,
+        prefix: `${PREFIX}:global`,
+        limiter: window(300, "60 s"),
+      }),
 
       /**
        * The tightest tier, because these paths spend a resource that is not
        * ours: an SMTP quota, and somebody else's inbox.
        */
-      mail: new Ratelimit({ ...shared, prefix: `${PREFIX}:mail`, limiter: window(3, "60 s") }),
+      mail: new Ratelimit({
+        ...shared,
+        prefix: `${PREFIX}:mail`,
+        limiter: window(3, "60 s"),
+      }),
 
       /** Each of these is a password hash verify, and the shape of a brute force. */
-      credential: new Ratelimit({ ...shared, prefix: `${PREFIX}:cred`, limiter: window(10, "60 s") }),
+      credential: new Ratelimit({
+        ...shared,
+        prefix: `${PREFIX}:cred`,
+        limiter: window(10, "60 s"),
+      }),
 
       /**
        * Well above the client's real cadence — it syncs on change, on focus and
@@ -80,9 +94,17 @@ function build(): Limiters {
        * account-wide advisory lock and a full-history pull being asked for in a
        * loop.
        */
-      sync: new Ratelimit({ ...shared, prefix: `${PREFIX}:sync`, limiter: window(60, "60 s") }),
+      sync: new Ratelimit({
+        ...shared,
+        prefix: `${PREFIX}:sync`,
+        limiter: window(60, "60 s"),
+      }),
 
-      reminders: new Ratelimit({ ...shared, prefix: `${PREFIX}:rem`, limiter: window(30, "60 s") }),
+      reminders: new Ratelimit({
+        ...shared,
+        prefix: `${PREFIX}:rem`,
+        limiter: window(30, "60 s"),
+      }),
     },
 
     /**
@@ -137,10 +159,18 @@ export function clientIp(headers: Headers): string | null {
 }
 
 /** Better Auth paths that send mail. */
-const MAIL_PATHS = new Set(["send-verification-email", "request-password-reset", "forget-password"]);
+const MAIL_PATHS = new Set([
+  "send-verification-email",
+  "request-password-reset",
+  "forget-password",
+]);
 
 /** Better Auth paths that verify or set a credential. */
-const CREDENTIAL_PATHS = new Set(["sign-in/email", "sign-up/email", "reset-password"]);
+const CREDENTIAL_PATHS = new Set([
+  "sign-in/email",
+  "sign-up/email",
+  "reset-password",
+]);
 
 /**
  * Which tier an `/api/auth/…` path falls into, or `null` for the rest of the
@@ -188,7 +218,10 @@ function secondsUntil(reset: number): number {
  * Allows the request when metering is off, when the identifier is unknown, or
  * when the store cannot answer. See the fail-open note at the top of the file.
  */
-export async function check(tier: Tier, identifier: string | null): Promise<Verdict> {
+export async function check(
+  tier: Tier,
+  identifier: string | null,
+): Promise<Verdict> {
   if (!rateLimitConfigured() || !identifier) return ALLOWED;
 
   try {
@@ -208,7 +241,10 @@ export async function check(tier: Tier, identifier: string | null): Promise<Verd
  * `address` is optional because the body it comes from may not have parsed, and
  * an unparseable body is Better Auth's to answer for rather than this module's.
  */
-export async function checkMail(ip: string | null, address: string | null): Promise<Verdict> {
+export async function checkMail(
+  ip: string | null,
+  address: string | null,
+): Promise<Verdict> {
   const perIp = await check("mail", ip);
   if (!perIp.ok) return perIp;
 
@@ -216,7 +252,9 @@ export async function checkMail(ip: string | null, address: string | null): Prom
 
   try {
     // Lower-cased so the budget follows the address rather than its spelling.
-    const { success, reset } = await limiters().mailDaily.limit(address.trim().toLowerCase());
+    const { success, reset } = await limiters().mailDaily.limit(
+      address.trim().toLowerCase(),
+    );
     return success ? ALLOWED : { ok: false, retryAfter: secondsUntil(reset) };
   } catch (cause) {
     console.error("[openhabits] rate limit check failed (mail-daily)", cause);
@@ -232,6 +270,9 @@ export async function checkMail(ip: string | null, address: string | null): Prom
 export function tooMany(message: string, seconds: number): Response {
   return Response.json(
     { error: "rate-limited", message },
-    { status: 429, headers: { "Cache-Control": "no-store", "Retry-After": String(seconds) } },
+    {
+      status: 429,
+      headers: { "Cache-Control": "no-store", "Retry-After": String(seconds) },
+    },
   );
 }

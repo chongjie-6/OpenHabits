@@ -75,7 +75,10 @@ async function run(): Promise<void> {
   } catch (cause) {
     // A failed sync is not a failed app — the data is on the device either way.
     console.error("openhabits: sync failed", cause);
-    store.setSyncStatus({ kind: "error", message: "Could not reach the server." });
+    store.setSyncStatus({
+      kind: "error",
+      message: "Could not reach the server.",
+    });
   }
 }
 
@@ -143,7 +146,9 @@ async function roundTrip(): Promise<Outcome> {
 }
 
 async function handleError(response: Response): Promise<Outcome> {
-  const body = await response.json().catch(() => null) as SyncErrorBody | null;
+  const body = (await response
+    .json()
+    .catch(() => null)) as SyncErrorBody | null;
 
   switch (response.status) {
     case 401:
@@ -170,7 +175,10 @@ async function handleError(response: Response): Promise<Outcome> {
        */
       return {
         kind: "stop",
-        status: { kind: "error", message: "Syncing too often; this device will try again shortly." },
+        status: {
+          kind: "error",
+          message: "Syncing too often; this device will try again shortly.",
+        },
       };
 
     case 503:
@@ -180,10 +188,16 @@ async function handleError(response: Response): Promise<Outcome> {
     case 413:
       // The server rejects this payload every time, so retrying only burns
       // battery. A bug in the client, not a condition to wait out.
-      console.error("openhabits: server rejected the sync payload", body?.message);
+      console.error(
+        "openhabits: server rejected the sync payload",
+        body?.message,
+      );
       return {
         kind: "stop",
-        status: { kind: "error", message: "This device's data could not be synced." },
+        status: {
+          kind: "error",
+          message: "This device's data could not be synced.",
+        },
       };
 
     default:

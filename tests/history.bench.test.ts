@@ -19,7 +19,10 @@ import { entryKey, type Entry, type Habit } from "@/lib/types";
 /** 52 weeks of grid, the widest the desktop layout shows. */
 const SPAN_DAYS = 371;
 
-function fixture(habitCount: number): { habits: Habit[]; entries: Map<string, Entry> } {
+function fixture(habitCount: number): {
+  habits: Habit[];
+  entries: Map<string, Entry>;
+} {
   const to = todayKey(0);
   const from = addDays(to, -SPAN_DAYS);
 
@@ -79,7 +82,9 @@ describe("heatmap pipeline at a year of data", () => {
     const from = addDays(to, -SPAN_DAYS);
 
     const ms = median(() => buildHistory(habits, entries, from, to, 1));
-    console.log(`buildHistory  5 habits × ${SPAN_DAYS} days: ${ms.toFixed(2)}ms`);
+    console.log(
+      `buildHistory  5 habits × ${SPAN_DAYS} days: ${ms.toFixed(2)}ms`,
+    );
 
     expect(ms).toBeLessThan(32);
   });
@@ -90,7 +95,9 @@ describe("heatmap pipeline at a year of data", () => {
     const from = addDays(to, -SPAN_DAYS);
 
     const ms = median(() => buildHistory(habits, entries, from, to, 1));
-    console.log(`buildHistory 20 habits × ${SPAN_DAYS} days: ${ms.toFixed(2)}ms`);
+    console.log(
+      `buildHistory 20 habits × ${SPAN_DAYS} days: ${ms.toFixed(2)}ms`,
+    );
 
     expect(ms).toBeLessThan(120);
   });
@@ -102,8 +109,12 @@ describe("heatmap pipeline at a year of data", () => {
     const small = fixture(5);
     const large = fixture(20);
 
-    const t5 = median(() => buildHistory(small.habits, small.entries, from, to, 1));
-    const t20 = median(() => buildHistory(large.habits, large.entries, from, to, 1));
+    const t5 = median(() =>
+      buildHistory(small.habits, small.entries, from, to, 1),
+    );
+    const t20 = median(() =>
+      buildHistory(large.habits, large.entries, from, to, 1),
+    );
     const factor = t20 / t5;
     console.log(`scaling 5→20 habits (4× data): ${factor.toFixed(2)}×`);
 
@@ -120,7 +131,9 @@ describe("heatmap pipeline at a year of data", () => {
 
     const streakMs = median(() => computeStreaks(stats));
     const totalsMs = median(() => perHabitTotals(habits, entries, from, to, 1));
-    console.log(`computeStreaks: ${streakMs.toFixed(3)}ms | perHabitTotals: ${totalsMs.toFixed(2)}ms`);
+    console.log(
+      `computeStreaks: ${streakMs.toFixed(3)}ms | perHabitTotals: ${totalsMs.toFixed(2)}ms`,
+    );
 
     expect(streakMs).toBeLessThan(8);
     expect(totalsMs).toBeLessThan(120);

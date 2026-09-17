@@ -13,7 +13,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("better-auth/react", () => ({
-  createAuthClient: () => ({ useSession: () => ({ data: null, isPending: false }) }),
+  createAuthClient: () => ({
+    useSession: () => ({ data: null, isPending: false }),
+  }),
 }));
 
 const HINT_KEY = "hapi:signed-in";
@@ -119,11 +121,17 @@ describe("what the hint is worth", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ error: "unauthenticated", message: "no" }, { status: 401 }),
+        Response.json(
+          { error: "unauthenticated", message: "no" },
+          { status: 401 },
+        ),
       ),
     );
     vi.stubGlobal("navigator", { onLine: true });
-    vi.stubGlobal("document", { addEventListener: () => {}, removeEventListener: () => {} });
+    vi.stubGlobal("document", {
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
 
     const client = await import("@/lib/sync/client");
     const store = await import("@/lib/store");

@@ -47,7 +47,10 @@ export type MergeResult = {
  * entries are considered — otherwise the history is reinstated and pushed back
  * up, resurrecting the habit.
  */
-export function mergeIncoming(local: LocalSnapshot, incoming: Incoming): MergeResult {
+export function mergeIncoming(
+  local: LocalSnapshot,
+  incoming: Incoming,
+): MergeResult {
   const habits = new Map(local.habits.map((h) => [h.id, h]));
   const changedHabits: Habit[] = [];
   const purgedHabitIds: string[] = [];
@@ -121,7 +124,12 @@ export function collectPush(
   local: LocalSnapshot,
   pushedThrough: number,
   limit: number = MAX_ROWS_PER_REQUEST,
-): { habits: Habit[]; entries: Entry[]; settings: LocalSnapshot["settings"] | null; complete: boolean } {
+): {
+  habits: Habit[];
+  entries: Entry[];
+  settings: LocalSnapshot["settings"] | null;
+  complete: boolean;
+} {
   const habits = local.habits
     .filter((h) => h.updatedAt > pushedThrough)
     .sort((a, b) => a.updatedAt - b.updatedAt);
@@ -130,7 +138,8 @@ export function collectPush(
     .filter((e) => e.updatedAt > pushedThrough)
     .sort((a, b) => a.updatedAt - b.updatedAt);
 
-  const settings = local.settings.updatedAt > pushedThrough ? local.settings : null;
+  const settings =
+    local.settings.updatedAt > pushedThrough ? local.settings : null;
 
   /**
    * One cutoff for every collection, the push-side twin of the server's
@@ -175,7 +184,11 @@ function cutAt(rows: { updatedAt: number }[], limit: number): number {
  * and never selected again.
  */
 export function watermarkAfterPush(
-  sent: { habits: Habit[]; entries: Entry[]; settings: { updatedAt: number } | null },
+  sent: {
+    habits: Habit[];
+    entries: Entry[];
+    settings: { updatedAt: number } | null;
+  },
   previous: number,
 ): number {
   let max = previous;

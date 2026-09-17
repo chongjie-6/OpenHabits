@@ -8,7 +8,8 @@ import { button, hero, shell } from "./layout";
 export const VERIFICATION_SUBJECT = "One square from day one";
 
 /** Shown after the subject in the inbox list, then hidden in the body. */
-const PREHEADER = "Verify your address and OpenHabits starts keeping your grid.";
+const PREHEADER =
+  "Verify your address and OpenHabits starts keeping your grid.";
 
 /** Day one: early in the fortnight, and the only square that is lit. */
 const LIT = { row: 3, column: 6 };

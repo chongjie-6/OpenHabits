@@ -10,11 +10,14 @@ import { describe, expect, it, vi } from "vitest";
 import { FALLBACK_SITE_URL, siteURL } from "@/lib/site-url";
 
 /** `ProcessEnv` requires `NODE_ENV`, which none of these cases care about. */
-const env = (over: Record<string, string>) => over as unknown as NodeJS.ProcessEnv;
+const env = (over: Record<string, string>) =>
+  over as unknown as NodeJS.ProcessEnv;
 
 describe("siteURL", () => {
   it("falls back to localhost when nothing says otherwise", () => {
-    expect(siteURL(env({})).toString()).toBe(new URL(FALLBACK_SITE_URL).toString());
+    expect(siteURL(env({})).toString()).toBe(
+      new URL(FALLBACK_SITE_URL).toString(),
+    );
   });
 
   it("prefers an explicit SITE_URL", () => {
@@ -32,7 +35,9 @@ describe("siteURL", () => {
   });
 
   it("takes Vercel's production host last, and adds the scheme it omits", () => {
-    const values = env({ VERCEL_PROJECT_PRODUCTION_URL: "openhabits.vercel.app" });
+    const values = env({
+      VERCEL_PROJECT_PRODUCTION_URL: "openhabits.vercel.app",
+    });
     expect(siteURL(values).origin).toBe("https://openhabits.vercel.app");
   });
 

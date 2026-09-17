@@ -40,18 +40,25 @@ async function seed(page) {
   const input = await page.waitForSelector('input[type="file"]');
   await input.uploadFile(BACKUP);
   await page.waitForFunction(() =>
-    [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Merge"),
+    [...document.querySelectorAll("button")].some(
+      (b) => b.textContent.trim() === "Merge",
+    ),
   );
   // Replace, not merge: merge keeps the device's own settings, and the backup's
   // saved quotes are part of what these frames are showing.
   const click = (label) =>
     page.evaluate(
-      (l) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === l).click(),
+      (l) =>
+        [...document.querySelectorAll("button")]
+          .find((b) => b.textContent.trim() === l)
+          .click(),
       label,
     );
   await click("Replace");
   await click("Yes, replace everything");
-  await page.waitForFunction(() => /Replaced everything with \d+ habits/.test(document.body.innerText));
+  await page.waitForFunction(() =>
+    /Replaced everything with \d+ habits/.test(document.body.innerText),
+  );
   await sleep(400);
 }
 
@@ -80,9 +87,12 @@ async function fit(page, stop) {
       if (el.closest("dialog")) continue;
       if (getComputedStyle(el).position === "fixed") continue;
       const r = el.getBoundingClientRect();
-      if (r.height > 0 && r.width > 0) bottom = Math.max(bottom, r.bottom + window.scrollY);
+      if (r.height > 0 && r.width > 0)
+        bottom = Math.max(bottom, r.bottom + window.scrollY);
     }
-    return Math.ceil(bottom + (nav ? nav.getBoundingClientRect().height : 0) + 20);
+    return Math.ceil(
+      bottom + (nav ? nav.getBoundingClientRect().height : 0) + 20,
+    );
   }, stop);
   return Math.max(620, Math.min(h, 1180));
 }
@@ -98,7 +108,11 @@ const phone = (height) => ({
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: true,
-  args: ["--force-color-profile=srgb", "--font-render-hinting=none", "--hide-scrollbars"],
+  args: [
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--hide-scrollbars",
+  ],
   defaultViewport: phone(844),
 });
 
@@ -114,10 +128,22 @@ for (const theme of ["light", "dark"]) {
     const real = window.matchMedia.bind(window);
     window.matchMedia = (q) =>
       /display-mode/.test(q)
-        ? { matches: true, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }
+        ? {
+            matches: true,
+            media: q,
+            onchange: null,
+            addEventListener() {},
+            removeEventListener() {},
+            addListener() {},
+            removeListener() {},
+            dispatchEvent: () => false,
+          }
         : real(q);
   });
-  await page.evaluateOnNewDocument((t) => localStorage.setItem("hapi-theme", t), theme);
+  await page.evaluateOnNewDocument(
+    (t) => localStorage.setItem("hapi-theme", t),
+    theme,
+  );
   await seed(page);
 
   // Save today's card, so the quote shows its filled state.
@@ -150,8 +176,13 @@ for (const theme of ["light", "dark"]) {
 for (const theme of ["light", "dark"]) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1180, height: 1000, deviceScaleFactor: 2 });
-  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: theme }]);
-  await page.evaluateOnNewDocument((t) => localStorage.setItem("hapi-theme", t), theme);
+  await page.emulateMediaFeatures([
+    { name: "prefers-color-scheme", value: theme },
+  ]);
+  await page.evaluateOnNewDocument(
+    (t) => localStorage.setItem("hapi-theme", t),
+    theme,
+  );
   await seed(page);
 
   await page.evaluateOnNewDocument(() => {
@@ -185,9 +216,13 @@ for (const theme of ["light", "dark"]) {
   // navigator.share, so the button falls through to a download.
   if (theme === "light") {
     await page.evaluate(() =>
-      [...document.querySelectorAll("button")].find((b) => /Share/.test(b.textContent)).click(),
+      [...document.querySelectorAll("button")]
+        .find((b) => /Share/.test(b.textContent))
+        .click(),
     );
-    await page.waitForFunction(() => window.__blobs.length > 0, { timeout: 20000 });
+    await page.waitForFunction(() => window.__blobs.length > 0, {
+      timeout: 20000,
+    });
     const dataUrl = await page.evaluate(async () => {
       const blob = window.__blobs[0];
       return await new Promise((res) => {
@@ -196,7 +231,10 @@ for (const theme of ["light", "dark"]) {
         fr.readAsDataURL(blob);
       });
     });
-    writeFileSync(`${OUT}share-card.png`, Buffer.from(dataUrl.split(",")[1], "base64"));
+    writeFileSync(
+      `${OUT}share-card.png`,
+      Buffer.from(dataUrl.split(",")[1], "base64"),
+    );
     console.log("share-card.png");
   }
 
@@ -222,7 +260,16 @@ for (const variant of [
       const real = window.matchMedia.bind(window);
       window.matchMedia = (q) =>
         /display-mode/.test(q)
-          ? { matches: true, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }
+          ? {
+              matches: true,
+              media: q,
+              onchange: null,
+              addEventListener() {},
+              removeEventListener() {},
+              addListener() {},
+              removeListener() {},
+              dispatchEvent: () => false,
+            }
           : real(q);
     });
     // Pages in one browser context share an origin's localStorage, so the
@@ -243,14 +290,22 @@ for (const variant of [
     await seed(page);
 
     if (variant.preset) {
-      await page.goto(`${BASE}/settings/colours`, { waitUntil: "networkidle0" });
+      await page.goto(`${BASE}/settings/colours`, {
+        waitUntil: "networkidle0",
+      });
       await page.waitForFunction(
-        (l) => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === l),
+        (l) =>
+          [...document.querySelectorAll("button")].some(
+            (b) => b.textContent.trim() === l,
+          ),
         {},
         variant.preset,
       );
       await page.evaluate(
-        (l) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === l).click(),
+        (l) =>
+          [...document.querySelectorAll("button")]
+            .find((b) => b.textContent.trim() === l)
+            .click(),
         variant.preset,
       );
       await sleep(600);

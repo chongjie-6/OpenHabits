@@ -180,7 +180,8 @@ function zoneFormatter(timeZone: string): Intl.DateTimeFormat {
 
 /** Does the runtime's ICU know this zone? Anything else is client-supplied junk. */
 export function isTimeZone(value: unknown): value is string {
-  if (typeof value !== "string" || value.length === 0 || value.length > 64) return false;
+  if (typeof value !== "string" || value.length === 0 || value.length > 64)
+    return false;
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: value });
     return true;

@@ -12,7 +12,12 @@
  * rate for doing exactly what was asked of it.
  */
 
-import { formatMonthShort, weekdayInitials, weekdayOf, weekdayShortNames } from "./dates";
+import {
+  formatMonthShort,
+  weekdayInitials,
+  weekdayOf,
+  weekdayShortNames,
+} from "./dates";
 import { buildHabitHistory, type DayStat } from "./history";
 import { computeStreaks, type Streaks } from "./streaks";
 import type { DayKey, Entry, Habit } from "./types";
@@ -38,7 +43,11 @@ export type MonthRate = Rate & {
 };
 
 function rate(scheduled: number, completed: number): Rate {
-  return { scheduled, completed, rate: scheduled === 0 ? null : completed / scheduled };
+  return {
+    scheduled,
+    completed,
+    rate: scheduled === 0 ? null : completed / scheduled,
+  };
 }
 
 /**
@@ -49,7 +58,10 @@ function rate(scheduled: number, completed: number): Rate {
  * rather than whole days, so one bad Saturday out of twenty does not read the
  * same as twenty half-done ones.
  */
-export function weekdayRates(stats: DayStat[], weekStartsOn: 0 | 1): WeekdayRate[] {
+export function weekdayRates(
+  stats: DayStat[],
+  weekStartsOn: 0 | 1,
+): WeekdayRate[] {
   const scheduled = new Array<number>(7).fill(0);
   const completed = new Array<number>(7).fill(0);
 
@@ -146,7 +158,9 @@ const MIN_SPREAD = 0.2;
 export function weekdayExtremes(
   rates: WeekdayRate[],
 ): { best: WeekdayRate; worst: WeekdayRate } | null {
-  const usable = rates.filter((r) => r.rate !== null && r.scheduled >= MIN_SAMPLE);
+  const usable = rates.filter(
+    (r) => r.rate !== null && r.scheduled >= MIN_SAMPLE,
+  );
   if (usable.length < 3) return null;
 
   const sorted = [...usable].sort((a, b) => a.rate! - b.rate!);

@@ -252,7 +252,9 @@ export function InstallCard() {
 
   return (
     <div className="surface-card bg-surface-2 p-4">
-      <p className="text-[13px] font-medium">Add OpenHabits to your home screen</p>
+      <p className="text-[13px] font-medium">
+        Add OpenHabits to your home screen
+      </p>
       <p className="mt-1 text-[12px] leading-relaxed text-muted">
         It opens full screen, starts on Today, and works offline.
       </p>

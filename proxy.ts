@@ -20,7 +20,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { check, clientIp, metered, tooMany } from "@/lib/server/ratelimit";
 
-export async function proxy(request: NextRequest): Promise<NextResponse | Response> {
+export async function proxy(
+  request: NextRequest,
+): Promise<NextResponse | Response> {
   const { pathname } = request.nextUrl;
 
   // The exclusions live here rather than in the matcher, so the rule about which

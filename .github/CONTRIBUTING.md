@@ -22,7 +22,7 @@ differently from a failed one, a null completion rate is an empty track and not
 a zero-width bar, `weekdayExtremes` refuses to name a best and worst day below a
 minimum sample, and four storage keys still say `hapi` because renaming them
 orphans data that already exists on someone's device. If something looks wrong,
-check `DESIGN.md` §12 and §13.8 first — and if it *is* wrong, saying so in an
+check `DESIGN.md` §12 and §13.8 first — and if it _is_ wrong, saying so in an
 issue is a real contribution.
 
 ## Setup
@@ -54,14 +54,14 @@ React client components
   ← lib/sync/client.ts  merges server state in later
 ```
 
-| Route | Screen |
-|---|---|
-| `/` | **Today**: the daily card and today's habits |
-| `/week` | **Week**: seven days × every habit; backfill and correct the past |
-| `/stats` | **Stats**: heatmap, streaks, completion rates, share card |
-| `/settings` | **Settings**: appearance, week start, habits, account, reminders, export/import |
-| `/habit?id=` | **Habit detail**: one habit's heatmap, cadence, rename, archive, delete |
-| `/quotes` | **Collection**: everything you saved, searchable by author, source and tag |
+| Route        | Screen                                                                          |
+| ------------ | ------------------------------------------------------------------------------- |
+| `/`          | **Today**: the daily card and today's habits                                    |
+| `/week`      | **Week**: seven days × every habit; backfill and correct the past               |
+| `/stats`     | **Stats**: heatmap, streaks, completion rates, share card                       |
+| `/settings`  | **Settings**: appearance, week start, habits, account, reminders, export/import |
+| `/habit?id=` | **Habit detail**: one habit's heatmap, cadence, rename, archive, delete         |
+| `/quotes`    | **Collection**: everything you saved, searchable by author, source and tag      |
 
 The first four are the bottom tab bar; the last two are pushed views.
 
@@ -171,13 +171,13 @@ most often catch a first patch:
   device-local. A custom palette wins by being inline on `<html>`, so nothing
   else may write inline styles there.
 - **Deletes write tombstones**, never remove rows, and their six-month TTL
-  bounds *resurrection*, not storage.
+  bounds _resurrection_, not storage.
 
 ## Pull requests
 
 - One concern per pull request. A refactor and a fix in the same diff is two
   pull requests.
-- Fill in the template — particularly *how you tested it*.
+- Fill in the template — particularly _how you tested it_.
 - If your change contradicts something in `DESIGN.md`, update `DESIGN.md` in the
   same pull request. The document records reversals rather than overwriting
   them: when a section reads as a reversal, the current behaviour is the one

@@ -45,7 +45,8 @@ export default function CollectionPage() {
   // by the same tags the card uses, so an item the filter excludes shows no
   // date rather than a day it will never land on.
   const schedule = useMemo(
-    () => (today ? scheduleFor(today, mode, deckTags) : new Map<string, DayKey>()),
+    () =>
+      today ? scheduleFor(today, mode, deckTags) : new Map<string, DayKey>(),
     [today, mode, deckTags],
   );
 
@@ -95,13 +96,19 @@ export default function CollectionPage() {
     <section className="space-y-4">
       <header className="flex items-baseline justify-between gap-3">
         <h1 className="display-type text-[15px]">Collection</h1>
-        <Link href="/" className="shrink-0 text-[12px] text-muted hover:text-foreground">
+        <Link
+          href="/"
+          className="shrink-0 text-[12px] text-muted hover:text-foreground"
+        >
           Today&rsquo;s {copy.one} →
         </Link>
       </header>
 
       <div className="flex gap-2">
-        <Segment active={mode === "quotes"} onClick={() => switchMode("quotes")}>
+        <Segment
+          active={mode === "quotes"}
+          onClick={() => switchMode("quotes")}
+        >
           Quotes
         </Segment>
         <Segment active={mode === "facts"} onClick={() => switchMode("facts")}>
@@ -123,7 +130,9 @@ export default function CollectionPage() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={
-          mode === "facts" ? "Search text or source" : "Search text, author or source"
+          mode === "facts"
+            ? "Search text or source"
+            : "Search text, author or source"
         }
         aria-label={`Search ${copy.many}`}
         className="h-11 w-full rounded-control border border-border bg-surface px-3 text-[14px] placeholder:text-muted"
@@ -135,7 +144,9 @@ export default function CollectionPage() {
             key={option}
             type="button"
             aria-pressed={tag === option}
-            onClick={() => setTag((current) => (current === option ? null : option))}
+            onClick={() =>
+              setTag((current) => (current === option ? null : option))
+            }
             className={`h-8 rounded-full border px-3 text-[12px] capitalize transition-colors ${
               tag === option
                 ? "border-accent bg-accent text-accent-fg"
@@ -184,14 +195,14 @@ export default function CollectionPage() {
         {inDeck.length > 0 && (
           <>
             Your daily {copy.one} is drawn from the {deckSize} tagged{" "}
-            <span className="text-foreground">{inDeck.join(", ")}</span>. Everything
-            else is still here to browse and save.{" "}
+            <span className="text-foreground">{inDeck.join(", ")}</span>.
+            Everything else is still here to browse and save.{" "}
           </>
         )}
-        Every {copy.one} in the deck is shown once before any of them comes round
-        again, and none can repeat within {repeatGapFor(mode, deckTags)} days.
-        Which {copy.one} lands on which day is a pure function of the date —
-        identical on every device you own, with or without a connection.
+        Every {copy.one} in the deck is shown once before any of them comes
+        round again, and none can repeat within {repeatGapFor(mode, deckTags)}{" "}
+        days. Which {copy.one} lands on which day is a pure function of the date
+        — identical on every device you own, with or without a connection.
       </p>
     </section>
   );
@@ -288,7 +299,9 @@ function Segment({
       onClick={onClick}
       aria-pressed={active}
       className={`h-10 flex-1 rounded-control border text-[13px] font-medium transition-colors ${
-        active ? "border-accent bg-accent text-accent-fg" : "border-border text-muted"
+        active
+          ? "border-accent bg-accent text-accent-fg"
+          : "border-border text-muted"
       }`}
     >
       {children}

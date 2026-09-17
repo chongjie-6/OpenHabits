@@ -14,7 +14,11 @@ import { reminderPayload } from "@/lib/server/reminders";
 import type { HabitDayState } from "@/lib/history";
 import type { Habit } from "@/lib/types";
 
-function state(name: string, over: Partial<Habit> = {}, count = 0): HabitDayState {
+function state(
+  name: string,
+  over: Partial<Habit> = {},
+  count = 0,
+): HabitDayState {
   const habit: Habit = {
     id: name,
     name,
@@ -50,26 +54,39 @@ describe("civilInZone", () => {
   it("reads the wall clock ahead of UTC, across the date boundary", () => {
     // 23:00 UTC on the 4th is 09:00 on the 5th in Sydney (UTC+10 in September).
     const at = new Date("2026-09-04T23:00:00Z");
-    expect(civilInZone("Australia/Sydney", at)).toEqual({ day: "2026-09-05", hour: 9 });
+    expect(civilInZone("Australia/Sydney", at)).toEqual({
+      day: "2026-09-05",
+      hour: 9,
+    });
   });
 
   it("reads the wall clock behind UTC on the same instant", () => {
     const at = new Date("2026-09-04T23:00:00Z");
-    expect(civilInZone("America/Los_Angeles", at)).toEqual({ day: "2026-09-04", hour: 16 });
+    expect(civilInZone("America/Los_Angeles", at)).toEqual({
+      day: "2026-09-04",
+      hour: 16,
+    });
   });
 
   it("handles a half-hour offset", () => {
     // India is UTC+5:30 year round: 03:30 UTC is 09:00 in Kolkata.
     const at = new Date("2026-09-04T03:30:00Z");
-    expect(civilInZone("Asia/Kolkata", at)).toEqual({ day: "2026-09-04", hour: 9 });
+    expect(civilInZone("Asia/Kolkata", at)).toEqual({
+      day: "2026-09-04",
+      hour: 9,
+    });
   });
 
   it("follows a DST transition rather than a fixed offset", () => {
     // London is UTC+1 in July and UTC+0 in January. A stored offset would put
     // one of these an hour out, and a reminder an hour out is a reminder that
     // fires on the wrong hour's cron tick — that is, never.
-    expect(civilInZone("Europe/London", new Date("2026-07-04T08:00:00Z")).hour).toBe(9);
-    expect(civilInZone("Europe/London", new Date("2026-01-04T08:00:00Z")).hour).toBe(8);
+    expect(
+      civilInZone("Europe/London", new Date("2026-07-04T08:00:00Z")).hour,
+    ).toBe(9);
+    expect(
+      civilInZone("Europe/London", new Date("2026-01-04T08:00:00Z")).hour,
+    ).toBe(8);
   });
 
   it("reports midnight as hour 0, not 24", () => {
@@ -89,7 +106,9 @@ describe("civilInZone", () => {
   });
 
   it("leaves the day alone at and after dayStartHour", () => {
-    expect(civilInZone("UTC", new Date("2026-09-04T04:00:00Z"), 4).day).toBe("2026-09-04");
+    expect(civilInZone("UTC", new Date("2026-09-04T04:00:00Z"), 4).day).toBe(
+      "2026-09-04",
+    );
   });
 });
 
@@ -101,7 +120,11 @@ describe("reminderPayload", () => {
   });
 
   it("lists several, separated", () => {
-    const payload = reminderPayload([state("Read"), state("Run"), state("Water")]);
+    const payload = reminderPayload([
+      state("Read"),
+      state("Run"),
+      state("Water"),
+    ]);
     expect(payload.title).toBe("3 habits left today");
     expect(payload.body).toBe("✅ Read · ✅ Run · ✅ Water");
   });
@@ -115,7 +138,10 @@ describe("reminderPayload", () => {
   });
 
   it("shows progress only for counted habits", () => {
-    const payload = reminderPayload([state("Water", { target: 8 }, 3), state("Read")]);
+    const payload = reminderPayload([
+      state("Water", { target: 8 }, 3),
+      state("Read"),
+    ]);
     expect(payload.body).toBe("✅ Water 3/8 · ✅ Read");
   });
 

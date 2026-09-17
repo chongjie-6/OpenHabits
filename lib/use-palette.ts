@@ -16,7 +16,12 @@ import {
   refreshPalette,
   setPalette,
 } from "./theme";
-import { PALETTE_TOKENS, type Mode, type Palette, type Swatches } from "./palette";
+import {
+  PALETTE_TOKENS,
+  type Mode,
+  type Palette,
+  type Swatches,
+} from "./palette";
 
 const listeners = new Set<() => void>();
 
@@ -96,7 +101,10 @@ export function paletteFromSkin(): Palette {
   root.removeAttribute("style");
 
   try {
-    return { light: readSkinMode(root, "light"), dark: readSkinMode(root, "dark") };
+    return {
+      light: readSkinMode(root, "light"),
+      dark: readSkinMode(root, "dark"),
+    };
   } finally {
     if (theme === undefined) delete root.dataset.theme;
     else root.dataset.theme = theme;
@@ -158,7 +166,10 @@ function resolveColour(value: string): string | null {
   const computed = window.getComputedStyle(probe).color;
   probe.remove();
 
-  const parts = /^rgba?\(([^)]+)\)$/.exec(computed)?.[1].split(/[\s,/]+/).filter(Boolean);
+  const parts = /^rgba?\(([^)]+)\)$/
+    .exec(computed)?.[1]
+    .split(/[\s,/]+/)
+    .filter(Boolean);
   if (parts === undefined || parts.length < 3) return null;
 
   const [r, g, b, a] = parts.map(Number);

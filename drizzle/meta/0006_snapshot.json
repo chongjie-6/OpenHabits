@@ -73,14 +73,8 @@
           "name": "entries_habit_fk",
           "tableFrom": "entries",
           "tableTo": "habits",
-          "columnsFrom": [
-            "user_id",
-            "habit_id"
-          ],
-          "columnsTo": [
-            "user_id",
-            "id"
-          ],
+          "columnsFrom": ["user_id", "habit_id"],
+          "columnsTo": ["user_id", "id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -88,11 +82,7 @@
       "compositePrimaryKeys": {
         "entries_user_id_habit_id_date_pk": {
           "name": "entries_user_id_habit_id_date_pk",
-          "columns": [
-            "user_id",
-            "habit_id",
-            "date"
-          ]
+          "columns": ["user_id", "habit_id", "date"]
         }
       },
       "uniqueConstraints": {},
@@ -101,9 +91,7 @@
           "name": "entries_owner",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "user_id = current_setting('openhabits.user_id', true)",
           "withCheck": "user_id = current_setting('openhabits.user_id', true)"
         }
@@ -222,12 +210,8 @@
           "name": "habits_user_id_users_id_fk",
           "tableFrom": "habits",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -235,10 +219,7 @@
       "compositePrimaryKeys": {
         "habits_user_id_id_pk": {
           "name": "habits_user_id_id_pk",
-          "columns": [
-            "user_id",
-            "id"
-          ]
+          "columns": ["user_id", "id"]
         }
       },
       "uniqueConstraints": {},
@@ -247,9 +228,7 @@
           "name": "habits_owner",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "user_id = current_setting('openhabits.user_id', true)",
           "withCheck": "user_id = current_setting('openhabits.user_id', true)"
         }
@@ -334,12 +313,8 @@
           "name": "push_subscriptions_user_id_users_id_fk",
           "tableFrom": "push_subscriptions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -351,9 +326,7 @@
           "name": "push_subscriptions_owner",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "user_id = current_setting('openhabits.user_id', true)",
           "withCheck": "user_id = current_setting('openhabits.user_id', true)"
         },
@@ -361,9 +334,7 @@
           "name": "push_subscriptions_server",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "current_setting('openhabits.scope', true) = 'server'",
           "withCheck": "current_setting('openhabits.scope', true) = 'server'"
         }
@@ -406,12 +377,8 @@
           "name": "settings_user_id_users_id_fk",
           "tableFrom": "settings",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -423,9 +390,7 @@
           "name": "settings_owner",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "user_id = current_setting('openhabits.user_id', true)",
           "withCheck": "user_id = current_setting('openhabits.user_id', true)"
         },
@@ -433,9 +398,7 @@
           "name": "settings_server",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "current_setting('openhabits.scope', true) = 'server'"
         }
       },
@@ -473,9 +436,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {
@@ -483,9 +444,7 @@
           "name": "users_owner",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "public"
-          ],
+          "to": ["public"],
           "using": "id = current_setting('openhabits.user_id', true)",
           "withCheck": "id = current_setting('openhabits.user_id', true)"
         }
@@ -591,12 +550,8 @@
           "tableFrom": "account",
           "tableTo": "user",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -669,12 +624,8 @@
           "tableFrom": "session",
           "tableTo": "user",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -684,9 +635,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -750,9 +699,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},

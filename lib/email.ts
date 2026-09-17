@@ -51,7 +51,10 @@ function client(): nodemailer.Transporter {
   return transporter;
 }
 
-async function sendMessage(to: string, { subject, html, text }: Rendered): Promise<void> {
+async function sendMessage(
+  to: string,
+  { subject, html, text }: Rendered,
+): Promise<void> {
   let info: nodemailer.SentMessageInfo;
   try {
     info = await client().sendMail({ from: from(), to, subject, html, text });

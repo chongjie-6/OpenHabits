@@ -21,12 +21,20 @@ function prerenderedRoutes(dir = "app", prefix = ""): string[] {
   const routes: string[] = [];
 
   for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
-    if (entry.isFile() && /^page\.tsx?$/.test(entry.name)) routes.push(prefix || "/");
+    if (entry.isFile() && /^page\.tsx?$/.test(entry.name))
+      routes.push(prefix || "/");
     if (!entry.isDirectory()) continue;
     // `api` is server-only; a bracketed segment is a route group or a dynamic
     // segment, and this app has neither in a prerendered page.
-    if (entry.name === "api" || entry.name.startsWith("[") || entry.name.startsWith("(")) continue;
-    routes.push(...prerenderedRoutes(`${dir}/${entry.name}`, `${prefix}/${entry.name}`));
+    if (
+      entry.name === "api" ||
+      entry.name.startsWith("[") ||
+      entry.name.startsWith("(")
+    )
+      continue;
+    routes.push(
+      ...prerenderedRoutes(`${dir}/${entry.name}`, `${prefix}/${entry.name}`),
+    );
   }
 
   return routes;

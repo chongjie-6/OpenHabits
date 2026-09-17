@@ -16,7 +16,13 @@ import { toNextJsHandler } from "better-auth/next-js";
 import { syncConfigured } from "@/lib/server/db";
 import { getAuth } from "@/lib/server/better-auth";
 import { readJson } from "@/lib/server/json";
-import { authTier, check, checkMail, clientIp, tooMany } from "@/lib/server/ratelimit";
+import {
+  authTier,
+  check,
+  checkMail,
+  clientIp,
+  tooMany,
+} from "@/lib/server/ratelimit";
 
 /** postgres.js opens a TCP socket, which the edge runtime does not provide. */
 export const runtime = "nodejs";
@@ -30,7 +36,10 @@ export const dynamic = "force-dynamic";
 const handler = async (request: Request): Promise<Response> => {
   if (!syncConfigured()) {
     return Response.json(
-      { error: "server-error", message: "Accounts are not configured on this deployment." },
+      {
+        error: "server-error",
+        message: "Accounts are not configured on this deployment.",
+      },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -66,7 +75,10 @@ async function meter(request: Request): Promise<Response | null> {
     const verdict = await check("credential", ip);
     return verdict.ok
       ? null
-      : tooMany("Too many attempts. Wait a moment and try again.", verdict.retryAfter);
+      : tooMany(
+          "Too many attempts. Wait a moment and try again.",
+          verdict.retryAfter,
+        );
   }
 
   const verdict = await checkMail(ip, await addressOf(request));
@@ -91,7 +103,9 @@ async function meter(request: Request): Promise<Response | null> {
 async function addressOf(request: Request): Promise<string | null> {
   const body = await readJson(request.clone());
   const email = (body as { email?: unknown } | null | undefined)?.email;
-  return typeof email === "string" && email.length > 0 && email.length <= 320 ? email : null;
+  return typeof email === "string" && email.length > 0 && email.length <= 320
+    ? email
+    : null;
 }
 
 export const { GET, POST } = toNextJsHandler(handler);

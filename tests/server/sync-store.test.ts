@@ -14,7 +14,11 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
-import { TOMBSTONE_TTL_MS, type SyncPull, type SyncPush } from "@/lib/sync/protocol";
+import {
+  TOMBSTONE_TTL_MS,
+  type SyncPull,
+  type SyncPush,
+} from "@/lib/sync/protocol";
 import { DEFAULT_SETTINGS, type Entry, type Habit } from "@/lib/types";
 import type { SyncUser } from "@/lib/server/auth-types";
 import type { Db } from "@/lib/server/db";
@@ -65,7 +69,11 @@ const RECENT = Date.now();
 const ALICE: SyncUser = { id: "alice", email: "alice@example.com" };
 const BOB: SyncUser = { id: "bob", email: "bob@example.com" };
 
-function habit(id: string, updatedAt: number, over: Partial<Habit> = {}): Habit {
+function habit(
+  id: string,
+  updatedAt: number,
+  over: Partial<Habit> = {},
+): Habit {
   return {
     id,
     name: id,
@@ -82,13 +90,25 @@ function habit(id: string, updatedAt: number, over: Partial<Habit> = {}): Habit 
   };
 }
 
-function entry(habitId: string, date: string, count: number, updatedAt: number): Entry {
+function entry(
+  habitId: string,
+  date: string,
+  count: number,
+  updatedAt: number,
+): Entry {
   return { habitId, date, count, updatedAt };
 }
 
 /** A push with the boilerplate filled in. `since`/`accountId` default to a first sync. */
 function push(over: Partial<SyncPush> = {}): SyncPush {
-  return { since: 0, accountId: null, habits: [], entries: [], settings: null, ...over };
+  return {
+    since: 0,
+    accountId: null,
+    habits: [],
+    entries: [],
+    settings: null,
+    ...over,
+  };
 }
 
 function sync(user: SyncUser, over: Partial<SyncPush> = {}): Promise<SyncPull> {
@@ -116,7 +136,13 @@ describe("the migrations themselves", () => {
     for (const name of ["user", "session", "account", "verification"]) {
       expect(where(name)).toBe("auth");
     }
-    for (const name of ["users", "habits", "entries", "settings", "push_subscriptions"]) {
+    for (const name of [
+      "users",
+      "habits",
+      "entries",
+      "settings",
+      "push_subscriptions",
+    ]) {
       expect(where(name)).toBe("public");
     }
   });
@@ -202,7 +228,10 @@ describe("runSync", () => {
   it("advances the cursor when a row changes, so other devices notice", async () => {
     const first = await sync(ALICE, { habits: [habit("h1", 100)] });
 
-    await sync(ALICE, { accountId: "alice", habits: [habit("h1", 200, { name: "renamed" })] });
+    await sync(ALICE, {
+      accountId: "alice",
+      habits: [habit("h1", 200, { name: "renamed" })],
+    });
 
     // This is the `nextval` inside ON CONFLICT DO UPDATE doing its job: without it
     // the row keeps its original seq and no peer past that point ever sees the edit.
@@ -213,7 +242,10 @@ describe("runSync", () => {
   it("propagates a deletion as a tombstone and clears the habit's history", async () => {
     const first = await sync(ALICE, {
       habits: [habit("h1", 100), habit("h2", 100)],
-      entries: [entry("h1", "2026-08-01", 1, 100), entry("h2", "2026-08-01", 1, 100)],
+      entries: [
+        entry("h1", "2026-08-01", 1, 100),
+        entry("h2", "2026-08-01", 1, 100),
+      ],
     });
 
     await sync(ALICE, {
@@ -266,7 +298,9 @@ describe("runSync", () => {
   it("drops an entry whose habit it has never heard of, rather than failing the request", async () => {
     // The foreign key would reject this as an error; one stale row must not be
     // able to wedge a device's sync permanently.
-    const result = await sync(ALICE, { entries: [entry("ghost", "2026-08-01", 1, 100)] });
+    const result = await sync(ALICE, {
+      entries: [entry("ghost", "2026-08-01", 1, 100)],
+    });
 
     expect(result.entries).toEqual([]);
     expect(result.accountId).toBe("alice");
@@ -289,7 +323,11 @@ describe("runSync", () => {
     await sync(ALICE, { habits: [habit("h1", 100)] });
 
     await expect(
-      runSync(db, BOB, push({ accountId: "alice", habits: [habit("h9", 100)] })),
+      runSync(
+        db,
+        BOB,
+        push({ accountId: "alice", habits: [habit("h9", 100)] }),
+      ),
     ).rejects.toThrow(AccountMismatchError);
 
     // Nothing was written under Bob's identity.
@@ -299,18 +337,27 @@ describe("runSync", () => {
 
   it("merges settings as a blob under last-write-wins", async () => {
     await sync(ALICE, {
-      settings: { value: { ...DEFAULT_SETTINGS, favourites: ["q1"] }, updatedAt: 200 },
+      settings: {
+        value: { ...DEFAULT_SETTINGS, favourites: ["q1"] },
+        updatedAt: 200,
+      },
     });
 
     const stale = await sync(ALICE, {
       accountId: "alice",
-      settings: { value: { ...DEFAULT_SETTINGS, favourites: ["q2"] }, updatedAt: 100 },
+      settings: {
+        value: { ...DEFAULT_SETTINGS, favourites: ["q2"] },
+        updatedAt: 100,
+      },
     });
     expect(stale.settings?.value.favourites).toEqual(["q1"]);
 
     const fresh = await sync(ALICE, {
       accountId: "alice",
-      settings: { value: { ...DEFAULT_SETTINGS, favourites: ["q3"] }, updatedAt: 300 },
+      settings: {
+        value: { ...DEFAULT_SETTINGS, favourites: ["q3"] },
+        updatedAt: 300,
+      },
     });
     expect(fresh.settings?.value.favourites).toEqual(["q3"]);
   });
@@ -322,7 +369,11 @@ describe("runSync", () => {
     };
 
     const first = await sync(ALICE, body);
-    const replay = await sync(ALICE, { ...body, accountId: "alice", since: first.seq });
+    const replay = await sync(ALICE, {
+      ...body,
+      accountId: "alice",
+      since: first.seq,
+    });
 
     // Identical content at an identical stamp loses the tiebreaker, so no row is
     // rewritten and the cursor stays where it was.
@@ -339,7 +390,11 @@ describe("runSync", () => {
         const day = batch * 300 + i;
         return entry("h1", dayKey(day), 1, 1000 + day);
       });
-      await sync(ALICE, { accountId: batch === 0 ? null : "alice", habits, entries });
+      await sync(ALICE, {
+        accountId: batch === 0 ? null : "alice",
+        habits,
+        entries,
+      });
     }
 
     const seen = new Set<string>();
@@ -347,7 +402,10 @@ describe("runSync", () => {
     let trips = 0;
 
     for (;;) {
-      const page: SyncPull = await sync(ALICE, { since: cursor, accountId: "alice" });
+      const page: SyncPull = await sync(ALICE, {
+        since: cursor,
+        accountId: "alice",
+      });
       for (const e of page.entries) {
         expect(seen.has(e.date)).toBe(false);
         seen.add(e.date);
@@ -365,11 +423,16 @@ describe("runSync", () => {
   it("does not report a cursor past rows it withheld", async () => {
     // Habits and entries are capped separately. If the cursor ran ahead of the
     // shorter collection, the rows in between would never be delivered.
-    const entries = Array.from({ length: 500 }, (_, i) => entry("h1", dayKey(i), 1, 1000 + i));
+    const entries = Array.from({ length: 500 }, (_, i) =>
+      entry("h1", dayKey(i), 1, 1000 + i),
+    );
     await sync(ALICE, { habits: [habit("h1", 1)], entries });
 
     // A habit edited last, so its seq sits above every entry's.
-    await sync(ALICE, { accountId: "alice", habits: [habit("h1", 9000, { name: "last" })] });
+    await sync(ALICE, {
+      accountId: "alice",
+      habits: [habit("h1", 9000, { name: "last" })],
+    });
 
     let cursor = 0;
     let sawHabit = false;

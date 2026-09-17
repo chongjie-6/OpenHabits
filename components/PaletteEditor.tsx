@@ -107,7 +107,9 @@ export function PaletteEditor() {
             <input
               type="color"
               value={swatches["--accent"]}
-              onChange={(event) => changePalette(derivePalette(event.target.value))}
+              onChange={(event) =>
+                changePalette(derivePalette(event.target.value))
+              }
               className="sr-only"
             />
           </label>
@@ -156,7 +158,9 @@ export function PaletteEditor() {
           {TOKEN_GROUPS.map((group) => (
             <fieldset key={group.title}>
               <legend className="text-[13px] font-medium">{group.title}</legend>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-muted">{group.hint}</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+                {group.hint}
+              </p>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {group.tokens.map(({ token, label }) => (
                   <Field
@@ -187,11 +191,16 @@ export function PaletteEditor() {
               <span
                 aria-hidden="true"
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-control border border-border text-[11px] font-semibold"
-                style={{ background: swatches[row.bg], color: swatches[row.fg] }}
+                style={{
+                  background: swatches[row.bg],
+                  color: swatches[row.fg],
+                }}
               >
                 Aa
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13px]">{row.label}</span>
+              <span className="min-w-0 flex-1 truncate text-[13px]">
+                {row.label}
+              </span>
               <span className="shrink-0 font-mono text-[12px] tabular-nums text-muted">
                 {formatRatio(row.ratio)}
               </span>
@@ -226,39 +235,56 @@ function Preview({ swatches }: { swatches: Swatches }) {
     >
       <div
         className="rounded-card p-3"
-        style={{ background: swatches["--quote-bg"], color: swatches["--quote-fg"] }}
+        style={{
+          background: swatches["--quote-bg"],
+          color: swatches["--quote-fg"],
+        }}
       >
         <p className="font-serif text-[13px] leading-relaxed">
           The impediment to action advances action.
         </p>
-        <p className="mt-1 text-[11px]" style={{ color: swatches["--quote-meta"] }}>
+        <p
+          className="mt-1 text-[11px]"
+          style={{ color: swatches["--quote-meta"] }}
+        >
           Marcus Aurelius
         </p>
       </div>
 
       <div
         className="mt-3 rounded-card border p-3"
-        style={{ background: swatches["--surface"], borderColor: swatches["--border"] }}
+        style={{
+          background: swatches["--surface"],
+          borderColor: swatches["--border"],
+        }}
       >
         <p className="text-[13px]" style={{ color: swatches["--foreground"] }}>
           Read for 20 minutes
         </p>
-        <p className="mt-0.5 text-[11px]" style={{ color: swatches["--muted"] }}>
+        <p
+          className="mt-0.5 text-[11px]"
+          style={{ color: swatches["--muted"] }}
+        >
           9 day streak
         </p>
         <div className="mt-2 flex gap-1" aria-hidden="true">
-          {(["--hm-0", "--hm-1", "--hm-2", "--hm-3", "--hm-4"] as const).map((token) => (
-            <span
-              key={token}
-              className="h-4 w-4 rounded-cell"
-              style={{ background: swatches[token] }}
-            />
-          ))}
+          {(["--hm-0", "--hm-1", "--hm-2", "--hm-3", "--hm-4"] as const).map(
+            (token) => (
+              <span
+                key={token}
+                className="h-4 w-4 rounded-cell"
+                style={{ background: swatches[token] }}
+              />
+            ),
+          )}
         </div>
         <div className="mt-3 flex items-center gap-2">
           <span
             className="rounded-control px-2.5 py-1 text-[12px] font-medium"
-            style={{ background: swatches["--accent"], color: swatches["--accent-fg"] }}
+            style={{
+              background: swatches["--accent"],
+              color: swatches["--accent-fg"],
+            }}
           >
             Done
           </span>
@@ -335,7 +361,13 @@ function Field({
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="surface-card bg-surface p-4">
       <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -346,7 +378,13 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function SmallButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+function SmallButton({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"

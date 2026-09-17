@@ -30,7 +30,10 @@ export default function WeekPage() {
     if (!hydrated || !today) return null;
 
     const day = today;
-    const weekStart = addDays(startOfWeek(day, settings.weekStartsOn), offset * 7);
+    const weekStart = addDays(
+      startOfWeek(day, settings.weekStartsOn),
+      offset * 7,
+    );
     const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
     // One pass per day; each row then reads its own habit out of the result.
@@ -41,7 +44,9 @@ export default function WeekPage() {
     }
 
     const totals = days.map((d) => {
-      const states = [...(byDay.get(d)?.values() ?? [])].filter((s) => s.scheduled);
+      const states = [...(byDay.get(d)?.values() ?? [])].filter(
+        (s) => s.scheduled,
+      );
       const done = states.filter((s) => s.done).length;
       return states.length === 0 ? null : done / states.length;
     });
@@ -61,7 +66,10 @@ export default function WeekPage() {
           {offset === 0 ? "This week" : rangeLabel(weekStart)}
         </h1>
         <div className="flex items-center gap-1">
-          <NavButton label="Previous week" onClick={() => setOffset((o) => o - 1)}>
+          <NavButton
+            label="Previous week"
+            onClick={() => setOffset((o) => o - 1)}
+          >
             ‹
           </NavButton>
           {offset !== 0 && (
@@ -129,7 +137,12 @@ export default function WeekPage() {
                     const state = byDay.get(d)?.get(habit.id);
                     return (
                       <td key={d} className="py-1 text-center">
-                        <Cell state={state} day={d} today={day} habit={habit.color} />
+                        <Cell
+                          state={state}
+                          day={d}
+                          today={day}
+                          habit={habit.color}
+                        />
                       </td>
                     );
                   })}
@@ -147,7 +160,9 @@ export default function WeekPage() {
                     key={days[i]}
                     className="pt-2 text-center font-mono text-[10px] tabular-nums text-muted"
                   >
-                    {days[i] > day || total === null ? "–" : `${Math.round(total * 100)}%`}
+                    {days[i] > day || total === null
+                      ? "–"
+                      : `${Math.round(total * 100)}%`}
                   </td>
                 ))}
               </tr>
@@ -228,7 +243,10 @@ function Cell({
             state.count
           ) : null
         ) : (
-          <span className="h-1 w-1 rounded-full bg-current" aria-hidden="true" />
+          <span
+            className="h-1 w-1 rounded-full bg-current"
+            aria-hidden="true"
+          />
         )}
       </span>
     </button>

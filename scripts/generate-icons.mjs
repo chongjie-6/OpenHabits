@@ -45,7 +45,9 @@ function roundedRectCoverage(px, py, x, y, w, h, r) {
 
 function blend(dst, offset, colour, alpha) {
   for (let c = 0; c < 3; c++) {
-    dst[offset + c] = Math.round(dst[offset + c] * (1 - alpha) + colour[c] * alpha);
+    dst[offset + c] = Math.round(
+      dst[offset + c] * (1 - alpha) + colour[c] * alpha,
+    );
   }
   dst[offset + 3] = 255;
 }
@@ -62,7 +64,10 @@ function render(size, { fullBleed }) {
         for (let sx = 0; sx < SAMPLES; sx++) {
           const px = x + (sx + 0.5) / SAMPLES;
           const py = y + (sy + 0.5) / SAMPLES;
-          if (bgRadius === 0 || roundedRectCoverage(px, py, 0, 0, size, size, bgRadius)) {
+          if (
+            bgRadius === 0 ||
+            roundedRectCoverage(px, py, 0, 0, size, size, bgRadius)
+          ) {
             hits++;
           }
         }
@@ -290,7 +295,10 @@ const ICO_SIZES = [16, 32, 48];
 write(
   "app/favicon.ico",
   encodeIco(
-    ICO_SIZES.map((size) => ({ size, png: encodePng(size, render(size, { fullBleed: false })) })),
+    ICO_SIZES.map((size) => ({
+      size,
+      png: encodePng(size, render(size, { fullBleed: false })),
+    })),
   ),
 );
 console.log(`wrote app/favicon.ico (${ICO_SIZES.join(", ")})`);

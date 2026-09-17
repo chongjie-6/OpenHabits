@@ -77,7 +77,9 @@ export function resolveMode(): Mode {
   const explicit = document.documentElement.dataset.theme;
   if (explicit === "dark") return "dark";
   if (explicit === "light") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function readStoredPalette(): Palette | null {
@@ -172,7 +174,9 @@ function syncThemeColor(palette: Palette): void {
   ];
 
   for (const [media, mode] of pairs) {
-    const tag = document.querySelector(`meta[name="theme-color"][media="${media}"]`);
+    const tag = document.querySelector(
+      `meta[name="theme-color"][media="${media}"]`,
+    );
     tag?.setAttribute("content", palette[mode]["--background"]);
   }
 }

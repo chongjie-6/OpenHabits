@@ -30,11 +30,41 @@ const ROWS = 7;
 /** The lit squares, as `row,column`. A plausible fortnight rather than a
  *  pattern — a regular one reads as a loading skeleton. */
 const LIT = new Set([
-  "0,2", "1,2", "2,3", "3,3", "4,4", "5,4", "6,5",
-  "0,6", "2,6", "3,7", "4,7", "1,8", "2,8", "5,9",
-  "3,10", "4,10", "6,10", "0,11", "1,11", "2,12", "3,12",
-  "4,13", "5,13", "0,14", "1,15", "2,15", "3,16", "4,16",
-  "5,17", "6,17", "1,18", "2,18", "3,19", "4,19", "5,20",
+  "0,2",
+  "1,2",
+  "2,3",
+  "3,3",
+  "4,4",
+  "5,4",
+  "6,5",
+  "0,6",
+  "2,6",
+  "3,7",
+  "4,7",
+  "1,8",
+  "2,8",
+  "5,9",
+  "3,10",
+  "4,10",
+  "6,10",
+  "0,11",
+  "1,11",
+  "2,12",
+  "3,12",
+  "4,13",
+  "5,13",
+  "0,14",
+  "1,15",
+  "2,15",
+  "3,16",
+  "4,16",
+  "5,17",
+  "6,17",
+  "1,18",
+  "2,18",
+  "3,19",
+  "4,19",
+  "5,20",
 ]);
 
 export default function Image() {
@@ -48,7 +78,9 @@ export default function Image() {
             width: 34,
             height: 34,
             borderRadius: 8,
-            backgroundColor: LIT.has(`${row},${column}`) ? CELL_LIT : CELL_EMPTY,
+            backgroundColor: LIT.has(`${row},${column}`)
+              ? CELL_LIT
+              : CELL_EMPTY,
           }}
         />,
       );
@@ -56,40 +88,47 @@ export default function Image() {
   }
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: SURFACE,
+        padding: "0 80px",
+      }}
+    >
+      {/* Satori has no `display: grid`, so the grid is a wrapping flex row
+            sized to exactly 21 columns. */}
       <div
         style={{
-          width: "100%",
-          height: "100%",
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: SURFACE,
-          padding: "0 80px",
+          flexWrap: "wrap",
+          width: COLUMNS * 34 + (COLUMNS - 1) * 10,
+          gap: 10,
+          marginBottom: 56,
         }}
       >
-        {/* Satori has no `display: grid`, so the grid is a wrapping flex row
-            sized to exactly 21 columns. */}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            width: COLUMNS * 34 + (COLUMNS - 1) * 10,
-            gap: 10,
-            marginBottom: 56,
-          }}
-        >
-          {cells}
-        </div>
-        <div style={{ display: "flex", fontSize: 68, color: INK, letterSpacing: -1.5 }}>
-          OpenHabits
-        </div>
-        <div style={{ display: "flex", marginTop: 20, fontSize: 30, color: MUTED }}>
-          A daily quote, and the year you had.
-        </div>
+        {cells}
       </div>
-    ),
+      <div
+        style={{
+          display: "flex",
+          fontSize: 68,
+          color: INK,
+          letterSpacing: -1.5,
+        }}
+      >
+        OpenHabits
+      </div>
+      <div
+        style={{ display: "flex", marginTop: 20, fontSize: 30, color: MUTED }}
+      >
+        A daily quote, and the year you had.
+      </div>
+    </div>,
     size,
   );
 }

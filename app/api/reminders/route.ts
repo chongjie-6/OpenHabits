@@ -68,7 +68,9 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function isKey(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0 && value.length <= MAX_KEY;
+  return (
+    typeof value === "string" && value.length > 0 && value.length <= MAX_KEY
+  );
 }
 
 /**
@@ -77,7 +79,11 @@ function isKey(value: unknown): value is string {
  * request forgery primitive pointed wherever the caller likes.
  */
 function isEndpoint(value: unknown): value is string {
-  if (typeof value !== "string" || value.length === 0 || value.length > MAX_ENDPOINT) {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > MAX_ENDPOINT
+  ) {
     return false;
   }
   try {
@@ -95,7 +101,12 @@ function parse(body: unknown): Subscribe | Unsubscribe | null {
   }
 
   if (body.action !== "subscribe") return null;
-  if (!isObject(body.keys) || !isKey(body.keys.p256dh) || !isKey(body.keys.auth)) return null;
+  if (
+    !isObject(body.keys) ||
+    !isKey(body.keys.p256dh) ||
+    !isKey(body.keys.auth)
+  )
+    return null;
   // Checked against the runtime's ICU rather than a regex: the cron formats a
   // date in this zone, and an unknown one throws there instead of here.
   if (!isTimeZone(body.timeZone)) return null;
@@ -124,11 +135,15 @@ export async function POST(request: Request): Promise<Response> {
    */
   const metered = await check("reminders", user.id);
   if (!metered.ok) {
-    return tooMany("Too many reminder updates. Try again shortly.", metered.retryAfter);
+    return tooMany(
+      "Too many reminder updates. Try again shortly.",
+      metered.retryAfter,
+    );
   }
 
   const body = await readJson(request, MAX_BODY_BYTES);
-  if (body === undefined) return error(400, "Body is not valid JSON, or is too large.");
+  if (body === undefined)
+    return error(400, "Body is not valid JSON, or is too large.");
 
   const command = parse(body);
   if (!command) return error(400, "Malformed subscription.");
@@ -163,9 +178,12 @@ export async function POST(request: Request): Promise<Response> {
   // The same upsert `runSync` opens with — a device can subscribe before it has
   // ever synced, and the foreign key needs the account row to exist.
   await asUser(db, user.id, (tx) =>
-    tx.insert(users).values({ id: user.id, email: user.email }).onConflictDoNothing({
-      target: users.id,
-    }),
+    tx
+      .insert(users)
+      .values({ id: user.id, email: user.email })
+      .onConflictDoNothing({
+        target: users.id,
+      }),
   );
 
   // `asServer`, and it has to be: the upsert below conflicts on the endpoint

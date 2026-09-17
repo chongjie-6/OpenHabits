@@ -176,7 +176,7 @@ export function HabitRow({
       day={day}
       readOnly={readOnly}
       onEdit={onEdit}
-      className={`flex min-h-[56px] w-full items-center gap-3 rounded-control px-3 text-left transition-colors hover:bg-surface-2 ${
+      className={`flex min-h-14 w-full items-center gap-3 rounded-control px-3 text-left transition-colors hover:bg-surface-2 ${
         dimmed ? "opacity-55" : ""
       }`}
     >
@@ -193,7 +193,7 @@ export function HabitRow({
           {habit.name}
         </span>
         {counted && (
-          <span className="mt-1 block h-1 w-full max-w-[140px] overflow-hidden rounded-full bg-surface-2">
+          <span className="mt-1 block h-1 w-full max-w-35 overflow-hidden rounded-full bg-surface-2">
             <span
               className="block h-full rounded-full transition-[width] duration-200"
               style={{
@@ -254,13 +254,13 @@ export function HabitRowDense({
       day={day}
       readOnly={readOnly}
       onEdit={onEdit}
-      className={`flex min-h-[52px] w-full items-center gap-2.5 rounded-control px-3 text-left transition-colors hover:bg-surface-2 ${
+      className={`flex min-h-13 w-full items-center gap-2.5 rounded-control px-3 text-left transition-colors hover:bg-surface-2 ${
         dimmed ? "opacity-55" : ""
       }`}
     >
       <span
         aria-hidden="true"
-        className="h-6 w-[3px] shrink-0 rounded-full"
+        className="h-6 w-0.75 shrink-0 rounded-full"
         style={{ background: accent }}
       />
 
@@ -273,7 +273,7 @@ export function HabitRowDense({
           {habit.name}
         </span>
         {trail && trail.length > 0 && (
-          <span aria-hidden="true" className="mt-1.5 flex gap-[2px]">
+          <span aria-hidden="true" className="mt-1.5 flex gap-0.5">
             {trail.map((stat) => (
               <span
                 key={stat.date}
@@ -348,7 +348,7 @@ export function HabitTile({
       day={day}
       readOnly={readOnly}
       onEdit={onEdit}
-      className={`surface-card flex h-full min-h-[128px] w-full flex-col justify-between gap-2 p-3 text-left transition-colors ${
+      className={`surface-card flex h-full min-h-32 w-full flex-col justify-between gap-2 p-3 text-left transition-colors ${
         done ? "bg-accent-2 text-accent-2-fg" : "bg-surface text-foreground"
       } ${dimmed ? "opacity-55" : ""}`}
     >
@@ -365,7 +365,7 @@ export function HabitTile({
 
       <span
         aria-hidden="true"
-        className="block h-[3px] w-full shrink-0"
+        className="block h-0.75 w-full shrink-0"
         style={{ background: accent }}
       />
 
@@ -379,7 +379,9 @@ export function HabitTile({
             <Segments count={count} target={habit.target} accent={accent} />
           ) : (
             <span className="text-[11px] font-bold tracking-[0.06em] uppercase">
-              {streak !== undefined && streak > 0 ? `${streak} days` : "Not yet"}
+              {streak !== undefined && streak > 0
+                ? `${streak} days`
+                : "Not yet"}
             </span>
           )}
           {/* A done tile is filled with --accent-2, which the accent would
@@ -388,7 +390,9 @@ export function HabitTile({
           {onEdit ? (
             <EditMark color={done ? "currentColor" : "var(--accent)"} />
           ) : (
-            !counted && <Checkbox count={count} done={done} accent={accent} size={28} />
+            !counted && (
+              <Checkbox count={count} done={done} accent={accent} size={28} />
+            )
           )}
         </span>
       </span>

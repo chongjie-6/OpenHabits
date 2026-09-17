@@ -35,10 +35,15 @@ function placementOf(states: readonly HabitDayState[]): Placement {
 }
 
 function keyOf(states: readonly HabitDayState[]): string {
-  return states.map((s) => `${s.habit.id}:${s.count}:${s.done ? 1 : 0}`).join("|");
+  return states
+    .map((s) => `${s.habit.id}:${s.count}:${s.done ? 1 : 0}`)
+    .join("|");
 }
 
-export function initialSplit(day: DayKey | null, states: readonly HabitDayState[]): SplitState {
+export function initialSplit(
+  day: DayKey | null,
+  states: readonly HabitDayState[],
+): SplitState {
   return { day, key: keyOf(states), actual: placementOf(states), held: null };
 }
 
@@ -66,7 +71,9 @@ export function nextSplit(
     day,
     key,
     actual: placementOf(states),
-    held: new Map(states.map((s) => [s.habit.id, shown.get(s.habit.id) ?? s.done])),
+    held: new Map(
+      states.map((s) => [s.habit.id, shown.get(s.habit.id) ?? s.done]),
+    ),
   };
 }
 
@@ -87,7 +94,10 @@ export function sections(split: SplitState, states: readonly HabitDayState[]) {
 const LOADING: readonly HabitDayState[] = [];
 
 /** `scheduled` is null until the store has hydrated. */
-export function useTodaySplit(day: DayKey | null, scheduled: readonly HabitDayState[] | null) {
+export function useTodaySplit(
+  day: DayKey | null,
+  scheduled: readonly HabitDayState[] | null,
+) {
   const states = scheduled ?? LOADING;
   const effectiveDay = scheduled ? day : null;
 

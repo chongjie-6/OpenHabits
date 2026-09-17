@@ -37,7 +37,7 @@ npm run db:migrate
 wall clock, so one daily invocation would only ever be nine o'clock in a single
 timezone; the Cloudflare Worker in `workers/reminders.ts` calls `/api/cron/reminders` every
 hour and the sweep asks each subscription whether it is that user's hour
-*there*. Without the VAPID pair the Settings card says the deployment cannot
+_there_. Without the VAPID pair the Settings card says the deployment cannot
 send rather than offering a switch, and without `CRON_SECRET` the cron route
 refuses to run at all — it reads every account's habits, so unset means
 disabled, not open.
@@ -57,8 +57,8 @@ click that no mail can deliver would break sign-up entirely, so verification is
 off.
 
 **With a queue, what fails the sign-up is the hand-off** (DESIGN.md §13.16).
-`QSTASH_TOKEN` moves the SMTP attempt out of the request: a failure to *enqueue*
-still rolls the sign-up back and frees the address, but a failure to *send* is
+`QSTASH_TOKEN` moves the SMTP attempt out of the request: a failure to _enqueue_
+still rolls the sign-up back and frees the address, but a failure to _send_ is
 retried three times and then parked in QStash's dead letter queue — so an
 account can exist while its verification mail is stuck there, and **nothing
 alerts about it**. If somebody reports never receiving a link, the DLQ in the

@@ -18,7 +18,12 @@ const HABIT = {
 const ENTRY = { habitId: "h1", date: "2026-08-01", count: 1, updatedAt: 1000 };
 
 const SETTINGS = {
-  value: { theme: "dark", weekStartsOn: 1, dayStartHour: 4, favourites: ["q1"] },
+  value: {
+    theme: "dark",
+    weekStartsOn: 1,
+    dayStartHour: 4,
+    favourites: ["q1"],
+  },
   updatedAt: 1000,
 };
 
@@ -35,7 +40,11 @@ function push(over: Record<string, unknown> = {}) {
 
 describe("parseSyncPush", () => {
   it("accepts a well-formed payload", () => {
-    const result = push({ habits: [HABIT], entries: [ENTRY], settings: SETTINGS });
+    const result = push({
+      habits: [HABIT],
+      entries: [ENTRY],
+      settings: SETTINGS,
+    });
     expect(result.ok).toBe(true);
   });
 
@@ -56,7 +65,9 @@ describe("parseSyncPush", () => {
     // Absent is not the same as null: a client that forgot the field would
     // otherwise be treated as one that has never synced, and be handed a pass on
     // the account check it exists to fail.
-    expect(parseSyncPush({ since: 0, habits: [], entries: [], settings: null }).ok).toBe(false);
+    expect(
+      parseSyncPush({ since: 0, habits: [], entries: [], settings: null }).ok,
+    ).toBe(false);
     expect(push({ accountId: "" }).ok).toBe(false);
     expect(push({ accountId: 7 }).ok).toBe(false);
   });
@@ -65,7 +76,9 @@ describe("parseSyncPush", () => {
     expect(push({ habits: [{ ...HABIT, color: "puce" }] }).ok).toBe(false);
     expect(push({ habits: [{ ...HABIT, color: "#f0f" }] }).ok).toBe(false);
     expect(push({ habits: [{ ...HABIT, color: "#ff00ff00" }] }).ok).toBe(false);
-    expect(push({ habits: [{ ...HABIT, color: "rgb(255,0,255)" }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, color: "rgb(255,0,255)" }] }).ok).toBe(
+      false,
+    );
     expect(push({ habits: [{ ...HABIT, color: 0xff00ff }] }).ok).toBe(false);
   });
 
@@ -79,23 +92,37 @@ describe("parseSyncPush", () => {
 
   it("rejects a date that does not exist", () => {
     // Date would roll this to March 2nd rather than reject it.
-    expect(push({ habits: [{ ...HABIT, createdAt: "2026-02-30" }] }).ok).toBe(false);
-    expect(push({ entries: [{ ...ENTRY, date: "2026-13-01" }] }).ok).toBe(false);
+    expect(push({ habits: [{ ...HABIT, createdAt: "2026-02-30" }] }).ok).toBe(
+      false,
+    );
+    expect(push({ entries: [{ ...ENTRY, date: "2026-13-01" }] }).ok).toBe(
+      false,
+    );
   });
 
   it("rejects a date that is merely the right shape", () => {
-    expect(push({ entries: [{ ...ENTRY, date: "01/08/2026" }] }).ok).toBe(false);
-    expect(push({ entries: [{ ...ENTRY, date: "2026-08-01T00:00:00Z" }] }).ok).toBe(false);
+    expect(push({ entries: [{ ...ENTRY, date: "01/08/2026" }] }).ok).toBe(
+      false,
+    );
+    expect(
+      push({ entries: [{ ...ENTRY, date: "2026-08-01T00:00:00Z" }] }).ok,
+    ).toBe(false);
   });
 
   it("accepts a leap day in a leap year and rejects it otherwise", () => {
     expect(push({ entries: [{ ...ENTRY, date: "2028-02-29" }] }).ok).toBe(true);
-    expect(push({ entries: [{ ...ENTRY, date: "2027-02-29" }] }).ok).toBe(false);
+    expect(push({ entries: [{ ...ENTRY, date: "2027-02-29" }] }).ok).toBe(
+      false,
+    );
   });
 
   it("rejects an over-long name rather than storing what other devices must render", () => {
-    expect(push({ habits: [{ ...HABIT, name: "x".repeat(121) }] }).ok).toBe(false);
-    expect(push({ habits: [{ ...HABIT, name: "x".repeat(120) }] }).ok).toBe(true);
+    expect(push({ habits: [{ ...HABIT, name: "x".repeat(121) }] }).ok).toBe(
+      false,
+    );
+    expect(push({ habits: [{ ...HABIT, name: "x".repeat(120) }] }).ok).toBe(
+      true,
+    );
   });
 
   it("rejects a target below one", () => {
@@ -103,16 +130,36 @@ describe("parseSyncPush", () => {
   });
 
   it("validates each cadence variant", () => {
-    expect(push({ habits: [{ ...HABIT, cadence: { kind: "weekly", times: 3 } }] }).ok).toBe(true);
-    expect(push({ habits: [{ ...HABIT, cadence: { kind: "weekly", times: 0 } }] }).ok).toBe(false);
-    expect(push({ habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [1, 3] } }] }).ok).toBe(true);
-    expect(push({ habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [7] } }] }).ok).toBe(false);
-    expect(push({ habits: [{ ...HABIT, cadence: { kind: "monthly" } }] }).ok).toBe(false);
+    expect(
+      push({ habits: [{ ...HABIT, cadence: { kind: "weekly", times: 3 } }] })
+        .ok,
+    ).toBe(true);
+    expect(
+      push({ habits: [{ ...HABIT, cadence: { kind: "weekly", times: 0 } }] })
+        .ok,
+    ).toBe(false);
+    expect(
+      push({
+        habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [1, 3] } }],
+      }).ok,
+    ).toBe(true);
+    expect(
+      push({ habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [7] } }] })
+        .ok,
+    ).toBe(false);
+    expect(
+      push({ habits: [{ ...HABIT, cadence: { kind: "monthly" } }] }).ok,
+    ).toBe(false);
   });
 
   it("normalises weekdays so two devices fingerprint the same cadence alike", () => {
-    const result = push({ habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [3, 1, 3] } }] });
-    expect(result.ok && result.value.habits[0].cadence).toEqual({ kind: "weekdays", days: [1, 3] });
+    const result = push({
+      habits: [{ ...HABIT, cadence: { kind: "weekdays", days: [3, 1, 3] } }],
+    });
+    expect(result.ok && result.value.habits[0].cadence).toEqual({
+      kind: "weekdays",
+      days: [1, 3],
+    });
   });
 
   it("strips properties it was not expecting", () => {
@@ -121,7 +168,10 @@ describe("parseSyncPush", () => {
   });
 
   it("rejects a batch larger than one request may carry", () => {
-    const entries = Array.from({ length: 501 }, (_, i) => ({ ...ENTRY, count: i }));
+    const entries = Array.from({ length: 501 }, (_, i) => ({
+      ...ENTRY,
+      count: i,
+    }));
     expect(push({ entries }).ok).toBe(false);
   });
 
@@ -134,8 +184,22 @@ describe("parseSyncPush", () => {
   it("accepts null settings and rejects a malformed one", () => {
     expect(push({ settings: null }).ok).toBe(true);
     expect(push({ settings: { value: SETTINGS.value } }).ok).toBe(false);
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, dayStartHour: 9 } } }).ok).toBe(false);
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, weekStartsOn: 2 } } }).ok).toBe(false);
+    expect(
+      push({
+        settings: {
+          ...SETTINGS,
+          value: { ...SETTINGS.value, dayStartHour: 9 },
+        },
+      }).ok,
+    ).toBe(false);
+    expect(
+      push({
+        settings: {
+          ...SETTINGS,
+          value: { ...SETTINGS.value, weekStartsOn: 2 },
+        },
+      }).ok,
+    ).toBe(false);
   });
 
   it("drops a theme a pre-§13.8-#1 device still pushes, rather than refusing it", () => {
@@ -143,9 +207,13 @@ describe("parseSyncPush", () => {
     // sending the field. Refusing the blob would stop that device syncing its
     // habits over a preference this build does not store at all.
     for (const theme of ["dark", "neon", 7, null]) {
-      const result = push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, theme } } });
+      const result = push({
+        settings: { ...SETTINGS, value: { ...SETTINGS.value, theme } },
+      });
       expect(result.ok).toBe(true);
-      expect(result.ok === true && result.value.settings?.value).not.toHaveProperty("theme");
+      expect(
+        result.ok === true && result.value.settings?.value,
+      ).not.toHaveProperty("theme");
     }
   });
 
@@ -153,30 +221,74 @@ describe("parseSyncPush", () => {
     // A device on a build from before the field existed still has to sync.
     const result = push({ settings: SETTINGS });
     expect(result.ok).toBe(true);
-    expect(result.ok === true && result.value.settings?.value.haptics).toBe(true);
+    expect(result.ok === true && result.value.settings?.value.haptics).toBe(
+      true,
+    );
 
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, haptics: false } } }).ok).toBe(true);
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, haptics: "yes" } } }).ok).toBe(false);
+    expect(
+      push({
+        settings: { ...SETTINGS, value: { ...SETTINGS.value, haptics: false } },
+      }).ok,
+    ).toBe(true);
+    expect(
+      push({
+        settings: { ...SETTINGS, value: { ...SETTINGS.value, haptics: "yes" } },
+      }).ok,
+    ).toBe(false);
   });
 
   it("treats a missing reminderHour as the default, not as malformed", () => {
     const result = push({ settings: SETTINGS });
     expect(result.ok).toBe(true);
-    expect(result.ok === true && result.value.settings?.value.reminderHour).toBe(9);
+    expect(
+      result.ok === true && result.value.settings?.value.reminderHour,
+    ).toBe(9);
 
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: 0 } } }).ok).toBe(true);
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: 23 } } }).ok).toBe(true);
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: 24 } } }).ok).toBe(false);
-    expect(push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, reminderHour: -1 } } }).ok).toBe(false);
+    expect(
+      push({
+        settings: {
+          ...SETTINGS,
+          value: { ...SETTINGS.value, reminderHour: 0 },
+        },
+      }).ok,
+    ).toBe(true);
+    expect(
+      push({
+        settings: {
+          ...SETTINGS,
+          value: { ...SETTINGS.value, reminderHour: 23 },
+        },
+      }).ok,
+    ).toBe(true);
+    expect(
+      push({
+        settings: {
+          ...SETTINGS,
+          value: { ...SETTINGS.value, reminderHour: 24 },
+        },
+      }).ok,
+    ).toBe(false);
+    expect(
+      push({
+        settings: {
+          ...SETTINGS,
+          value: { ...SETTINGS.value, reminderHour: -1 },
+        },
+      }).ok,
+    ).toBe(false);
   });
 
   it("treats missing dailyTags as the default, and accepts a tag it has never heard of", () => {
     const result = push({ settings: SETTINGS });
     expect(result.ok).toBe(true);
-    expect(result.ok === true && result.value.settings?.value.dailyTags).toEqual([]);
+    expect(
+      result.ok === true && result.value.settings?.value.dailyTags,
+    ).toEqual([]);
 
     const withTags = (dailyTags: unknown) =>
-      push({ settings: { ...SETTINGS, value: { ...SETTINGS.value, dailyTags } } });
+      push({
+        settings: { ...SETTINGS, value: { ...SETTINGS.value, dailyTags } },
+      });
 
     expect(withTags(["discipline", "space"]).ok).toBe(true);
     // Checked for shape, not membership: the unions grow, and a device on a
@@ -214,8 +326,13 @@ describe("parseBackup", () => {
   });
 
   it("refuses a record the sync endpoint would refuse, naming it", () => {
-    const result = backup({ entries: [ENTRY, { ...ENTRY, date: "2026-02-30" }] });
-    expect(result).toEqual({ ok: false, message: expect.stringContaining("entries[1]") });
+    const result = backup({
+      entries: [ENTRY, { ...ENTRY, date: "2026-02-30" }],
+    });
+    expect(result).toEqual({
+      ok: false,
+      message: expect.stringContaining("entries[1]"),
+    });
   });
 
   it("refuses a file that is not a backup at all", () => {
@@ -244,12 +361,16 @@ describe("parseBackup", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.version).toBe(2);
-    expect(result.value.habits[0].updatedAt).toBe(Date.parse("2026-08-01T00:00:00Z"));
+    expect(result.value.habits[0].updatedAt).toBe(
+      Date.parse("2026-08-01T00:00:00Z"),
+    );
     expect(result.value.settings.reminderHour).toBe(9);
   });
 
   it("leaves tombstones out, which an export never writes", () => {
-    const result = backup({ habits: [HABIT, { ...HABIT, id: "gone", deletedAt: 5 }] });
+    const result = backup({
+      habits: [HABIT, { ...HABIT, id: "gone", deletedAt: 5 }],
+    });
     expect(result.ok && result.value.habits.map((h) => h.id)).toEqual(["h1"]);
   });
 });

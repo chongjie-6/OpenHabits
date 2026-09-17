@@ -37,7 +37,10 @@ export function ReminderCard() {
   return (
     <Card>
       {status === "checking" || isPending ? (
-        <div aria-hidden="true" className="h-16 animate-pulse rounded-control bg-surface-2" />
+        <div
+          aria-hidden="true"
+          className="h-16 animate-pulse rounded-control bg-surface-2"
+        />
       ) : (
         <Body
           status={status}
@@ -73,9 +76,9 @@ function Body({
   if (status === "unsupported") {
     return (
       <Explain>
-        This browser cannot receive reminders. On an iPhone or iPad they only work
-        once OpenHabits is on the Home Screen — install it from the card above and
-        open it from there, then this will offer a switch.
+        This browser cannot receive reminders. On an iPhone or iPad they only
+        work once OpenHabits is on the Home Screen — install it from the card
+        above and open it from there, then this will offer a switch.
       </Explain>
     );
   }
@@ -117,8 +120,8 @@ function Body({
     return (
       <Explain>
         Notifications are blocked for this site. Only the browser can undo that:
-        allow notifications for OpenHabits in its site settings, then reload this
-        page.
+        allow notifications for OpenHabits in its site settings, then reload
+        this page.
       </Explain>
     );
   }
@@ -129,20 +132,23 @@ function Body({
         {status === "on" ? (
           <>
             This device is reminded at {formatHour(hour)} — once a day, and only
-            when something is still outstanding. Finish everything before then and
-            it stays quiet.
+            when something is still outstanding. Finish everything before then
+            and it stays quiet.
           </>
         ) : (
           <>
             One notification a day listing what is still outstanding, sent at{" "}
-            {formatHour(hour)} in this device&rsquo;s timezone. Nothing arrives on
-            a day you have already finished.
+            {formatHour(hour)} in this device&rsquo;s timezone. Nothing arrives
+            on a day you have already finished.
           </>
         )}
       </p>
 
       {error && (
-        <p role="alert" className="mt-2 text-[12px] leading-relaxed text-danger">
+        <p
+          role="alert"
+          className="mt-2 text-[12px] leading-relaxed text-danger"
+        >
           {error}
         </p>
       )}
@@ -158,7 +164,11 @@ function Body({
               : "border-accent bg-accent text-accent-fg"
           }`}
         >
-          {busy ? "Working…" : status === "on" ? "Turn off on this device" : "Turn on reminders"}
+          {busy
+            ? "Working…"
+            : status === "on"
+              ? "Turn off on this device"
+              : "Turn on reminders"}
         </button>
       </div>
 
@@ -166,13 +176,15 @@ function Body({
         <label className="mt-4 block">
           <span className="text-[13px] font-medium">Remind me at</span>
           <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
-            Your local time. Unlike the switch above, this is part of your account
-            — change it here and your other devices follow.
+            Your local time. Unlike the switch above, this is part of your
+            account — change it here and your other devices follow.
           </span>
           {/* 16px, like every text field: below it a tap zooms iOS in for good. */}
           <select
             value={hour}
-            onChange={(event) => updateSettings({ reminderHour: Number(event.target.value) })}
+            onChange={(event) =>
+              updateSettings({ reminderHour: Number(event.target.value) })
+            }
             className="mt-2 h-10 rounded-control border border-border bg-surface-2 px-3 text-[16px] outline-none focus:border-accent"
           >
             {HOURS.map((value) => (
@@ -185,8 +197,8 @@ function Body({
       )}
 
       <p className="mt-4 text-[11px] leading-relaxed text-muted">
-        The switch is per device — turning it on here does not turn it on for your
-        phone, and signing out turns it off again.
+        The switch is per device — turning it on here does not turn it on for
+        your phone, and signing out turns it off again.
       </p>
     </>
   );

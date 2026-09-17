@@ -20,7 +20,9 @@ import "server-only";
  * `env` is a parameter rather than a read of `process.env`, so the production
  * branch can be tested without setting `NODE_ENV` for the whole run.
  */
-export function resolveBaseURL(env: NodeJS.ProcessEnv = process.env): string | undefined {
+export function resolveBaseURL(
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
   const url = env.BETTER_AUTH_URL?.trim() || undefined;
   if (url) return url;
 

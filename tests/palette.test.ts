@@ -69,9 +69,10 @@ describe("deriveSwatches", () => {
       const seed = seedForHue(hue);
       for (const mode of modes) {
         for (const row of audit(deriveSwatches(seed, mode))) {
-          expect(row.passes, `hue ${hue} ${mode}: ${row.label} at ${row.ratio.toFixed(2)}`).toBe(
-            true,
-          );
+          expect(
+            row.passes,
+            `hue ${hue} ${mode}: ${row.label} at ${row.ratio.toFixed(2)}`,
+          ).toBe(true);
         }
       }
     }
@@ -88,8 +89,12 @@ describe("deriveSwatches", () => {
   it("keeps light light and dark dark", () => {
     const light = deriveSwatches("#0c8599", "light");
     const dark = deriveSwatches("#0c8599", "dark");
-    expect(relativeLuminance(parseHex(light["--background"])!)).toBeGreaterThan(0.8);
-    expect(relativeLuminance(parseHex(dark["--background"])!)).toBeLessThan(0.05);
+    expect(relativeLuminance(parseHex(light["--background"])!)).toBeGreaterThan(
+      0.8,
+    );
+    expect(relativeLuminance(parseHex(dark["--background"])!)).toBeLessThan(
+      0.05,
+    );
   });
 
   it("builds a ramp that climbs in one direction", () => {
@@ -121,7 +126,9 @@ describe("presets", () => {
       const palette = derivePalette(preset.seed);
       for (const mode of ["light", "dark"] as const) {
         for (const row of audit(palette[mode])) {
-          expect(row.passes, `${preset.label} ${mode}: ${row.label}`).toBe(true);
+          expect(row.passes, `${preset.label} ${mode}: ${row.label}`).toBe(
+            true,
+          );
         }
       }
     }
@@ -145,12 +152,18 @@ describe("normalisePalette", () => {
   });
 
   it("lowercases, so a hand-edited value cannot change the stored form", () => {
-    const shouty = { ...valid, light: { ...valid.light, "--accent": "#216E39" } };
+    const shouty = {
+      ...valid,
+      light: { ...valid.light, "--accent": "#216E39" },
+    };
     expect(normalisePalette(shouty)!.light["--accent"]).toBe("#216e39");
   });
 
   it("rejects a partial palette rather than filling the gaps from the skin", () => {
-    const missing = { ...valid, light: { ...valid.light } } as Record<string, unknown>;
+    const missing = { ...valid, light: { ...valid.light } } as Record<
+      string,
+      unknown
+    >;
     delete (missing.light as Record<string, unknown>)["--ring"];
     expect(normalisePalette(missing)).toBeNull();
   });
@@ -166,12 +179,23 @@ describe("normalisePalette", () => {
 
   it("rejects a value carrying anything but a colour", () => {
     // The pre-paint script writes stored values straight into an inline style.
-    const bad = { ...valid, dark: { ...valid.dark, "--surface": "url(https://x/)" } };
+    const bad = {
+      ...valid,
+      dark: { ...valid.dark, "--surface": "url(https://x/)" },
+    };
     expect(normalisePalette(bad)).toBeNull();
   });
 
   it("rejects the shapes localStorage can actually hand back", () => {
-    for (const value of [null, undefined, "", "{}", 0, [], { light: 1, dark: 2 }]) {
+    for (const value of [
+      null,
+      undefined,
+      "",
+      "{}",
+      0,
+      [],
+      { light: 1, dark: 2 },
+    ]) {
       expect(normalisePalette(value)).toBeNull();
     }
   });
@@ -179,7 +203,9 @@ describe("normalisePalette", () => {
 
 describe("the editor's token list", () => {
   it("covers every token exactly once", () => {
-    const listed = TOKEN_GROUPS.flatMap((group) => group.tokens.map((t) => t.token));
+    const listed = TOKEN_GROUPS.flatMap((group) =>
+      group.tokens.map((t) => t.token),
+    );
     expect(listed.slice().sort()).toEqual(PALETTE_TOKENS.slice().sort());
     expect(new Set(listed).size).toBe(listed.length);
   });

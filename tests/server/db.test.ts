@@ -13,7 +13,8 @@ afterEach(async () => {
 describe("the connection pool", () => {
   // postgres.js connects lazily, so this builds the client without a server.
   it("lets one instance run requests side by side", () => {
-    process.env.DATABASE_URL ??= "postgres://openhabits:x@127.0.0.1:1/openhabits";
+    process.env.DATABASE_URL ??=
+      "postgres://openhabits:x@127.0.0.1:1/openhabits";
     getDb();
     expect(globalForDb.openHabitsSql?.options.max).toBeGreaterThan(1);
   });

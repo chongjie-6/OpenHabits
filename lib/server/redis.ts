@@ -58,5 +58,7 @@ export function getRedis(): Redis {
  * answer is worth testing without setting variables for the whole run.
  */
 export function redisConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean(env.UPSTASH_REDIS_REST_URL) && Boolean(env.UPSTASH_REDIS_REST_TOKEN);
+  return (
+    Boolean(env.UPSTASH_REDIS_REST_URL) && Boolean(env.UPSTASH_REDIS_REST_TOKEN)
+  );
 }

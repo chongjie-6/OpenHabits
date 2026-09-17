@@ -7,12 +7,7 @@ import { InstallCard } from "@/components/DownloadAppButton";
 import { ReminderCard } from "@/components/ReminderCard";
 import { habitColor } from "@/lib/colors";
 import { HAPTIC_DONE, vibrate } from "@/lib/haptics";
-import {
-  activeTagsFor,
-  deckCountFor,
-  MODE_COPY,
-  tagsFor,
-} from "@/lib/daily";
+import { activeTagsFor, deckCountFor, MODE_COPY, tagsFor } from "@/lib/daily";
 import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
 import { usePalette } from "@/lib/use-palette";
 import { changeTheme, useTheme } from "@/lib/use-theme";

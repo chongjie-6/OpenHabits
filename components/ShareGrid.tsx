@@ -16,7 +16,13 @@ import { renderShareCard, shareImage, type ShareCard } from "@/lib/share-card";
  * is allowed to: §7.2's rule is about the tick, whose whole promise is that it
  * never waits. Nothing here touches the store.
  */
-export function ShareGrid({ card, filename }: { card: () => ShareCard; filename: string }) {
+export function ShareGrid({
+  card,
+  filename,
+}: {
+  card: () => ShareCard;
+  filename: string;
+}) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { resetEmail } from "@/lib/email-templates/reset";
 import { verificationEmail } from "@/lib/email-templates/verification";
 
-const URL = "https://openhabits.app/api/auth/reset-password/abc123?callbackURL=/reset-password";
+const URL =
+  "https://openhabits.app/api/auth/reset-password/abc123?callbackURL=/reset-password";
 
 describe("resetEmail", () => {
   it("puts the link in both parts", () => {
@@ -15,7 +16,9 @@ describe("resetEmail", () => {
   });
 
   it("escapes a URL that would otherwise break out of the attribute", () => {
-    const { html } = resetEmail('https://openhabits.app/?t=x"><script>alert(1)</script>');
+    const { html } = resetEmail(
+      'https://openhabits.app/?t=x"><script>alert(1)</script>',
+    );
     expect(html).not.toContain("<script>");
     expect(html).toContain("&quot;&gt;&lt;script&gt;");
   });
@@ -72,13 +75,16 @@ describe("the shared email shell", () => {
   });
 
   it("lights exactly one square, and a different one in each mail", () => {
-    const lit = (html: string) => (html.match(/background-color:#30a14e/g) ?? []).length;
+    const lit = (html: string) =>
+      (html.match(/background-color:#30a14e/g) ?? []).length;
     expect(lit(resetEmail(URL).html)).toBe(1);
     expect(lit(verificationEmail(URL).html)).toBe(1);
 
     // A beginning and a return: the verification mail lights a first day, this
     // one lights the day you came back.
     const cell = (html: string) => html.indexOf("background-color:#30a14e");
-    expect(cell(resetEmail(URL).html)).not.toBe(cell(verificationEmail(URL).html));
+    expect(cell(resetEmail(URL).html)).not.toBe(
+      cell(verificationEmail(URL).html),
+    );
   });
 });

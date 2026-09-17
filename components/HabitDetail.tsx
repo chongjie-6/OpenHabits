@@ -10,7 +10,13 @@ import { ShareGrid } from "@/components/ShareGrid";
 import { habitColor } from "@/lib/colors";
 import { addDays, formatDayFull, startOfWeek } from "@/lib/dates";
 import { buildHabitHistory } from "@/lib/history";
-import { deleteHabit, restore, toggleEntry, updateHabit, useOpenHabits } from "@/lib/store";
+import {
+  deleteHabit,
+  restore,
+  toggleEntry,
+  updateHabit,
+  useOpenHabits,
+} from "@/lib/store";
 import { offerUndo } from "@/lib/undo";
 import { computeStreaks } from "@/lib/streaks";
 import { MOBILE, useMediaQuery, WIDE } from "@/lib/use-media-query";
@@ -72,7 +78,10 @@ export function HabitDetail() {
         <p className="surface-dashed px-4 py-8 text-center text-[13px] text-muted">
           That habit no longer exists.
         </p>
-        <Link href="/settings" className="block text-center text-[13px] text-accent">
+        <Link
+          href="/settings"
+          className="block text-center text-[13px] text-accent"
+        >
           Back to settings
         </Link>
       </section>
@@ -82,7 +91,9 @@ export function HabitDetail() {
   const accent = habitColor(habit.color);
   const archived = habit.archivedAt !== null;
   const rate =
-    view && view.scheduledDays > 0 ? view.completedDays / view.scheduledDays : 0;
+    view && view.scheduledDays > 0
+      ? view.completedDays / view.scheduledDays
+      : 0;
 
   return (
     <section className="space-y-6">
@@ -98,16 +109,20 @@ export function HabitDetail() {
           <span
             aria-hidden="true"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card text-xl"
-            style={{ background: `color-mix(in oklab, ${accent} 18%, transparent)` }}
+            style={{
+              background: `color-mix(in oklab, ${accent} 18%, transparent)`,
+            }}
           >
             {habit.emoji}
           </span>
           <div className="min-w-0">
-            <h1 className="display-type truncate text-[17px]">
-              {habit.name}
-            </h1>
+            <h1 className="display-type truncate text-[17px]">{habit.name}</h1>
             <p className="text-[12px] text-muted">
-              {describeCadence(habit.cadence, habit.target, settings.weekStartsOn)}
+              {describeCadence(
+                habit.cadence,
+                habit.target,
+                settings.weekStartsOn,
+              )}
               {archived && " · archived"}
             </p>
           </div>
@@ -116,17 +131,25 @@ export function HabitDetail() {
 
       {archived && (
         <p className="surface-card bg-surface-2 px-4 py-3 text-[12px] leading-relaxed text-muted">
-          This habit is archived. Its history is kept and still shows here, but it
-          no longer appears on Today or in your streaks.
+          This habit is archived. Its history is kept and still shows here, but
+          it no longer appears on Today or in your streaks.
         </p>
       )}
 
       {view && (
         <>
           <div className="grid grid-cols-3 gap-2">
-            <Stat label="Current" value={view.streaks.current} unit="day streak" />
+            <Stat
+              label="Current"
+              value={view.streaks.current}
+              unit="day streak"
+            />
             <Stat label="Longest" value={view.streaks.longest} unit="days" />
-            <Stat label="Done" value={view.completedDays} unit={`of ${view.scheduledDays}`} />
+            <Stat
+              label="Done"
+              value={view.completedDays}
+              unit={`of ${view.scheduledDays}`}
+            />
           </div>
 
           <p className="text-[13px] leading-relaxed text-muted">
@@ -134,8 +157,9 @@ export function HabitDetail() {
             <strong className="font-medium text-foreground">
               {Math.round(rate * 100)}%
             </strong>{" "}
-            of the {view.scheduledDays} {view.scheduledDays === 1 ? "day" : "days"} it
-            was scheduled in this window.
+            of the {view.scheduledDays}{" "}
+            {view.scheduledDays === 1 ? "day" : "days"} it was scheduled in this
+            window.
           </p>
 
           <div className="surface-card bg-surface p-4">
@@ -173,7 +197,10 @@ export function HabitDetail() {
                     settings.weekStartsOn,
                   ),
                   figures: [
-                    { value: String(view.streaks.current), label: "day streak" },
+                    {
+                      value: String(view.streaks.current),
+                      label: "day streak",
+                    },
                     { value: String(view.streaks.longest), label: "longest" },
                     { value: `${Math.round(rate * 100)}%`, label: "completed" },
                   ],
@@ -193,7 +220,10 @@ export function HabitDetail() {
                     {formatDayFull(selected)}
                   </span>
                   <span className="text-[12px] text-muted">
-                    {countLabel(entries.get(`${habit.id}:${selected}`)?.count ?? 0, habit.target)}
+                    {countLabel(
+                      entries.get(`${habit.id}:${selected}`)?.count ?? 0,
+                      habit.target,
+                    )}
                   </span>
                 </p>
                 <button
@@ -237,7 +267,9 @@ export function HabitDetail() {
                   onClick={() => {
                     const deleted = deleteHabit(habit.id);
                     if (deleted) {
-                      offerUndo(`${deleted.habit.name} deleted.`, () => restore(deleted));
+                      offerUndo(`${deleted.habit.name} deleted.`, () =>
+                        restore(deleted),
+                      );
                     }
                     router.push("/settings");
                   }}
@@ -292,13 +324,23 @@ function countLabel(count: number, target: number): string {
   return count > 0 ? "Done" : "Not done";
 }
 
-function Stat({ label, value, unit }: { label: string; value: number; unit: string }) {
+function Stat({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+}) {
   return (
     <div className="surface-card bg-surface px-3 py-3 text-center">
       <p className="font-mono text-[22px] font-semibold tabular-nums leading-none">
         {value}
       </p>
-      <p className="mt-1 text-[10px] uppercase tracking-[0.06em] text-muted">{label}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-[0.06em] text-muted">
+        {label}
+      </p>
       <p className="text-[10px] text-muted">{unit}</p>
     </div>
   );

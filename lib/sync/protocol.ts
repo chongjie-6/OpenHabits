@@ -129,7 +129,8 @@ export function wins<T extends { updatedAt: number }>(
   fingerprint: (record: T) => string,
 ): boolean {
   if (!existing) return true;
-  if (incoming.updatedAt !== existing.updatedAt) return incoming.updatedAt > existing.updatedAt;
+  if (incoming.updatedAt !== existing.updatedAt)
+    return incoming.updatedAt > existing.updatedAt;
   return fingerprint(incoming) > fingerprint(existing);
 }
 

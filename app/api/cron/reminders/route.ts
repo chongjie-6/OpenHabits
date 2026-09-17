@@ -50,7 +50,10 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (!authorised(request)) {
-    return Response.json({ error: "Unauthorised." }, { status: 401, headers: NO_STORE });
+    return Response.json(
+      { error: "Unauthorised." },
+      { status: 401, headers: NO_STORE },
+    );
   }
 
   if (!syncConfigured() || !pushConfigured()) {

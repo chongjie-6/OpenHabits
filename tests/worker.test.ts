@@ -31,14 +31,18 @@ describe("the reminder scheduler", () => {
 
     const [url, init] = calledWith(fetchMock);
     expect(url).toBe("https://openhabits.example/api/cron/reminders");
-    expect(new Headers(init.headers).get("authorization")).toBe("Bearer s3cret");
+    expect(new Headers(init.headers).get("authorization")).toBe(
+      "Bearer s3cret",
+    );
   });
 
   it("does not double the slash on a trailing-slash origin", async () => {
     const fetchMock = respond(200);
     await run({ ...ENV, SITE_URL: "https://openhabits.example/" });
 
-    expect(calledWith(fetchMock)[0]).toBe("https://openhabits.example/api/cron/reminders");
+    expect(calledWith(fetchMock)[0]).toBe(
+      "https://openhabits.example/api/cron/reminders",
+    );
   });
 
   // The whole point of the Worker: a throw is what marks the cron invocation

@@ -26,7 +26,9 @@ export type { SyncUser };
  */
 export async function resolveUser(request: Request): Promise<SyncUser | null> {
   try {
-    const session = await getAuth().api.getSession({ headers: request.headers });
+    const session = await getAuth().api.getSession({
+      headers: request.headers,
+    });
     if (!session?.user?.email) return null;
 
     return { id: session.user.id, email: session.user.email };

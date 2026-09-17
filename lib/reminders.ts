@@ -72,7 +72,9 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
 }
 
 async function readConfig(): Promise<Config> {
-  const response = await fetch("/api/reminders", { headers: { Accept: "application/json" } });
+  const response = await fetch("/api/reminders", {
+    headers: { Accept: "application/json" },
+  });
   if (!response.ok) return { configured: false, applicationServerKey: null };
   return (await response.json()) as Config;
 }
@@ -259,7 +261,10 @@ export function useReminders(signedIn: boolean): ReminderState & {
     void (async () => {
       const permission = await asked;
       if (permission !== "granted") {
-        return set({ busy: false, status: permission === "denied" ? "denied" : "off" });
+        return set({
+          busy: false,
+          status: permission === "denied" ? "denied" : "off",
+        });
       }
 
       let subscription: PushSubscription;
@@ -273,7 +278,8 @@ export function useReminders(signedIn: boolean): ReminderState & {
       } catch {
         return set({
           busy: false,
-          error: "The browser would not create a subscription. Try again in a moment.",
+          error:
+            "The browser would not create a subscription. Try again in a moment.",
         });
       }
 
@@ -284,7 +290,8 @@ export function useReminders(signedIn: boolean): ReminderState & {
         await subscription.unsubscribe().catch(() => false);
         return set({
           busy: false,
-          error: "Could not register with the server. Check you are signed in, then try again.",
+          error:
+            "Could not register with the server. Check you are signed in, then try again.",
         });
       }
 

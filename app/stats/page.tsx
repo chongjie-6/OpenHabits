@@ -39,7 +39,13 @@ export default function StatsPage() {
     const from = addDays(lastWeekStart, -(weeks - 1) * 7);
     const to = addDays(lastWeekStart, 6);
 
-    const stats = buildHistory(habits, entries, from, to, settings.weekStartsOn);
+    const stats = buildHistory(
+      habits,
+      entries,
+      from,
+      to,
+      settings.weekStartsOn,
+    );
     // Streaks and rates read the past, never the tail of future cells.
     const past = stats.filter((s) => s.date <= day);
 
@@ -57,7 +63,13 @@ export default function StatsPage() {
       past,
       streaks: computeStreaks(past),
       totals: perHabitTotals(habits, entries, from, day, settings.weekStartsOn),
-      habitStreaks: perHabitStreaks(habits, entries, from, day, settings.weekStartsOn),
+      habitStreaks: perHabitStreaks(
+        habits,
+        entries,
+        from,
+        day,
+        settings.weekStartsOn,
+      ),
       weekdays: weekdayRates(past, settings.weekStartsOn),
       trend,
       windowDays: past.length,
@@ -67,8 +79,18 @@ export default function StatsPage() {
 
   if (!view) return <Skeleton />;
 
-  const { day, stats, past, streaks, totals, habitStreaks, weekdays, trend, windowDays, from } =
-    view;
+  const {
+    day,
+    stats,
+    past,
+    streaks,
+    totals,
+    habitStreaks,
+    weekdays,
+    trend,
+    windowDays,
+    from,
+  } = view;
   const selectedStates = selected
     ? habitsForDay(habits, entries, selected, settings.weekStartsOn)
     : null;
@@ -86,7 +108,11 @@ export default function StatsPage() {
           <div className="grid grid-cols-3 gap-2">
             <Stat label="Current streak" value={streaks.current} unit="days" />
             <Stat label="Longest" value={streaks.longest} unit="days" />
-            <Stat label="Perfect days" value={streaks.perfectDays} unit="total" />
+            <Stat
+              label="Perfect days"
+              value={streaks.perfectDays}
+              unit="total"
+            />
           </div>
 
           {/* The same information in prose — a 371-cell grid is a poor primary
@@ -98,7 +124,10 @@ export default function StatsPage() {
             </strong>{" "}
             of your scheduled habits, with {streaks.perfectDays} complete{" "}
             {streaks.perfectDays === 1 ? "day" : "days"}
-            {streaks.longest > 0 && <> and a longest run of {streaks.longest}</>}.
+            {streaks.longest > 0 && (
+              <> and a longest run of {streaks.longest}</>
+            )}
+            .
           </p>
 
           <div className="surface-card bg-surface p-4">
@@ -131,8 +160,14 @@ export default function StatsPage() {
                   subtitle: `${formatDayFull(from)} — ${formatDayFull(day)}`,
                   figures: [
                     { value: String(streaks.current), label: "day streak" },
-                    { value: `${Math.round(streaks.completionRate * 100)}%`, label: "completed" },
-                    { value: String(streaks.perfectDays), label: "perfect days" },
+                    {
+                      value: `${Math.round(streaks.completionRate * 100)}%`,
+                      label: "completed",
+                    },
+                    {
+                      value: String(streaks.perfectDays),
+                      label: "perfect days",
+                    },
                   ],
                   // The past only. The grid on screen runs to the end of this
                   // week and dims what has not happened yet; a still image has
@@ -151,7 +186,9 @@ export default function StatsPage() {
           {selected && selectedStates && (
             <div className="surface-card bg-surface p-4">
               <div className="flex items-baseline justify-between gap-3">
-                <h2 className="text-[13px] font-semibold">{formatDayFull(selected)}</h2>
+                <h2 className="text-[13px] font-semibold">
+                  {formatDayFull(selected)}
+                </h2>
                 <button
                   type="button"
                   onClick={() => setSelected(null)}
@@ -161,12 +198,18 @@ export default function StatsPage() {
                 </button>
               </div>
               {selectedStates.length === 0 ? (
-                <p className="mt-2 text-[13px] text-muted">No habits existed yet.</p>
+                <p className="mt-2 text-[13px] text-muted">
+                  No habits existed yet.
+                </p>
               ) : (
                 <ul className="mt-1 -mx-3">
                   {selectedStates.map((state) => (
                     <li key={state.habit.id}>
-                      <HabitRow state={state} day={selected} dimmed={!state.scheduled} />
+                      <HabitRow
+                        state={state}
+                        day={selected}
+                        dimmed={!state.scheduled}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -183,7 +226,10 @@ export default function StatsPage() {
             </h2>
             <ul className="divide-y divide-border surface-card bg-surface">
               {habits.map((habit) => {
-                const total = totals.get(habit.id) ?? { scheduled: 0, completed: 0 };
+                const total = totals.get(habit.id) ?? {
+                  scheduled: 0,
+                  completed: 0,
+                };
                 const rate =
                   total.scheduled === 0 ? 0 : total.completed / total.scheduled;
                 const streak = habitStreaks.get(habit.id)?.current ?? 0;
@@ -198,7 +244,9 @@ export default function StatsPage() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline gap-2">
-                          <span className="min-w-0 truncate text-[14px]">{habit.name}</span>
+                          <span className="min-w-0 truncate text-[14px]">
+                            {habit.name}
+                          </span>
                           {streak > 0 && (
                             <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted">
                               {streak}d
@@ -236,13 +284,23 @@ export default function StatsPage() {
   );
 }
 
-function Stat({ label, value, unit }: { label: string; value: number; unit: string }) {
+function Stat({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+}) {
   return (
     <div className="surface-card bg-surface px-3 py-3 text-center">
       <p className="font-mono text-[22px] font-semibold tabular-nums leading-none">
         {value}
       </p>
-      <p className="mt-1 text-[10px] uppercase tracking-[0.06em] text-muted">{label}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-[0.06em] text-muted">
+        {label}
+      </p>
       <p className="text-[10px] text-muted">{unit}</p>
     </div>
   );

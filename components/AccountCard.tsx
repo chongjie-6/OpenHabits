@@ -66,7 +66,8 @@ function useMounted(): boolean {
   );
 }
 
-const UNREACHABLE = "Could not reach the server. Check your connection and try again.";
+const UNREACHABLE =
+  "Could not reach the server. Check your connection and try again.";
 
 /**
  * The auth client's answer, or null when the request threw instead of

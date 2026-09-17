@@ -58,7 +58,9 @@ function DailyCardClassic({ item, saved }: Props) {
             {item.byline}
           </cite>
           {item.detail && (
-            <p className="mt-0.5 truncate text-[11px] text-muted">{item.detail}</p>
+            <p className="mt-0.5 truncate text-[11px] text-muted">
+              {item.detail}
+            </p>
           )}
         </div>
         <SaveButton saved={saved} itemId={item.id} />
@@ -81,13 +83,13 @@ function DailyCardClassic({ item, saved }: Props) {
 function DailyRule({ item, saved }: Props) {
   return (
     <figure className="border-l-2 border-border pl-3">
-      <blockquote className="text-[13px] leading-[1.5] text-foreground">
+      <blockquote className="text-[13px] leading-normal text-foreground">
         {item.text}
       </blockquote>
 
       <figcaption className="mt-2 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <cite className="block font-mono text-[10px] font-medium not-italic uppercase tracking-[0.1em] text-muted">
+          <cite className="block font-mono text-[10px] font-medium not-italic uppercase tracking-widest text-muted">
             {item.byline}
             {item.detail && ` · ${item.detail}`}
           </cite>
@@ -96,7 +98,9 @@ function DailyRule({ item, saved }: Props) {
       </figcaption>
 
       {item.note && (
-        <p className="mt-2 text-[11px] leading-relaxed text-muted">{item.note}</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-muted">
+          {item.note}
+        </p>
       )}
     </figure>
   );

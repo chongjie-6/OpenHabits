@@ -23,7 +23,12 @@ import {
 import type { Snapshot, SyncMeta } from "@/lib/db";
 import { TOMBSTONE_TTL_MS } from "@/lib/sync/protocol";
 
-const NO_SYNC: SyncMeta = { cursor: 0, pushedThrough: 0, lastSyncAt: 0, accountId: null };
+const NO_SYNC: SyncMeta = {
+  cursor: 0,
+  pushedThrough: 0,
+  lastSyncAt: 0,
+  accountId: null,
+};
 
 /**
  * `vi.mock` is hoisted above the imports, so the state it closes over has to be
@@ -82,7 +87,12 @@ function habit(id: string, over: Partial<Habit> = {}): Habit {
   };
 }
 
-function entry(habitId: string, date: string, count: number, updatedAt: number): Entry {
+function entry(
+  habitId: string,
+  date: string,
+  count: number,
+  updatedAt: number,
+): Entry {
   return { habitId, date, count, updatedAt };
 }
 
@@ -204,7 +214,10 @@ describe("ticking", () => {
 
     // A step, then completion. The third call is a correction, and confirming a
     // correction feels like having recorded something.
-    expect(buzz.mock.calls.map(([pattern]) => pattern)).toEqual([12, [12, 45, 26]]);
+    expect(buzz.mock.calls.map(([pattern]) => pattern)).toEqual([
+      12,
+      [12, 45, 26],
+    ]);
     vi.unstubAllGlobals();
   });
 
@@ -231,12 +244,20 @@ describe("moveHabit", () => {
   it("swaps with the neighbour in the same group", async () => {
     const store = await load(
       snapshot({
-        habits: [habit("a", { order: 0 }), habit("b", { order: 1 }), habit("c", { order: 2 })],
+        habits: [
+          habit("a", { order: 0 }),
+          habit("b", { order: 1 }),
+          habit("c", { order: 2 }),
+        ],
       }),
     );
 
     store.moveHabit("c", -1);
-    expect(store.currentState().habits.map((h) => h.id)).toEqual(["a", "c", "b"]);
+    expect(store.currentState().habits.map((h) => h.id)).toEqual([
+      "a",
+      "c",
+      "b",
+    ]);
   });
 
   it("steps over an archived habit rather than swapping with it", async () => {
@@ -253,7 +274,9 @@ describe("moveHabit", () => {
     );
 
     store.moveHabit("b", -1);
-    const live = store.currentState().habits.filter((h) => h.archivedAt === null);
+    const live = store
+      .currentState()
+      .habits.filter((h) => h.archivedAt === null);
     expect(live.map((h) => h.id)).toEqual(["b", "a"]);
   });
 
@@ -270,7 +293,10 @@ describe("deleteHabit", () => {
     const store = await load(
       snapshot({
         habits: [habit("a"), habit("b", { order: 1 })],
-        entries: [entry("a", "2026-08-01", 1, 5), entry("b", "2026-08-01", 1, 5)],
+        entries: [
+          entry("a", "2026-08-01", 1, 5),
+          entry("b", "2026-08-01", 1, 5),
+        ],
       }),
     );
 
@@ -288,14 +314,20 @@ describe("deleteHabit", () => {
     const store = await load(
       snapshot({
         habits: [habit("a")],
-        entries: [entry("a", "2026-08-01", 1, 5), entry("a", "2026-08-02", 1, 6)],
+        entries: [
+          entry("a", "2026-08-01", 1, 5),
+          entry("a", "2026-08-02", 1, 6),
+        ],
       }),
     );
 
     const deleted = store.deleteHabit("a");
 
     expect(deleted?.habit.id).toBe("a");
-    expect(deleted?.entries.map((e) => e.date)).toEqual(["2026-08-01", "2026-08-02"]);
+    expect(deleted?.entries.map((e) => e.date)).toEqual([
+      "2026-08-01",
+      "2026-08-02",
+    ]);
     // The tombstone the peers get, not the record handed back for undo.
     expect(deleted?.habit.deletedAt).toBeNull();
   });
@@ -326,7 +358,10 @@ describe("restore", () => {
 
   it("re-stamps everything, so the restore outranks the tombstone it undoes", async () => {
     const store = await load(
-      snapshot({ habits: [habit("a")], entries: [entry("a", "2026-08-01", 1, 5)] }),
+      snapshot({
+        habits: [habit("a")],
+        entries: [entry("a", "2026-08-01", 1, 5)],
+      }),
     );
 
     const deleted = store.deleteHabit("a")!;
@@ -339,20 +374,25 @@ describe("restore", () => {
     expect(state.habits[0].deletedAt).toBeNull();
     // The entries too: the server dropped them when the tombstone landed, so
     // they only exist again if they are pushed again.
-    expect(state.entries.get(entryKey("a", "2026-08-01"))!.updatedAt).toBeGreaterThan(5);
+    expect(
+      state.entries.get(entryKey("a", "2026-08-01"))!.updatedAt,
+    ).toBeGreaterThan(5);
   });
 
   it("writes the habit and its entries back to storage", async () => {
     const store = await load(
-      snapshot({ habits: [habit("a")], entries: [entry("a", "2026-08-01", 1, 5)] }),
+      snapshot({
+        habits: [habit("a")],
+        entries: [entry("a", "2026-08-01", 1, 5)],
+      }),
     );
 
     store.restore(store.deleteHabit("a")!);
 
     expect(wrote("putHabit")).toHaveLength(1);
-    expect((wrote("putEntries")[0].args[0] as Entry[]).map((e) => e.date)).toEqual([
-      "2026-08-01",
-    ]);
+    expect(
+      (wrote("putEntries")[0].args[0] as Entry[]).map((e) => e.date),
+    ).toEqual(["2026-08-01"]);
   });
 
   it("restores a habit with no history at all", async () => {
@@ -368,7 +408,10 @@ describe("restore", () => {
 describe("exportBundle", () => {
   it("carries what the user has, not what they discarded", async () => {
     const store = await load(
-      snapshot({ habits: [habit("a")], tombstones: [habit("dead", { deletedAt: 9 })] }),
+      snapshot({
+        habits: [habit("a")],
+        tombstones: [habit("dead", { deletedAt: 9 })],
+      }),
     );
 
     const bundle = store.exportBundle();
@@ -379,13 +422,18 @@ describe("exportBundle", () => {
 
 describe("importBundle, merging", () => {
   it("keeps what is here and adds what is not", async () => {
-    const store = await load(snapshot({ habits: [habit("mine", { name: "kept" })] }));
+    const store = await load(
+      snapshot({ habits: [habit("mine", { name: "kept" })] }),
+    );
 
     store.importBundle(
       {
         version: 2,
         exportedAt: "2026-09-01T00:00:00.000Z",
-        habits: [habit("mine", { name: "from the file" }), habit("theirs", { order: 1 })],
+        habits: [
+          habit("mine", { name: "from the file" }),
+          habit("theirs", { order: 1 }),
+        ],
         entries: [],
         settings: DEFAULT_SETTINGS,
       },
@@ -400,7 +448,10 @@ describe("importBundle, merging", () => {
 
   it("resolves a day both copies have by last write", async () => {
     const store = await load(
-      snapshot({ habits: [habit("a")], entries: [entry("a", "2026-08-01", 1, 100)] }),
+      snapshot({
+        habits: [habit("a")],
+        entries: [entry("a", "2026-08-01", 1, 100)],
+      }),
     );
 
     store.importBundle(
@@ -408,7 +459,10 @@ describe("importBundle, merging", () => {
         version: 2,
         exportedAt: "2026-09-01T00:00:00.000Z",
         habits: [habit("a")],
-        entries: [entry("a", "2026-08-01", 9, 200), entry("a", "2026-08-02", 3, 50)],
+        entries: [
+          entry("a", "2026-08-01", 9, 200),
+          entry("a", "2026-08-02", 3, 50),
+        ],
         settings: DEFAULT_SETTINGS,
       },
       "merge",
@@ -420,7 +474,10 @@ describe("importBundle, merging", () => {
 
   it("does not let an older backup win a day the device has since changed", async () => {
     const store = await load(
-      snapshot({ habits: [habit("a")], entries: [entry("a", "2026-08-01", 4, 900)] }),
+      snapshot({
+        habits: [habit("a")],
+        entries: [entry("a", "2026-08-01", 4, 900)],
+      }),
     );
 
     store.importBundle(
@@ -440,7 +497,10 @@ describe("importBundle, merging", () => {
   it("keeps this device's settings and tombstones", async () => {
     const mine: Settings = { ...DEFAULT_SETTINGS, dayStartHour: 4 };
     const store = await load(
-      snapshot({ settings: mine, tombstones: [habit("dead", { deletedAt: Date.now() })] }),
+      snapshot({
+        settings: mine,
+        tombstones: [habit("dead", { deletedAt: Date.now() })],
+      }),
     );
 
     store.importBundle(
@@ -509,7 +569,10 @@ describe("importBundle, merging", () => {
       {
         version: 2,
         exportedAt: "2026-09-01T00:00:00.000Z",
-        habits: [habit("a", { order: 0, updatedAt: 5 }), habit("b", { order: 7, updatedAt: 5 })],
+        habits: [
+          habit("a", { order: 0, updatedAt: 5 }),
+          habit("b", { order: 7, updatedAt: 5 }),
+        ],
         entries: [],
         settings: DEFAULT_SETTINGS,
       },
@@ -549,7 +612,9 @@ describe("importBundle, replacing", () => {
 
     const state = store.currentState();
     expect(state.habits.map((h) => h.id)).toEqual(["theirs"]);
-    expect([...state.entries.keys()]).toEqual([entryKey("theirs", "2026-08-05")]);
+    expect([...state.entries.keys()]).toEqual([
+      entryKey("theirs", "2026-08-05"),
+    ]);
     expect(state.settings.weekStartsOn).toBe(0);
     // A restore that silently re-deleted the habits it brought back would be
     // worse than losing tombstones a peer may not have seen.
@@ -561,13 +626,20 @@ describe("importBundle, replacing", () => {
 describe("applyPulled", () => {
   it("splits the merged snapshot into live habits and tombstones", async () => {
     const store = await load(snapshot());
-    const meta: SyncMeta = { cursor: 42, pushedThrough: 7, lastSyncAt: 1, accountId: "alice" };
+    const meta: SyncMeta = {
+      cursor: 42,
+      pushedThrough: 7,
+      lastSyncAt: 1,
+      accountId: "alice",
+    };
 
     store.applyPulled(
       {
         snapshot: {
           habits: [habit("live"), habit("dead", { deletedAt: 500 })],
-          entries: new Map([[entryKey("live", "2026-08-01"), entry("live", "2026-08-01", 1, 5)]]),
+          entries: new Map([
+            [entryKey("live", "2026-08-01"), entry("live", "2026-08-01", 1, 5)],
+          ]),
           settings: { value: DEFAULT_SETTINGS, updatedAt: 9 },
         },
         changedHabits: [],
@@ -593,7 +665,12 @@ describe("adoptAccount", () => {
         habits: [habit("a")],
         entries: [entry("a", "2026-08-01", 1, 5)],
         settings: { ...DEFAULT_SETTINGS, dayStartHour: 4 },
-        sync: { cursor: 9, pushedThrough: 9, lastSyncAt: 9, accountId: "alice" },
+        sync: {
+          cursor: 9,
+          pushedThrough: 9,
+          lastSyncAt: 9,
+          accountId: "alice",
+        },
       }),
     );
 
@@ -643,19 +720,35 @@ describe("resetEverything", () => {
   it("keeps a tombstone that was already there", async () => {
     // Recent, or `hydrate` collects it before this test gets to look.
     const store = await load(
-      snapshot({ habits: [habit("a")], tombstones: [habit("old", { deletedAt: Date.now() })] }),
+      snapshot({
+        habits: [habit("a")],
+        tombstones: [habit("old", { deletedAt: Date.now() })],
+      }),
     );
     store.resetEverything();
-    expect(store.currentState().tombstones.map((h) => h.id).sort()).toEqual(["a", "old"]);
+    expect(
+      store
+        .currentState()
+        .tombstones.map((h) => h.id)
+        .sort(),
+    ).toEqual(["a", "old"]);
   });
 });
 
 describe("localSnapshot", () => {
   it("hands the merge layer the tombstones no screen ever sees", async () => {
     const store = await load(
-      snapshot({ habits: [habit("a")], tombstones: [habit("dead", { deletedAt: Date.now() })] }),
+      snapshot({
+        habits: [habit("a")],
+        tombstones: [habit("dead", { deletedAt: Date.now() })],
+      }),
     );
 
-    expect(store.localSnapshot().habits.map((h) => h.id).sort()).toEqual(["a", "dead"]);
+    expect(
+      store
+        .localSnapshot()
+        .habits.map((h) => h.id)
+        .sort(),
+    ).toEqual(["a", "dead"]);
   });
 });

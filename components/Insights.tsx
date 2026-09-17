@@ -1,6 +1,10 @@
 "use client";
 
-import { weekdayExtremes, type MonthRate, type WeekdayRate } from "@/lib/insights";
+import {
+  weekdayExtremes,
+  type MonthRate,
+  type WeekdayRate,
+} from "@/lib/insights";
 
 /**
  * The two second-order reads of the grid. See DESIGN.md §4.5.
@@ -27,7 +31,9 @@ export function WeekdayRates({ rates }: { rates: WeekdayRate[] }) {
       <ul className="mt-3 space-y-1.5">
         {rates.map((day) => (
           <li key={day.weekday} className="flex items-center gap-3">
-            <span className="w-8 shrink-0 text-[12px] text-muted">{day.label}</span>
+            <span className="w-8 shrink-0 text-[12px] text-muted">
+              {day.label}
+            </span>
             <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-2">
               {day.rate !== null && (
                 <span
@@ -45,10 +51,14 @@ export function WeekdayRates({ rates }: { rates: WeekdayRate[] }) {
 
       {extremes && (
         <p className="mt-3 text-[12px] leading-relaxed text-muted">
-          <strong className="font-medium text-foreground">{extremes.best.label}</strong> is
-          your strongest day and{" "}
-          <strong className="font-medium text-foreground">{extremes.worst.label}</strong> your
-          weakest — {Math.round(extremes.best.rate! * 100)}% against{" "}
+          <strong className="font-medium text-foreground">
+            {extremes.best.label}
+          </strong>{" "}
+          is your strongest day and{" "}
+          <strong className="font-medium text-foreground">
+            {extremes.worst.label}
+          </strong>{" "}
+          your weakest — {Math.round(extremes.best.rate! * 100)}% against{" "}
           {Math.round(extremes.worst.rate! * 100)}%.
         </p>
       )}
@@ -74,7 +84,10 @@ export function MonthlyTrend({ months }: { months: MonthRate[] }) {
 
       <ol className="mt-3 flex items-end gap-1.5">
         {months.map((month) => (
-          <li key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+          <li
+            key={month.month}
+            className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
+          >
             <span className="font-mono text-[10px] tabular-nums text-muted">
               {month.rate === null ? "" : Math.round(month.rate * 100)}
             </span>
@@ -89,7 +102,9 @@ export function MonthlyTrend({ months }: { months: MonthRate[] }) {
                 style={{ height: `${Math.round((month.rate ?? 0) * 100)}%` }}
               />
             </span>
-            <span className="truncate text-[10px] text-muted">{month.label}</span>
+            <span className="truncate text-[10px] text-muted">
+              {month.label}
+            </span>
           </li>
         ))}
       </ol>

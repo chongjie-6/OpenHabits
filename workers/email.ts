@@ -79,7 +79,8 @@ export async function handleEmailJob(request: Request): Promise<Response> {
   }
 
   const body = await readJson(raw);
-  if (body === undefined) return json(400, { error: "Body is not valid JSON." });
+  if (body === undefined)
+    return json(400, { error: "Body is not valid JSON." });
 
   const id = (body as { id?: unknown } | null)?.id;
   if (typeof id !== "string" || !UUID_REGEX.test(id)) {

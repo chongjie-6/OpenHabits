@@ -194,7 +194,8 @@ function fitLightness(
 
   for (let i = 0; i < 20; i++) {
     const mid = (lo + hi) / 2;
-    const ratio = contrastRatio(oklchToHex({ l: mid, c: chroma, h: hue }), against) ?? 1;
+    const ratio =
+      contrastRatio(oklchToHex({ l: mid, c: chroma, h: hue }), against) ?? 1;
     const enough = ratio >= target;
     // Converge on the boundary from whichever side passes for this direction.
     if (direction === "darker") {
@@ -277,13 +278,23 @@ export function deriveSwatches(seed: string, mode: Mode): Swatches {
   const mutedChroma = 0.012 * tint;
   // The inset is the darkest surface in light mode and the lightest in dark, so
   // it is the binding constraint for secondary text either way.
-  const muted = hex(fitLightness(hue, mutedChroma, inset, TEXT_TARGET, away), mutedChroma);
+  const muted = hex(
+    fitLightness(hue, mutedChroma, inset, TEXT_TARGET, away),
+    mutedChroma,
+  );
 
   // The accent is solved against its own label rather than against the page: it
   // is a filled button before it is anything else.
-  const accentFg = mode === "light" ? "#ffffff" : hex(0.18, Math.min(chroma, 0.04));
-  const accent = hex(fitLightness(hue, chroma, accentFg, TEXT_TARGET, away), chroma);
-  const ring = hex(fitLightness(hue, chroma, background, NON_TEXT_TARGET, away), chroma);
+  const accentFg =
+    mode === "light" ? "#ffffff" : hex(0.18, Math.min(chroma, 0.04));
+  const accent = hex(
+    fitLightness(hue, chroma, accentFg, TEXT_TARGET, away),
+    chroma,
+  );
+  const ring = hex(
+    fitLightness(hue, chroma, background, NON_TEXT_TARGET, away),
+    chroma,
+  );
   const danger = oklchToHex({
     l: fitLightness(DANGER_HUE, DANGER_CHROMA, surface, TEXT_TARGET, away),
     c: DANGER_CHROMA,
@@ -292,7 +303,9 @@ export function deriveSwatches(seed: string, mode: Mode): Swatches {
 
   const accentL = hexToOklch(accent)?.l ?? 0.5;
   const start = RAMP_START[mode];
-  const ramp = [0, 1, 2, 3].map((step) => hex(start + (accentL - start) * (step / 3), chroma));
+  const ramp = [0, 1, 2, 3].map((step) =>
+    hex(start + (accentL - start) * (step / 3), chroma),
+  );
 
   return {
     "--background": background,
@@ -322,7 +335,10 @@ export function deriveSwatches(seed: string, mode: Mode): Swatches {
 }
 
 export function derivePalette(seed: string): Palette {
-  return { light: deriveSwatches(seed, "light"), dark: deriveSwatches(seed, "dark") };
+  return {
+    light: deriveSwatches(seed, "light"),
+    dark: deriveSwatches(seed, "dark"),
+  };
 }
 
 /** Seeds, not palettes: each is run through `derivePalette` on selection. */
@@ -359,21 +375,96 @@ export const CONTRAST_PAIRS: {
   min: number;
   kind: "aa" | "visible";
 }[] = [
-  { label: "Body text on the page", fg: "--foreground", bg: "--background", min: AA_TEXT, kind: "aa" },
-  { label: "Body text on a card", fg: "--foreground", bg: "--surface", min: AA_TEXT, kind: "aa" },
-  { label: "Secondary text on a card", fg: "--muted", bg: "--surface", min: AA_TEXT, kind: "aa" },
-  { label: "Secondary text on an inset", fg: "--muted", bg: "--surface-2", min: AA_TEXT, kind: "aa" },
-  { label: "Label on an accent button", fg: "--accent-fg", bg: "--accent", min: AA_TEXT, kind: "aa" },
-  { label: "Label on the highlight", fg: "--accent-2-fg", bg: "--accent-2", min: AA_TEXT, kind: "aa" },
-  { label: "Quote text", fg: "--quote-fg", bg: "--quote-bg", min: AA_TEXT, kind: "aa" },
-  { label: "Quote attribution", fg: "--quote-meta", bg: "--quote-bg", min: AA_TEXT, kind: "aa" },
-  { label: "Error text on a card", fg: "--danger", bg: "--surface", min: AA_TEXT, kind: "aa" },
-  { label: "Focus ring on the page", fg: "--ring", bg: "--background", min: AA_NON_TEXT, kind: "aa" },
-  { label: "Faintest heat on empty", fg: "--hm-1", bg: "--hm-0", min: 1.15, kind: "visible" },
-  { label: "Card edge on the page", fg: "--border", bg: "--background", min: 1.2, kind: "visible" },
+  {
+    label: "Body text on the page",
+    fg: "--foreground",
+    bg: "--background",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Body text on a card",
+    fg: "--foreground",
+    bg: "--surface",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Secondary text on a card",
+    fg: "--muted",
+    bg: "--surface",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Secondary text on an inset",
+    fg: "--muted",
+    bg: "--surface-2",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Label on an accent button",
+    fg: "--accent-fg",
+    bg: "--accent",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Label on the highlight",
+    fg: "--accent-2-fg",
+    bg: "--accent-2",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Quote text",
+    fg: "--quote-fg",
+    bg: "--quote-bg",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Quote attribution",
+    fg: "--quote-meta",
+    bg: "--quote-bg",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Error text on a card",
+    fg: "--danger",
+    bg: "--surface",
+    min: AA_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Focus ring on the page",
+    fg: "--ring",
+    bg: "--background",
+    min: AA_NON_TEXT,
+    kind: "aa",
+  },
+  {
+    label: "Faintest heat on empty",
+    fg: "--hm-1",
+    bg: "--hm-0",
+    min: 1.15,
+    kind: "visible",
+  },
+  {
+    label: "Card edge on the page",
+    fg: "--border",
+    bg: "--background",
+    min: 1.2,
+    kind: "visible",
+  },
 ];
 
-export type AuditRow = (typeof CONTRAST_PAIRS)[number] & { ratio: number; passes: boolean };
+export type AuditRow = (typeof CONTRAST_PAIRS)[number] & {
+  ratio: number;
+  passes: boolean;
+};
 
 export function audit(swatches: Swatches): AuditRow[] {
   return CONTRAST_PAIRS.map((pair) => {

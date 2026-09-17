@@ -38,7 +38,9 @@ const scheduler = {
       // every repository, while this Worker exists only because someone
       // deployed it on purpose, so unset is a broken deployment and not a
       // deployment with reminders switched off.
-      throw new Error("openhabits: SITE_URL var or CRON_SECRET secret is unset.");
+      throw new Error(
+        "openhabits: SITE_URL var or CRON_SECRET secret is unset.",
+      );
     }
 
     const response = await fetch(`${site}/api/cron/reminders`, {

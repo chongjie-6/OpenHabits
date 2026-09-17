@@ -86,7 +86,9 @@ export default function ResetPasswordPage() {
     if (result.error) {
       // The token is consumed on the first successful attempt, so a failure
       // here is usually a link that was already used or has since expired.
-      setError(result.error.message ?? "That link did not work. Ask for a new one.");
+      setError(
+        result.error.message ?? "That link did not work. Ask for a new one.",
+      );
       return;
     }
 
@@ -102,7 +104,10 @@ export default function ResetPasswordPage() {
 
       <div className="surface-card bg-surface p-4">
         {status.kind === "reading" && (
-          <div aria-hidden="true" className="h-24 animate-pulse rounded-control bg-surface-2" />
+          <div
+            aria-hidden="true"
+            className="h-24 animate-pulse rounded-control bg-surface-2"
+          />
         )}
 
         {status.kind === "bad-link" && (
@@ -160,7 +165,9 @@ export default function ResetPasswordPage() {
             )}
 
             <label className="block">
-              <span className="text-[11px] font-medium text-muted">New password</span>
+              <span className="text-[11px] font-medium text-muted">
+                New password
+              </span>
               <input
                 type="password"
                 value={password}

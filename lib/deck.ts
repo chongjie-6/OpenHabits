@@ -68,7 +68,10 @@ export const seamWindow = (size: number) => Math.max(1, Math.floor(size / 8));
  * which is what lets the previous cycle's tail be read off its raw shuffle
  * instead of recursing back through every cycle that ever was.
  */
-function deckForCycle<T extends DeckItem>(deck: readonly T[], cycle: number): T[] {
+function deckForCycle<T extends DeckItem>(
+  deck: readonly T[],
+  cycle: number,
+): T[] {
   const shuffled = shuffle(deck, mulberry32(seedForCycle(cycle)));
   const size = shuffled.length;
   const k = seamWindow(size);
@@ -95,7 +98,10 @@ function deckForCycle<T extends DeckItem>(deck: readonly T[], cycle: number): T[
  * The item for a given day. Every item appears exactly once per pass, and none
  * twice inside any window of `seamWindow(size)` days.
  */
-export function itemForDay<T extends DeckItem>(day: DayKey, deck: readonly T[]): T {
+export function itemForDay<T extends DeckItem>(
+  day: DayKey,
+  deck: readonly T[],
+): T {
   const size = deck.length;
   if (size === 0) throw new Error("deck is empty");
 

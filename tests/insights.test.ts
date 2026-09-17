@@ -76,7 +76,12 @@ describe("weekdayRates", () => {
       "Sat",
       "Sun",
     ]);
-    expect(rates[0]).toMatchObject({ weekday: 1, scheduled: 2, completed: 1, rate: 0.5 });
+    expect(rates[0]).toMatchObject({
+      weekday: 1,
+      scheduled: 2,
+      completed: 1,
+      rate: 0.5,
+    });
     expect(rates[1]).toMatchObject({ weekday: 2, rate: 1 });
   });
 
@@ -121,7 +126,10 @@ describe("monthRates", () => {
   });
 
   it("keeps a month that had nothing scheduled, with a null rate", () => {
-    const months = monthRates([stat("2026-07-01", 1, 1), stat("2026-08-01", 0, 0)]);
+    const months = monthRates([
+      stat("2026-07-01", 1, 1),
+      stat("2026-08-01", 0, 0),
+    ]);
 
     // Closing the gap would make a pause look like a continuous run.
     expect(months.map((m) => m.month)).toEqual(["2026-07", "2026-08"]);
@@ -157,7 +165,9 @@ describe("weekdayExtremes", () => {
   });
 
   it("says nothing when every day is much the same", () => {
-    expect(weekdayExtremes(rates([0.8, 0.82, 0.79, 0.8, 0.81, 0.8, 0.78]))).toBeNull();
+    expect(
+      weekdayExtremes(rates([0.8, 0.82, 0.79, 0.8, 0.81, 0.8, 0.78])),
+    ).toBeNull();
   });
 
   it("says nothing on a sample too small to mean anything", () => {
@@ -175,7 +185,10 @@ describe("weekdayExtremes", () => {
 
 describe("perHabitStreaks", () => {
   it("gives each habit its own run, not the aggregate", () => {
-    const habits = [habit("kept", { kind: "daily" }), habit("broken", { kind: "daily" })];
+    const habits = [
+      habit("kept", { kind: "daily" }),
+      habit("broken", { kind: "daily" }),
+    ];
     const rows = entries(
       ["kept", MON, 1],
       ["kept", TUE, 1],
@@ -214,8 +227,8 @@ describe("perHabitStreaks", () => {
     const rows = entries(["solo", MON, 1], ["solo", TUE, 1], ["solo", SAT, 1]);
     const history = buildHistory(only, rows, MON, SAT, 1);
 
-    expect(perHabitStreaks(only, rows, MON, SAT, 1).get("solo")!.perfectDays).toBe(
-      history.filter((d) => d.score === 1).length,
-    );
+    expect(
+      perHabitStreaks(only, rows, MON, SAT, 1).get("solo")!.perfectDays,
+    ).toBe(history.filter((d) => d.score === 1).length);
   });
 });

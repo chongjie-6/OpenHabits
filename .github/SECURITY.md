@@ -5,10 +5,10 @@
 OpenHabits ships from `main`. Fixes land there and go out with the next
 deployment; there are no maintained release branches.
 
-| Version | Supported |
-|---|---|
-| `main` | ✅ |
-| Anything else | ❌ |
+| Version       | Supported |
+| ------------- | --------- |
+| `main`        | ✅        |
+| Anything else | ❌        |
 
 ## Reporting a vulnerability
 
@@ -16,7 +16,7 @@ deployment; there are no maintained release branches.
 
 Report privately through GitHub's
 [private vulnerability reporting](https://github.com/chongjie-6/OpenHabits/security/advisories/new)
-— *Security → Advisories → Report a vulnerability*. If that is unavailable to
+— _Security → Advisories → Report a vulnerability_. If that is unavailable to
 you, email **chongjiechen@outlook.com** instead.
 
 Please include:

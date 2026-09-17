@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildHistory, habitsForDay, levelFor, statFor } from "@/lib/history";
 import { entryKey, type Cadence, type Entry, type Habit } from "@/lib/types";
 
-function habit(id: string, cadence: Cadence, extra: Partial<Habit> = {}): Habit {
+function habit(
+  id: string,
+  cadence: Cadence,
+  extra: Partial<Habit> = {},
+): Habit {
   return {
     id,
     name: id,
@@ -88,7 +92,9 @@ describe("weekly quota cadence", () => {
     // With a Sunday-start week, 2026-08-16 (Sun) opens a new week, so a quota
     // filled on Mon/Tue no longer applies to it.
     const done = entries(["gym", MON, 1], ["gym", TUE, 1]);
-    expect(habitsForDay(habits, done, "2026-08-16", 1)[0].scheduled).toBe(false);
+    expect(habitsForDay(habits, done, "2026-08-16", 1)[0].scheduled).toBe(
+      false,
+    );
     expect(habitsForDay(habits, done, "2026-08-16", 0)[0].scheduled).toBe(true);
   });
 });

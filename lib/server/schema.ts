@@ -78,7 +78,9 @@ export const users = pgTable(
     /** Opaque id from whatever identity provider is wired up. See `lib/server/auth.ts`. */
     id: text("id").primaryKey(),
     email: text("email").notNull().unique(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   () => [
     // The only table whose owning column is `id` rather than `user_id`.
@@ -117,7 +119,11 @@ export const habits = pgTable(
     // The one index the pull query needs: every read is
     // "this user's rows past this cursor, in cursor order".
     index("habits_user_seq_idx").on(t.userId, t.seq),
-    pgPolicy("habits_owner", { for: "all", using: owner(), withCheck: owner() }),
+    pgPolicy("habits_owner", {
+      for: "all",
+      using: owner(),
+      withCheck: owner(),
+    }),
   ],
 ).enableRLS();
 
@@ -144,7 +150,11 @@ export const entries = pgTable(
       foreignColumns: [habits.userId, habits.id],
       name: "entries_habit_fk",
     }).onDelete("cascade"),
-    pgPolicy("entries_owner", { for: "all", using: owner(), withCheck: owner() }),
+    pgPolicy("entries_owner", {
+      for: "all",
+      using: owner(),
+      withCheck: owner(),
+    }),
   ],
 ).enableRLS();
 
@@ -159,7 +169,11 @@ export const settings = pgTable(
     seq: bigint("seq", { mode: "number" }).notNull(),
   },
   () => [
-    pgPolicy("settings_owner", { for: "all", using: owner(), withCheck: owner() }),
+    pgPolicy("settings_owner", {
+      for: "all",
+      using: owner(),
+      withCheck: owner(),
+    }),
     // Read-only, and the sweep is the only reader: it needs `reminderHour`,
     // `dayStartHour` and `weekStartsOn` for every device it is considering, in
     // the one pass that decides which of them are due. Nothing under this scope
@@ -220,20 +234,32 @@ export const pushSubscriptions = pgTable(
      * has been getting reminders happily for a year has an old `createdAt` and
      * is exactly the row that must not be collected.
      */
-    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     // Every read is "this account's devices", either to send to them or to
     // clear them out.
     index("push_subscriptions_user_idx").on(t.userId),
-    pgPolicy("push_subscriptions_owner", { for: "all", using: owner(), withCheck: owner() }),
+    pgPolicy("push_subscriptions_owner", {
+      for: "all",
+      using: owner(),
+      withCheck: owner(),
+    }),
     // Two callers, both in `asServer` and both unavoidable. The sweep scans
     // every account's devices by definition. And the subscribe upsert conflicts
     // on the endpoint alone — point 1 above — which means writing over a row
     // belonging to the account that held the device before. RLS cannot express
     // "you may take over a row you are not allowed to see", so that write says
     // out loud that it is not acting for one account.
-    pgPolicy("push_subscriptions_server", { for: "all", using: server(), withCheck: server() }),
+    pgPolicy("push_subscriptions_server", {
+      for: "all",
+      using: server(),
+      withCheck: server(),
+    }),
   ],
 ).enableRLS();

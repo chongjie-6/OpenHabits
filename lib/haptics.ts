@@ -37,7 +37,11 @@ export const HAPTIC_DONE = [12, 45, 26];
  * call — no user activation, or a permissions policy denying `vibrate`.
  */
 export function vibrate(pattern: VibratePattern): void {
-  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  if (
+    typeof navigator === "undefined" ||
+    typeof navigator.vibrate !== "function"
+  )
+    return;
 
   try {
     navigator.vibrate(pattern);

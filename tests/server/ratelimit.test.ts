@@ -16,29 +16,39 @@ function headers(init: Record<string, string>): Headers {
 
 describe("clientIp", () => {
   it("reads a single forwarded address", () => {
-    expect(clientIp(headers({ "x-forwarded-for": "203.0.113.5" }))).toBe("203.0.113.5");
+    expect(clientIp(headers({ "x-forwarded-for": "203.0.113.5" }))).toBe(
+      "203.0.113.5",
+    );
   });
 
   it("takes only the first entry of a chain, which is the one the proxy wrote", () => {
-    expect(clientIp(headers({ "x-forwarded-for": "203.0.113.5, 70.41.3.18, 150.172.238.178" }))).toBe(
-      "203.0.113.5",
-    );
+    expect(
+      clientIp(
+        headers({
+          "x-forwarded-for": "203.0.113.5, 70.41.3.18, 150.172.238.178",
+        }),
+      ),
+    ).toBe("203.0.113.5");
   });
 
   it("trims the whitespace a chain is written with", () => {
-    expect(clientIp(headers({ "x-forwarded-for": "  203.0.113.5  , 70.41.3.18" }))).toBe(
-      "203.0.113.5",
-    );
+    expect(
+      clientIp(headers({ "x-forwarded-for": "  203.0.113.5  , 70.41.3.18" })),
+    ).toBe("203.0.113.5");
   });
 
   it("falls back to x-real-ip", () => {
-    expect(clientIp(headers({ "x-real-ip": "203.0.113.9" }))).toBe("203.0.113.9");
+    expect(clientIp(headers({ "x-real-ip": "203.0.113.9" }))).toBe(
+      "203.0.113.9",
+    );
   });
 
   it("prefers the forwarded chain when both are present", () => {
-    expect(clientIp(headers({ "x-forwarded-for": "203.0.113.5", "x-real-ip": "10.0.0.1" }))).toBe(
-      "203.0.113.5",
-    );
+    expect(
+      clientIp(
+        headers({ "x-forwarded-for": "203.0.113.5", "x-real-ip": "10.0.0.1" }),
+      ),
+    ).toBe("203.0.113.5");
   });
 
   /**

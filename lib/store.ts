@@ -172,7 +172,10 @@ export function hydrate(): Promise<void> {
  * `deletedAt` rather than `updatedAt`, which a merge can move without the
  * deletion getting any newer. See `TOMBSTONE_TTL_MS` for what the window bounds.
  */
-function collectTombstones(tombstones: Habit[]): { kept: Habit[]; expired: string[] } {
+function collectTombstones(tombstones: Habit[]): {
+  kept: Habit[];
+  expired: string[];
+} {
   const cutoff = Date.now() - TOMBSTONE_TTL_MS;
   const kept: Habit[] = [];
   const expired: string[] = [];
@@ -180,7 +183,8 @@ function collectTombstones(tombstones: Habit[]): { kept: Habit[]; expired: strin
   for (const habit of tombstones) {
     // A clock far enough ahead could have stamped a deletion in the future;
     // keeping such a row is the harmless direction.
-    if (habit.deletedAt !== null && habit.deletedAt < cutoff) expired.push(habit.id);
+    if (habit.deletedAt !== null && habit.deletedAt < cutoff)
+      expired.push(habit.id);
     else kept.push(habit);
   }
 
@@ -249,8 +253,7 @@ export type NewHabit = {
 };
 
 export function addHabit(input: NewHabit): Habit {
-  const order =
-    state.habits.reduce((max, h) => Math.max(max, h.order), -1) + 1;
+  const order = state.habits.reduce((max, h) => Math.max(max, h.order), -1) + 1;
 
   const habit: Habit = {
     id: crypto.randomUUID(),
@@ -277,7 +280,10 @@ export function addHabit(input: NewHabit): Habit {
   return habit;
 }
 
-export function updateHabit(id: string, patch: Partial<Omit<Habit, "id">>): void {
+export function updateHabit(
+  id: string,
+  patch: Partial<Omit<Habit, "id">>,
+): void {
   // `updatedAt` last, so a caller cannot accidentally pass a stamp that would
   // make this edit lose to the version already on the server.
   const habits = state.habits.map((h) =>
@@ -358,10 +364,14 @@ export function deleteHabit(id: string): DeletedHabit | null {
 export function restore(deleted: DeletedHabit): void {
   const now = Date.now();
   const habit: Habit = { ...deleted.habit, deletedAt: null, updatedAt: now };
-  const entries = deleted.entries.map((entry) => ({ ...entry, updatedAt: now }));
+  const entries = deleted.entries.map((entry) => ({
+    ...entry,
+    updatedAt: now,
+  }));
 
   const merged = new Map(state.entries);
-  for (const entry of entries) merged.set(entryKey(entry.habitId, entry.date), entry);
+  for (const entry of entries)
+    merged.set(entryKey(entry.habitId, entry.date), entry);
 
   state = {
     ...state,
@@ -408,7 +418,12 @@ export function moveHabit(id: string, direction: -1 | 1): void {
 
   state = { ...state, habits };
   emit();
-  persist(() => db.putHabits([habits.find((h) => h.id === a.id)!, habits.find((h) => h.id === b.id)!]));
+  persist(() =>
+    db.putHabits([
+      habits.find((h) => h.id === a.id)!,
+      habits.find((h) => h.id === b.id)!,
+    ]),
+  );
 }
 
 export function updateSettings(patch: Partial<Settings>): void {
@@ -445,7 +460,9 @@ export type ImportMode = "merge" | "replace";
 
 export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
   if (bundle.version !== 1 && bundle.version !== 2) {
-    throw new Error(`Unsupported backup version: ${(bundle as { version: number }).version}`);
+    throw new Error(
+      `Unsupported backup version: ${(bundle as { version: number }).version}`,
+    );
   }
 
   // v1 files predate sync and carry no `updatedAt`/`deletedAt`; `normaliseHabit`
@@ -457,10 +474,13 @@ export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
 
   if (mode === "replace") {
     habits = incomingHabits;
-    entries = new Map(bundle.entries.map((e) => [entryKey(e.habitId, e.date), e]));
+    entries = new Map(
+      bundle.entries.map((e) => [entryKey(e.habitId, e.date), e]),
+    );
   } else {
     const byId = new Map(state.habits.map((h) => [h.id, h]));
-    for (const habit of incomingHabits) if (!byId.has(habit.id)) byId.set(habit.id, habit);
+    for (const habit of incomingHabits)
+      if (!byId.has(habit.id)) byId.set(habit.id, habit);
     habits = [...byId.values()];
 
     entries = new Map(state.entries);
@@ -468,7 +488,8 @@ export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
       const key = entryKey(incoming.habitId, incoming.date);
       const existing = entries.get(key);
       // Last write wins — the same rule `lib/sync/merge.ts` applies.
-      if (!existing || incoming.updatedAt > existing.updatedAt) entries.set(key, incoming);
+      if (!existing || incoming.updatedAt > existing.updatedAt)
+        entries.set(key, incoming);
     }
   }
 
@@ -481,7 +502,9 @@ export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
     .map((h, i) => (h.order === i ? h : { ...h, order: i, updatedAt: now }));
 
   const replacing = mode === "replace";
-  const settings = replacing ? { ...DEFAULT_SETTINGS, ...bundle.settings } : state.settings;
+  const settings = replacing
+    ? { ...DEFAULT_SETTINGS, ...bundle.settings }
+    : state.settings;
   const settingsUpdatedAt = replacing ? now : state.settingsUpdatedAt;
 
   state = {
@@ -536,7 +559,10 @@ export function setSyncStatus(syncStatus: SyncStatus): void {
   if (state.syncStatus.kind === syncStatus.kind) {
     // Re-rendering the tree for an identical status is pure cost.
     if (syncStatus.kind !== "error") return;
-    if ((state.syncStatus as { message: string }).message === syncStatus.message) return;
+    if (
+      (state.syncStatus as { message: string }).message === syncStatus.message
+    )
+      return;
   }
   state = { ...state, syncStatus };
   emit();
@@ -601,7 +627,9 @@ export function adoptAccount(accountId: string | null): void {
   };
   emit();
 
-  persist(() => db.replaceAll({ habits: [], entries: [], settings: null, sync: meta }));
+  persist(() =>
+    db.replaceAll({ habits: [], entries: [], settings: null, sync: meta }),
+  );
 }
 
 /**

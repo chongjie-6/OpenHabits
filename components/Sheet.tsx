@@ -58,7 +58,8 @@ export function Sheet({
         startedOnBackdrop.current = event.target === dialog.current;
       }}
       onClick={(event) => {
-        if (startedOnBackdrop.current && event.target === dialog.current) onClose();
+        if (startedOnBackdrop.current && event.target === dialog.current)
+          onClose();
       }}
       className="fixed inset-x-0 bottom-0 top-auto m-0 mx-auto flex max-h-[85dvh] min-h-[75dvh] w-full max-w-lg flex-col overflow-hidden bg-surface p-0 text-foreground surface-sheet"
     >

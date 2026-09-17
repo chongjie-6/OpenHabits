@@ -42,7 +42,11 @@ function subject(): string | null {
   return url?.startsWith("https://") ? url : null;
 }
 
-function keys(): { publicKey: string; privateKey: string; subject: string } | null {
+function keys(): {
+  publicKey: string;
+  privateKey: string;
+  subject: string;
+} | null {
   const publicKey = process.env.VAPID_PUBLIC_KEY?.trim();
   const privateKey = process.env.VAPID_PRIVATE_KEY?.trim();
   const contact = subject();

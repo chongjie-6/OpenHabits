@@ -15,6 +15,8 @@ export const metadata: Metadata = {
 };
 
 /** See the note in `app/week/layout.tsx` — `page.tsx` is a client component. */
-export default function ColoursLayout({ children }: LayoutProps<"/settings/colours">) {
+export default function ColoursLayout({
+  children,
+}: LayoutProps<"/settings/colours">) {
   return children;
 }

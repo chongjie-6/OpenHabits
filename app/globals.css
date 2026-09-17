@@ -84,7 +84,7 @@
      theme's background; 0.64 is where a mid-chroma accent still clears 3:1.
      Skins keep the band: all three have a near-white light background and a
      near-black dark one, so the same clamp holds. */
-  --habit-l-min: 0.40;
+  --habit-l-min: 0.4;
   --habit-l-max: 0.64;
 
   /* Shape. Named apart from the Tailwind tokens below so a skin can override
@@ -137,7 +137,7 @@
     --habit-rose: #fb7185;
     --habit-teal: #2dd4bf;
 
-    --habit-l-min: 0.70;
+    --habit-l-min: 0.7;
     --habit-l-max: 0.88;
 
     /* A drop shadow on a near-black page is invisible; a hairline is not. */
@@ -175,7 +175,7 @@
   --habit-rose: #fb7185;
   --habit-teal: #2dd4bf;
 
-  --habit-l-min: 0.70;
+  --habit-l-min: 0.7;
   --habit-l-max: 0.88;
 
   --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.02);
@@ -309,9 +309,11 @@
   --shadow-card: 4px 4px 0 var(--border);
 
   --font-ui: var(--font-space-grotesk), "Helvetica Neue", Helvetica, sans-serif;
-  --font-display: var(--font-archivo-black), "Arial Black", Helvetica, sans-serif;
+  --font-display:
+    var(--font-archivo-black), "Arial Black", Helvetica, sans-serif;
   --font-numeric: var(--font-space-grotesk), ui-monospace, monospace;
-  --font-quote: var(--font-space-grotesk), "Helvetica Neue", Helvetica, sans-serif;
+  --font-quote:
+    var(--font-space-grotesk), "Helvetica Neue", Helvetica, sans-serif;
 
   /* Archivo Black has one weight; asking for 600 would synthesise a bolder one
      on top of an already-black face. */
@@ -440,9 +442,11 @@ body {
  */
 @media (pointer: coarse) {
   :where(
-      textarea,
-      input:not([type="range"]):not([type="color"]):not([type="checkbox"]):not([type="radio"]):not([type="file"])
-    ) {
+    textarea,
+    input:not([type="range"]):not([type="color"]):not([type="checkbox"]):not(
+        [type="radio"]
+      ):not([type="file"])
+  ) {
     font-size: 16px;
   }
 }
@@ -545,7 +549,8 @@ body {
    --------------------------------------------------------------------------- */
 
 /* `blocks` puts the whole design on hard offsets, so the focus ring follows. */
-:root[data-skin="blocks"] :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+:root[data-skin="blocks"]
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline-width: 3px;
   outline-offset: 3px;
   border-radius: 0;

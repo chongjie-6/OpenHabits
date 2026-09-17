@@ -28,7 +28,7 @@ import { writeFileSync } from "node:fs";
 const { GIFEncoder, quantize, applyPalette } = gifenc;
 const { PNG } = pngjs;
 
-const CHROME ="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const BASE = "http://localhost:3210";
 const OUT = new URL("../../docs/media/", import.meta.url);
 const BACKUP = fileURLToPath(new URL("./backup.json", import.meta.url));
@@ -44,16 +44,23 @@ async function seed(page) {
   const input = await page.waitForSelector('input[type="file"]');
   await input.uploadFile(BACKUP);
   await page.waitForFunction(() =>
-    [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Replace"),
+    [...document.querySelectorAll("button")].some(
+      (b) => b.textContent.trim() === "Replace",
+    ),
   );
   const click = (label) =>
     page.evaluate(
-      (l) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === l).click(),
+      (l) =>
+        [...document.querySelectorAll("button")]
+          .find((b) => b.textContent.trim() === l)
+          .click(),
       label,
     );
   await click("Replace");
   await click("Yes, replace everything");
-  await page.waitForFunction(() => /Replaced everything with \d+ habits/.test(document.body.innerText));
+  await page.waitForFunction(() =>
+    /Replaced everything with \d+ habits/.test(document.body.innerText),
+  );
   await sleep(400);
 }
 
@@ -84,9 +91,16 @@ const showTap = (page, { x, y }) =>
       const dot = document.createElement("div");
       dot.id = "__tap";
       Object.assign(dot.style, {
-        position: "fixed", left: `${x - 22}px`, top: `${y - 22}px`, width: "44px", height: "44px",
-        borderRadius: "50%", background: "rgba(128,128,128,.28)", border: "2px solid rgba(128,128,128,.55)",
-        pointerEvents: "none", zIndex: 2147483647,
+        position: "fixed",
+        left: `${x - 22}px`,
+        top: `${y - 22}px`,
+        width: "44px",
+        height: "44px",
+        borderRadius: "50%",
+        background: "rgba(128,128,128,.28)",
+        border: "2px solid rgba(128,128,128,.55)",
+        pointerEvents: "none",
+        zIndex: 2147483647,
       });
       document.body.appendChild(dot);
     },
@@ -94,7 +108,8 @@ const showTap = (page, { x, y }) =>
     y,
   );
 
-const hideTap = (page) => page.evaluate(() => document.getElementById("__tap")?.remove());
+const hideTap = (page) =>
+  page.evaluate(() => document.getElementById("__tap")?.remove());
 
 /** Marker on, frame, click, marker off, frame. */
 async function tap(page, rec, handle, { hold = 900 } = {}) {
@@ -109,13 +124,22 @@ async function tap(page, rec, handle, { hold = 900 } = {}) {
 
 const habitButton = (page, name) =>
   page.evaluateHandle(
-    (n) => document.querySelector(`button[aria-label^="${n}:"], button[aria-label^="${n},"]`),
+    (n) =>
+      document.querySelector(
+        `button[aria-label^="${n}:"], button[aria-label^="${n},"]`,
+      ),
     name,
   );
 
 async function record(browser, theme) {
   const page = await browser.newPage();
-  await page.setViewport({ width: W, height: H, deviceScaleFactor: SCALE, isMobile: true, hasTouch: true });
+  await page.setViewport({
+    width: W,
+    height: H,
+    deviceScaleFactor: SCALE,
+    isMobile: true,
+    hasTouch: true,
+  });
   await page.emulateMediaFeatures([
     { name: "prefers-color-scheme", value: theme },
     { name: "prefers-reduced-motion", value: "reduce" },
@@ -124,7 +148,16 @@ async function record(browser, theme) {
     const real = window.matchMedia.bind(window);
     window.matchMedia = (q) =>
       /display-mode/.test(q)
-        ? { matches: true, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }
+        ? {
+            matches: true,
+            media: q,
+            onchange: null,
+            addEventListener() {},
+            removeEventListener() {},
+            addListener() {},
+            removeListener() {},
+            dispatchEvent: () => false,
+          }
         : real(q);
     delete Navigator.prototype.share;
     delete Navigator.prototype.canShare;
@@ -161,7 +194,9 @@ async function record(browser, theme) {
   }
   await rec.shot(900);
 
-  const statsTab = await page.evaluateHandle(() => document.querySelector('nav a[href="/stats"]'));
+  const statsTab = await page.evaluateHandle(() =>
+    document.querySelector('nav a[href="/stats"]'),
+  );
   await tap(page, rec, statsTab.asElement(), { hold: 0 });
   await page.waitForSelector("main svg rect[data-date]");
   await sleep(700);
@@ -186,9 +221,12 @@ async function record(browser, theme) {
   const per = Math.max(1, Math.ceil(rows / 16));
   for (let shown = per; shown < rows + per; shown += per) {
     await page.evaluate((n) => {
-      [...document.querySelectorAll("main svg g[role=row]")].slice(0, n).forEach((g) => {
-        for (const r of g.querySelectorAll("rect")) if (r.dataset.fill) r.setAttribute("fill", r.dataset.fill);
-      });
+      [...document.querySelectorAll("main svg g[role=row]")]
+        .slice(0, n)
+        .forEach((g) => {
+          for (const r of g.querySelectorAll("rect"))
+            if (r.dataset.fill) r.setAttribute("fill", r.dataset.fill);
+        });
     }, shown);
     await rec.shot(70);
   }
@@ -198,7 +236,10 @@ async function record(browser, theme) {
   // screen — expand first, or the image says "my year" over four months.
   const button = (label) =>
     page.evaluateHandle(
-      (l) => [...document.querySelectorAll("button")].find((b) => b.textContent.trim().includes(l)),
+      (l) =>
+        [...document.querySelectorAll("button")].find((b) =>
+          b.textContent.trim().includes(l),
+        ),
       label,
     );
   const expand = await button("Show full year");
@@ -213,7 +254,9 @@ async function record(browser, theme) {
   await sleep(300);
   await rec.shot(900);
   await tap(page, rec, share.asElement(), { hold: 150 });
-  await page.waitForFunction(() => window.__blobs.length > 0, { timeout: 20000 });
+  await page.waitForFunction(() => window.__blobs.length > 0, {
+    timeout: 20000,
+  });
   const dataUrl = await page.evaluate(
     () =>
       new Promise((res) => {
@@ -228,7 +271,11 @@ async function record(browser, theme) {
   const colours = await page.evaluate(() => {
     const s = getComputedStyle(document.documentElement);
     const v = (name) => s.getPropertyValue(name).trim();
-    return { bg: v("--background"), muted: v("--muted"), border: v("--border") };
+    return {
+      bg: v("--background"),
+      muted: v("--muted"),
+      border: v("--border"),
+    };
   });
   const stage = await browser.newPage();
   await stage.setViewport({ width: W, height: H, deviceScaleFactor: SCALE });
@@ -254,7 +301,9 @@ async function record(browser, theme) {
  */
 function encode(frames) {
   const { width, height } = frames[0];
-  const sample = new Uint8Array(Math.ceil(frames.length * (width * height) / 16) * 4);
+  const sample = new Uint8Array(
+    Math.ceil((frames.length * (width * height)) / 16) * 4,
+  );
   let o = 0;
   for (const f of frames) {
     for (let i = 0; i < f.data.length && o < sample.length; i += 64) {
@@ -274,7 +323,8 @@ function encode(frames) {
     const index = applyPalette(f.data, palette.slice(0, CLEAR), "rgb444");
     const out = index.slice();
     if (previous) {
-      for (let i = 0; i < out.length; i++) if (index[i] === previous[i]) out[i] = CLEAR;
+      for (let i = 0; i < out.length; i++)
+        if (index[i] === previous[i]) out[i] = CLEAR;
     }
     gif.writeFrame(out, width, height, {
       palette: n === 0 ? palette : undefined,
@@ -292,7 +342,11 @@ function encode(frames) {
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: true,
-  args: ["--force-color-profile=srgb", "--font-render-hinting=none", "--hide-scrollbars"],
+  args: [
+    "--force-color-profile=srgb",
+    "--font-render-hinting=none",
+    "--hide-scrollbars",
+  ],
 });
 
 for (const theme of ["light", "dark"]) {
@@ -301,13 +355,18 @@ for (const theme of ["light", "dark"]) {
     frames.forEach((f, i) => {
       const png = new PNG({ width: f.width, height: f.height });
       f.data.copy(png.data);
-      writeFileSync(`${process.env.FRAMES}/${theme}-${String(i).padStart(2, "0")}.png`, PNG.sync.write(png));
+      writeFileSync(
+        `${process.env.FRAMES}/${theme}-${String(i).padStart(2, "0")}.png`,
+        PNG.sync.write(png),
+      );
     });
   }
   const bytes = encode(frames);
   const file = new URL(`demo-${theme}.gif`, OUT);
   writeFileSync(file, bytes);
-  console.log(`demo-${theme}.gif  ${frames.length} frames, ${(bytes.length / 1024).toFixed(0)} KB`);
+  console.log(
+    `demo-${theme}.gif  ${frames.length} frames, ${(bytes.length / 1024).toFixed(0)} KB`,
+  );
 }
 
 await browser.close();

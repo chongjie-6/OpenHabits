@@ -129,7 +129,10 @@ export function TodayList() {
     return habitsForDay(habits, entries, day, settings.weekStartsOn);
   }, [hydrated, day, habits, entries, settings.weekStartsOn]);
 
-  const scheduled = useMemo(() => states?.filter((s) => s.scheduled) ?? null, [states]);
+  const scheduled = useMemo(
+    () => states?.filter((s) => s.scheduled) ?? null,
+    [states],
+  );
   const { todo, done: finished } = useTodaySplit(day, scheduled);
   const sectionRef = useRef<HTMLElement>(null);
   const onFocus = useFocusFollowsHabit(sectionRef);
@@ -176,7 +179,13 @@ export function TodayList() {
 
   return (
     <section className="mt-6" {...swipe} ref={sectionRef} onFocus={onFocus}>
-      <Header skin={skin} day={day} today={today} done={done} total={scheduled.length} />
+      <Header
+        skin={skin}
+        day={day}
+        today={today}
+        done={done}
+        total={scheduled.length}
+      />
 
       <DayNav
         offset={offset}
@@ -263,14 +272,19 @@ function useFocusFollowsHabit(container: React.RefObject<HTMLElement | null>) {
     const was = last.current;
     if (!was || was.isConnected) return;
     last.current = null;
-    if (document.activeElement !== document.body || !was.dataset.habitId) return;
+    if (document.activeElement !== document.body || !was.dataset.habitId)
+      return;
     container.current
-      ?.querySelector<HTMLElement>(`[data-habit-id="${CSS.escape(was.dataset.habitId)}"]`)
+      ?.querySelector<HTMLElement>(
+        `[data-habit-id="${CSS.escape(was.dataset.habitId)}"]`,
+      )
       ?.focus({ preventScroll: true });
   });
 
   return (event: React.FocusEvent) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-habit-id]");
+    const target = (event.target as HTMLElement).closest<HTMLElement>(
+      "[data-habit-id]",
+    );
     if (target) last.current = target;
   };
 }
@@ -387,7 +401,7 @@ function Header({
     return (
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-mono text-[10px] font-medium tracking-[0.1em] uppercase text-muted">
+          <p className="font-mono text-[10px] font-medium tracking-widest uppercase text-muted">
             {formatDayFull(day)}
           </p>
           <h1 className="display-type mt-0.5 truncate text-[20px]">
@@ -438,15 +452,17 @@ function HeatStrip({ stats, rate }: { stats: DayStat[]; rate: number }) {
     >
       <span
         aria-hidden="true"
-        className="grid grid-flow-col grid-rows-7 justify-start gap-[2px]"
+        className="grid grid-flow-col grid-rows-7 justify-start gap-0.5"
       >
         {stats.map((stat) => (
           <span
             key={stat.date}
-            className="h-[9px] w-[9px] rounded-cell"
+            className="h-2.25 w-2.25 rounded-cell"
             style={{
               background:
-                stat.level === "rest" ? "var(--surface-2)" : levelColor(stat.level),
+                stat.level === "rest"
+                  ? "var(--surface-2)"
+                  : levelColor(stat.level),
             }}
           />
         ))}
@@ -459,18 +475,18 @@ function HeatStrip({ stats, rate }: { stats: DayStat[]; rate: number }) {
             {Math.round(rate * 100)}%
           </span>
         </span>
-        <span aria-hidden="true" className="flex items-center gap-[3px]">
-          <span className="mr-1 font-mono text-[10px] tracking-[0.1em] uppercase text-muted">
+        <span aria-hidden="true" className="flex items-center gap-0.75">
+          <span className="mr-1 font-mono text-[10px] tracking-widest uppercase text-muted">
             Less
           </span>
           {([0, 1, 2, 3, 4] as const).map((level) => (
             <span
               key={level}
-              className="h-[9px] w-[9px] rounded-cell"
+              className="h-2.25ww-2.25rounded-cell"
               style={{ background: levelColor(level) }}
             />
           ))}
-          <span className="ml-1 font-mono text-[10px] tracking-[0.1em] uppercase text-muted">
+          <span className="ml-1 font-mono text-[10px] tracking-widest uppercase text-muted">
             More
           </span>
         </span>
@@ -533,7 +549,9 @@ function Rows({
     );
   };
 
-  const item = (state: HabitDayState) => <li key={state.habit.id}>{render(state)}</li>;
+  const item = (state: HabitDayState) => (
+    <li key={state.habit.id}>{render(state)}</li>
+  );
 
   return (
     <>
@@ -617,19 +635,21 @@ function Tiles({
   return (
     <>
       {todo.length + finished.length > 0 && (
-        <h2 className="mt-4 text-[11px] font-bold uppercase tracking-[0.1em]">
+        <h2 className="mt-4 text-[11px] font-bold uppercase tracking-widest">
           To do ({todo.length})
         </h2>
       )}
       {todo.length > 0 ? (
-        <ul className="mt-3 grid grid-cols-2 gap-3">{todo.map((state) => tile(state))}</ul>
+        <ul className="mt-3 grid grid-cols-2 gap-3">
+          {todo.map((state) => tile(state))}
+        </ul>
       ) : (
         finished.length > 0 && <AllDone />
       )}
 
       {finished.length > 0 && (
         <details open className="mt-5">
-          <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+          <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-widest text-muted">
             Done ({finished.length})
           </summary>
           <ul className="mt-3 grid grid-cols-2 gap-3">
@@ -640,7 +660,7 @@ function Tiles({
 
       {unscheduled.length > 0 && (
         <details className="mt-4">
-          <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+          <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-widest text-muted">
             Not scheduled ({unscheduled.length})
           </summary>
           <ul className="mt-3 grid grid-cols-2 gap-3">
@@ -679,11 +699,16 @@ function StreakLink({
           {recent.map((stat) => (
             <span
               key={stat.date}
-              className="h-[15px] w-[15px]"
+              className="h-3.75 w-3.75"
               style={{
                 background:
-                  stat.level === "rest" ? "transparent" : levelColor(stat.level),
-                boxShadow: stat.level === "rest" ? "inset 0 0 0 2px currentColor" : "none",
+                  stat.level === "rest"
+                    ? "transparent"
+                    : levelColor(stat.level),
+                boxShadow:
+                  stat.level === "rest"
+                    ? "inset 0 0 0 2px currentColor"
+                    : "none",
               }}
             />
           ))}
@@ -704,7 +729,8 @@ function StreakLink({
             className="h-4 w-4 rounded-[3px] border"
             style={{
               background: levelColor(stat.level),
-              borderColor: stat.level === "rest" ? "var(--border)" : "transparent",
+              borderColor:
+                stat.level === "rest" ? "var(--border)" : "transparent",
             }}
           />
         ))}
@@ -712,7 +738,9 @@ function StreakLink({
       <span className="text-[13px] text-muted">
         {streak > 0 ? (
           <>
-            <strong className="font-mono tabular-nums text-foreground">{streak}</strong>{" "}
+            <strong className="font-mono tabular-nums text-foreground">
+              {streak}
+            </strong>{" "}
             day streak 🔥
           </>
         ) : (

@@ -34,7 +34,11 @@ import { SKIN_KEY } from "./theme";
 export type Skin = "classic" | "grid" | "blocks";
 
 export const SKINS: { value: Skin; label: string; hint: string }[] = [
-  { value: "classic", label: "Classic", hint: "Cards, soft edges, one column." },
+  {
+    value: "classic",
+    label: "Classic",
+    hint: "Cards, soft edges, one column.",
+  },
   { value: "grid", label: "Grid", hint: "Your year up top, dense rows below." },
   { value: "blocks", label: "Blocks", hint: "Hard edges and big tiles." },
 ];

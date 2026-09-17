@@ -34,7 +34,9 @@ describe("sections", () => {
 
   it("keeps a counted habit under To do until it reaches its target", () => {
     const states = [state("water", 5, 8)];
-    expect(ids(sections(initialSplit(DAY, states), states).todo)).toEqual(["water"]);
+    expect(ids(sections(initialSplit(DAY, states), states).todo)).toEqual([
+      "water",
+    ]);
   });
 });
 

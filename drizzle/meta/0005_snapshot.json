@@ -72,15 +72,9 @@
         "entries_habit_fk": {
           "name": "entries_habit_fk",
           "tableFrom": "entries",
-          "columnsFrom": [
-            "user_id",
-            "habit_id"
-          ],
+          "columnsFrom": ["user_id", "habit_id"],
           "tableTo": "habits",
-          "columnsTo": [
-            "user_id",
-            "id"
-          ],
+          "columnsTo": ["user_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -88,11 +82,7 @@
       "compositePrimaryKeys": {
         "entries_user_id_habit_id_date_pk": {
           "name": "entries_user_id_habit_id_date_pk",
-          "columns": [
-            "user_id",
-            "habit_id",
-            "date"
-          ]
+          "columns": ["user_id", "habit_id", "date"]
         }
       },
       "uniqueConstraints": {},
@@ -210,13 +200,9 @@
         "habits_user_id_users_id_fk": {
           "name": "habits_user_id_users_id_fk",
           "tableFrom": "habits",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -224,10 +210,7 @@
       "compositePrimaryKeys": {
         "habits_user_id_id_pk": {
           "name": "habits_user_id_id_pk",
-          "columns": [
-            "user_id",
-            "id"
-          ]
+          "columns": ["user_id", "id"]
         }
       },
       "uniqueConstraints": {},
@@ -311,13 +294,9 @@
         "push_subscriptions_user_id_users_id_fk": {
           "name": "push_subscriptions_user_id_users_id_fk",
           "tableFrom": "push_subscriptions",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -362,13 +341,9 @@
         "settings_user_id_users_id_fk": {
           "name": "settings_user_id_users_id_fk",
           "tableFrom": "settings",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -409,9 +384,7 @@
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "nullsNotDistinct": false
         }
       },
@@ -515,13 +488,9 @@
         "account_user_id_user_id_fk": {
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade",
           "schemaTo": "auth"
@@ -593,13 +562,9 @@
         "session_user_id_user_id_fk": {
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade",
           "schemaTo": "auth"
@@ -609,9 +574,7 @@
       "uniqueConstraints": {
         "session_token_unique": {
           "name": "session_token_unique",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "nullsNotDistinct": false
         }
       },
@@ -675,9 +638,7 @@
       "uniqueConstraints": {
         "user_email_unique": {
           "name": "user_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "nullsNotDistinct": false
         }
       },

@@ -23,7 +23,9 @@ describe("readJson", () => {
   });
 
   it("gives up on a body past the limit, however it was sent", async () => {
-    expect(await readJson(chunked('{"a":"', "x".repeat(100), '"}'), 64)).toBeUndefined();
+    expect(
+      await readJson(chunked('{"a":"', "x".repeat(100), '"}'), 64),
+    ).toBeUndefined();
   });
 
   it("reads `null` as a value, not as a failure", async () => {

@@ -10,7 +10,13 @@
  *   kv       keyPath 'key'                 ← settings and other singletons
  */
 
-import { DEFAULT_SETTINGS, normaliseHabit, type Entry, type Habit, type Settings } from "./types";
+import {
+  DEFAULT_SETTINGS,
+  normaliseHabit,
+  type Entry,
+  type Habit,
+  type Settings,
+} from "./types";
 
 /** Pre-rebrand name, kept: renaming the database orphans every existing
  *  install's habits, and IndexedDB is the source of truth. */
@@ -159,7 +165,9 @@ export async function loadAll(): Promise<Snapshot> {
     promisify<{ key: string; value: Settings; updatedAt?: number } | undefined>(
       t.objectStore("kv").get("settings"),
     ),
-    promisify<{ key: string; value: SyncMeta } | undefined>(t.objectStore("kv").get("sync")),
+    promisify<{ key: string; value: SyncMeta } | undefined>(
+      t.objectStore("kv").get("sync"),
+    ),
   ]);
 
   const live = habits.filter((h) => h.deletedAt === null);
@@ -201,7 +209,9 @@ function readSettings(stored: unknown): Settings {
 
 export async function putHabit(habit: Habit): Promise<void> {
   const db = await openDb();
-  await promisify(tx(db, ["habits"], "readwrite").objectStore("habits").put(habit));
+  await promisify(
+    tx(db, ["habits"], "readwrite").objectStore("habits").put(habit),
+  );
 }
 
 export async function putHabits(habits: Habit[]): Promise<void> {
@@ -226,7 +236,9 @@ export async function deleteHabitRecord(habit: Habit): Promise<void> {
   // Entries are keyed [habitId, date], so a bounded key range deletes every
   // entry for this habit without scanning the whole store.
   const cleared = promisify(
-    t.objectStore("entries").delete(IDBKeyRange.bound([habit.id, ""], [habit.id, "￿"])),
+    t
+      .objectStore("entries")
+      .delete(IDBKeyRange.bound([habit.id, ""], [habit.id, "￿"])),
   );
 
   await Promise.all([wrote, cleared]);
@@ -250,7 +262,9 @@ export async function forgetHabits(ids: string[]): Promise<void> {
 
 export async function putEntry(entry: Entry): Promise<void> {
   const db = await openDb();
-  await promisify(tx(db, ["entries"], "readwrite").objectStore("entries").put(entry));
+  await promisify(
+    tx(db, ["entries"], "readwrite").objectStore("entries").put(entry),
+  );
 }
 
 export async function putEntries(entries: Entry[]): Promise<void> {
@@ -259,7 +273,10 @@ export async function putEntries(entries: Entry[]): Promise<void> {
   await Promise.all(entries.map((e) => promisify(store.put(e))));
 }
 
-export async function putSettings(settings: Settings, updatedAt: number): Promise<void> {
+export async function putSettings(
+  settings: Settings,
+  updatedAt: number,
+): Promise<void> {
   const db = await openDb();
   await promisify(
     tx(db, ["kv"], "readwrite")
@@ -271,7 +288,9 @@ export async function putSettings(settings: Settings, updatedAt: number): Promis
 export async function putSyncMeta(meta: SyncMeta): Promise<void> {
   const db = await openDb();
   await promisify(
-    tx(db, ["kv"], "readwrite").objectStore("kv").put({ key: "sync", value: meta }),
+    tx(db, ["kv"], "readwrite")
+      .objectStore("kv")
+      .put({ key: "sync", value: meta }),
   );
 }
 
@@ -296,17 +315,25 @@ export async function applyMerge(input: {
   const kv = t.objectStore("kv");
 
   const pending: Promise<unknown>[] = [];
-  for (const habit of input.habits) pending.push(promisify(habitStore.put(habit)));
+  for (const habit of input.habits)
+    pending.push(promisify(habitStore.put(habit)));
   for (const id of input.purgedHabitIds) {
-    pending.push(promisify(entryStore.delete(IDBKeyRange.bound([id, ""], [id, "￿"]))));
+    pending.push(
+      promisify(entryStore.delete(IDBKeyRange.bound([id, ""], [id, "￿"]))),
+    );
   }
   // After the purge, so an entry that survived the merge for a habit deleted in
   // the same payload is not reinstated by request ordering.
-  for (const entry of input.entries) pending.push(promisify(entryStore.put(entry)));
+  for (const entry of input.entries)
+    pending.push(promisify(entryStore.put(entry)));
   if (input.settings) {
     pending.push(
       promisify(
-        kv.put({ key: "settings", value: input.settings.value, updatedAt: input.settings.updatedAt }),
+        kv.put({
+          key: "settings",
+          value: input.settings.value,
+          updatedAt: input.settings.updatedAt,
+        }),
       ),
     );
   }
@@ -341,12 +368,18 @@ export async function replaceAll(input: {
     promisify(entryStore.clear()),
     promisify(kv.clear()),
   ];
-  for (const habit of input.habits) pending.push(promisify(habitStore.put(habit)));
-  for (const entry of input.entries) pending.push(promisify(entryStore.put(entry)));
+  for (const habit of input.habits)
+    pending.push(promisify(habitStore.put(habit)));
+  for (const entry of input.entries)
+    pending.push(promisify(entryStore.put(entry)));
   if (input.settings) {
     pending.push(
       promisify(
-        kv.put({ key: "settings", value: input.settings.value, updatedAt: input.settings.updatedAt }),
+        kv.put({
+          key: "settings",
+          value: input.settings.value,
+          updatedAt: input.settings.updatedAt,
+        }),
       ),
     );
   }
@@ -360,7 +393,8 @@ export async function replaceAll(input: {
  * year of streaks can be reclaimed under storage pressure.
  */
 export async function requestPersistence(): Promise<boolean> {
-  if (typeof navigator === "undefined" || !navigator.storage?.persist) return false;
+  if (typeof navigator === "undefined" || !navigator.storage?.persist)
+    return false;
   try {
     if (await navigator.storage.persisted()) return true;
     return await navigator.storage.persist();

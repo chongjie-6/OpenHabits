@@ -76,7 +76,10 @@ beforeEach(async () => {
   // entries, preferences and a device each. Everything after this point runs as
   // the app would run it.
   for (const user of [ALICE, BOB]) {
-    await pglite.query(`insert into users (id, email) values ($1, $2)`, [user.id, user.email]);
+    await pglite.query(`insert into users (id, email) values ($1, $2)`, [
+      user.id,
+      user.email,
+    ]);
     await pglite.query(
       `insert into habits (user_id, id, name, emoji, color, cadence, target, "order",
          created_at, archived_at, updated_at, deleted_at, seq)
@@ -133,7 +136,8 @@ async function refusal(work: Promise<unknown>): Promise<string> {
     await work;
   } catch (error) {
     const messages: string[] = [];
-    for (let e: unknown = error; e instanceof Error; e = e.cause) messages.push(e.message);
+    for (let e: unknown = error; e instanceof Error; e = e.cause)
+      messages.push(e.message);
     return messages.join(" — ");
   }
   throw new Error("the statement was allowed, and should not have been");
@@ -141,7 +145,9 @@ async function refusal(work: Promise<unknown>): Promise<string> {
 
 describe("the role the app connects as", () => {
   it("is not a superuser, which would bypass every policy silently", async () => {
-    const [role] = (await rows(`select current_user, current_setting('is_superuser') as su`)) as {
+    const [role] = (await rows(
+      `select current_user, current_setting('is_superuser') as su`,
+    )) as {
       current_user: string;
       su: string;
     }[];
@@ -155,7 +161,11 @@ describe("the role the app connects as", () => {
          from pg_class c join pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'public' and c.relkind = 'r'
         order by relname`,
-    )) as { relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }[];
+    )) as {
+      relname: string;
+      relrowsecurity: boolean;
+      relforcerowsecurity: boolean;
+    }[];
 
     // Enumerated rather than spot-checked: a new table added to `schema.ts`
     // without a policy fails here, which is the only moment anyone would notice.
@@ -168,7 +178,9 @@ describe("the role the app connects as", () => {
     ]);
     // `relforcerowsecurity` is the half drizzle-kit cannot generate, so it is
     // also the half a regenerated migration would quietly drop.
-    expect(tables.every((t) => t.relrowsecurity && t.relforcerowsecurity)).toBe(true);
+    expect(tables.every((t) => t.relrowsecurity && t.relforcerowsecurity)).toBe(
+      true,
+    );
   });
 });
 
@@ -183,7 +195,9 @@ describe("with no scope open", () => {
 
   it("refuses to write", async () => {
     await expect(
-      rows(`insert into users (id, email) values ('mallory', 'mallory@example.com')`),
+      rows(
+        `insert into users (id, email) values ('mallory', 'mallory@example.com')`,
+      ),
     ).rejects.toThrow(/row-level security/);
   });
 });
@@ -194,9 +208,15 @@ describe("inside one account's scope", () => {
       // The `where` is deliberately Bob's. This is the query a refactor that
       // dropped a `userId` filter would produce, and the policy is what stands
       // between that bug and a data leak.
-      habits: await tx.execute(sql`select id from habits where user_id = 'bob'`),
-      entries: await tx.execute(sql`select date from entries where user_id = 'bob'`),
-      settings: await tx.execute(sql`select value from settings where user_id = 'bob'`),
+      habits: await tx.execute(
+        sql`select id from habits where user_id = 'bob'`,
+      ),
+      entries: await tx.execute(
+        sql`select date from entries where user_id = 'bob'`,
+      ),
+      settings: await tx.execute(
+        sql`select value from settings where user_id = 'bob'`,
+      ),
     }));
 
     expect(returned(seen.habits)).toEqual([]);
@@ -205,7 +225,9 @@ describe("inside one account's scope", () => {
   });
 
   it("sees an unfiltered query as its own rows only", async () => {
-    const all = await asUser(db, ALICE.id, (tx) => tx.execute(sql`select id from habits`));
+    const all = await asUser(db, ALICE.id, (tx) =>
+      tx.execute(sql`select id from habits`),
+    );
     expect(returned(all)).toEqual([{ id: "alice-habit" }]);
   });
 
@@ -224,14 +246,18 @@ describe("inside one account's scope", () => {
 
   it("cannot move one of its own rows into another account", async () => {
     const message = await refusal(
-      asUser(db, ALICE.id, (tx) => tx.execute(sql`update habits set user_id = 'bob'`)),
+      asUser(db, ALICE.id, (tx) =>
+        tx.execute(sql`update habits set user_id = 'bob'`),
+      ),
     );
     expect(message).toMatch(/row-level security/);
   });
 
   it("cannot delete another account's rows", async () => {
     await asUser(db, ALICE.id, (tx) => tx.execute(sql`delete from habits`));
-    const survivors = await asUser(db, BOB.id, (tx) => tx.execute(sql`select id from habits`));
+    const survivors = await asUser(db, BOB.id, (tx) =>
+      tx.execute(sql`select id from habits`),
+    );
     expect(returned(survivors)).toEqual([{ id: "bob-habit" }]);
   });
 });
@@ -239,8 +265,12 @@ describe("inside one account's scope", () => {
 describe("the server scope", () => {
   it("reaches devices and preferences, which the sweep needs", async () => {
     const seen = await asServer(db, async (tx) => ({
-      devices: await tx.execute(sql`select endpoint from push_subscriptions order by endpoint`),
-      settings: await tx.execute(sql`select user_id from settings order by user_id`),
+      devices: await tx.execute(
+        sql`select endpoint from push_subscriptions order by endpoint`,
+      ),
+      settings: await tx.execute(
+        sql`select user_id from settings order by user_id`,
+      ),
     }));
 
     expect(returned(seen.devices)).toHaveLength(2);
@@ -265,7 +295,9 @@ describe("the server scope", () => {
     // A `select`-only policy makes an update match no rows rather than raise —
     // Postgres has nothing to refuse, because from here there is nothing there
     // to update. So the assertion is on what survived, not on an error.
-    await asServer(db, (tx) => tx.execute(sql`update settings set updated_at = 99`));
+    await asServer(db, (tx) =>
+      tx.execute(sql`update settings set updated_at = 99`),
+    );
 
     const after = await asUser(db, ALICE.id, (tx) =>
       tx.execute(sql`select updated_at from settings`),
@@ -284,7 +316,10 @@ describe("the paths that run in production", () => {
       settings: null,
     });
 
-    expect(pull.habits.map((h) => h.id).sort()).toEqual(["bob-habit", "bobs-new-one"]);
+    expect(pull.habits.map((h) => h.id).sort()).toEqual([
+      "bob-habit",
+      "bobs-new-one",
+    ]);
     expect(pull.entries.every((e) => e.habitId.startsWith("bob"))).toBe(true);
   });
 
@@ -302,7 +337,10 @@ describe("the paths that run in production", () => {
     expect(summary.sent).toBe(2);
     // Each account's outstanding habit was read under its own scope, so a
     // reminder that named the wrong person's habit would be a different count.
-    expect(sent.sort()).toEqual(["https://push.example/alice", "https://push.example/bob"]);
+    expect(sent.sort()).toEqual([
+      "https://push.example/alice",
+      "https://push.example/bob",
+    ]);
   });
 
   it("cannot take an endpoint over from inside the owning scope, which is why the subscribe upsert uses asServer", async () => {
@@ -327,7 +365,9 @@ describe("the paths that run in production", () => {
     );
 
     const mine = await asUser(db, ALICE.id, (tx) =>
-      tx.execute(sql`select endpoint from push_subscriptions order by endpoint`),
+      tx.execute(
+        sql`select endpoint from push_subscriptions order by endpoint`,
+      ),
     );
     expect(returned(mine)).toHaveLength(2);
   });

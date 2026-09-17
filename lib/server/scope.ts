@@ -35,9 +35,15 @@ export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
  * Run `work` as `userId`. Everything inside sees exactly that account's rows,
  * and can write no others.
  */
-export function asUser<T>(db: Db, userId: string, work: (tx: Tx) => Promise<T>): Promise<T> {
+export function asUser<T>(
+  db: Db,
+  userId: string,
+  work: (tx: Tx) => Promise<T>,
+): Promise<T> {
   return db.transaction(async (tx) => {
-    await tx.execute(sql`select set_config('openhabits.user_id', ${userId}, true)`);
+    await tx.execute(
+      sql`select set_config('openhabits.user_id', ${userId}, true)`,
+    );
     return work(tx);
   });
 }
@@ -52,7 +58,9 @@ export function asUser<T>(db: Db, userId: string, work: (tx: Tx) => Promise<T>):
  */
 export function asServer<T>(db: Db, work: (tx: Tx) => Promise<T>): Promise<T> {
   return db.transaction(async (tx) => {
-    await tx.execute(sql`select set_config('openhabits.scope', 'server', true)`);
+    await tx.execute(
+      sql`select set_config('openhabits.scope', 'server', true)`,
+    );
     return work(tx);
   });
 }

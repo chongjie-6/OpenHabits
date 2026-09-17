@@ -22,7 +22,11 @@ vi.mock("@/lib/email", () => ({ sendEmail: queue.sendEmail }));
 const { handleEmailJob } = await import("@/workers/email");
 
 const ID = "0f8fad5b-d9cb-469f-a165-70867728950e";
-const JOB = { kind: "verification", to: "a@example.com", url: "https://openhabits.example/x" };
+const JOB = {
+  kind: "verification",
+  to: "a@example.com",
+  url: "https://openhabits.example/x",
+};
 
 function job(body: string = JSON.stringify({ id: ID })): Request {
   return new Request("https://openhabits.example/api/email", {
@@ -72,7 +76,9 @@ describe("the mail worker", () => {
   });
 
   it("refuses an oversized body before reading all of it", async () => {
-    const response = await handleEmailJob(job(JSON.stringify({ id: ID, pad: "x".repeat(10_000) })));
+    const response = await handleEmailJob(
+      job(JSON.stringify({ id: ID, pad: "x".repeat(10_000) })),
+    );
     expect(response.status).toBe(413);
     expect(queue.dequeueEmail).not.toHaveBeenCalled();
   });

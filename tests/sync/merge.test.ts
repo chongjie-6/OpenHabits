@@ -1,8 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, entryKey, type Entry, type Habit } from "@/lib/types";
-import { collectPush, mergeIncoming, watermarkAfterPush, type LocalSnapshot } from "@/lib/sync/merge";
+import {
+  DEFAULT_SETTINGS,
+  entryKey,
+  type Entry,
+  type Habit,
+} from "@/lib/types";
+import {
+  collectPush,
+  mergeIncoming,
+  watermarkAfterPush,
+  type LocalSnapshot,
+} from "@/lib/sync/merge";
 
-function habit(id: string, updatedAt: number, over: Partial<Habit> = {}): Habit {
+function habit(
+  id: string,
+  updatedAt: number,
+  over: Partial<Habit> = {},
+): Habit {
   return {
     id,
     name: id,
@@ -19,11 +33,20 @@ function habit(id: string, updatedAt: number, over: Partial<Habit> = {}): Habit 
   };
 }
 
-function entry(habitId: string, date: string, count: number, updatedAt: number): Entry {
+function entry(
+  habitId: string,
+  date: string,
+  count: number,
+  updatedAt: number,
+): Entry {
   return { habitId, date, count, updatedAt };
 }
 
-function snapshot(habits: Habit[], entries: Entry[], settingsUpdatedAt = 0): LocalSnapshot {
+function snapshot(
+  habits: Habit[],
+  entries: Entry[],
+  settingsUpdatedAt = 0,
+): LocalSnapshot {
   return {
     habits,
     entries: new Map(entries.map((e) => [entryKey(e.habitId, e.date), e])),
@@ -35,7 +58,10 @@ const NOTHING = { habits: [], entries: [], settings: null };
 
 describe("mergeIncoming", () => {
   it("takes the later write and ignores the earlier one", () => {
-    const local = snapshot([habit("a", 100)], [entry("a", "2026-08-01", 1, 100)]);
+    const local = snapshot(
+      [habit("a", 100)],
+      [entry("a", "2026-08-01", 1, 100)],
+    );
 
     const result = mergeIncoming(local, {
       ...NOTHING,
@@ -48,7 +74,10 @@ describe("mergeIncoming", () => {
 
   it("adds an incoming entry on a day it has never seen, however old the stamp", () => {
     // An absent local row is not a competing write, so age is irrelevant.
-    const local = snapshot([habit("a", 100)], [entry("a", "2026-08-01", 1, 999)]);
+    const local = snapshot(
+      [habit("a", 100)],
+      [entry("a", "2026-08-01", 1, 999)],
+    );
 
     const result = mergeIncoming(local, {
       ...NOTHING,
@@ -59,7 +88,10 @@ describe("mergeIncoming", () => {
   });
 
   it("keeps an older local write when the server is behind", () => {
-    const local = snapshot([habit("a", 100)], [entry("a", "2026-08-01", 7, 300)]);
+    const local = snapshot(
+      [habit("a", 100)],
+      [entry("a", "2026-08-01", 7, 300)],
+    );
 
     const result = mergeIncoming(local, {
       ...NOTHING,
@@ -75,8 +107,14 @@ describe("mergeIncoming", () => {
     const mine = entry("a", "2026-08-01", 3, 500);
     const theirs = entry("a", "2026-08-01", 8, 500);
 
-    const a = mergeIncoming(snapshot([habit("a", 1)], [mine]), { ...NOTHING, entries: [theirs] });
-    const b = mergeIncoming(snapshot([habit("a", 1)], [theirs]), { ...NOTHING, entries: [mine] });
+    const a = mergeIncoming(snapshot([habit("a", 1)], [mine]), {
+      ...NOTHING,
+      entries: [theirs],
+    });
+    const b = mergeIncoming(snapshot([habit("a", 1)], [theirs]), {
+      ...NOTHING,
+      entries: [mine],
+    });
 
     expect(a.snapshot.entries.get("a:2026-08-01")?.count).toBe(
       b.snapshot.entries.get("a:2026-08-01")?.count,
@@ -139,14 +177,20 @@ describe("mergeIncoming", () => {
 
     const newer = mergeIncoming(local, {
       ...NOTHING,
-      settings: { value: { ...DEFAULT_SETTINGS, favourites: ["q1"] }, updatedAt: 200 },
+      settings: {
+        value: { ...DEFAULT_SETTINGS, favourites: ["q1"] },
+        updatedAt: 200,
+      },
     });
     expect(newer.settingsChanged).toBe(true);
     expect(newer.snapshot.settings.value.favourites).toEqual(["q1"]);
 
     const older = mergeIncoming(local, {
       ...NOTHING,
-      settings: { value: { ...DEFAULT_SETTINGS, favourites: ["q1"] }, updatedAt: 50 },
+      settings: {
+        value: { ...DEFAULT_SETTINGS, favourites: ["q1"] },
+        updatedAt: 50,
+      },
     });
     expect(older.settingsChanged).toBe(false);
     expect(older.snapshot.settings.value.favourites).toEqual([]);
@@ -182,7 +226,9 @@ describe("mergeIncoming", () => {
     // Ties go to incoming, so a replay re-writes equal values but must not alter
     // the result — that is what makes a redundant push safe.
     expect(twice.snapshot.habits).toEqual(once.snapshot.habits);
-    expect([...twice.snapshot.entries.entries()]).toEqual([...once.snapshot.entries.entries()]);
+    expect([...twice.snapshot.entries.entries()]).toEqual([
+      ...once.snapshot.entries.entries(),
+    ]);
     expect(twice.purgedHabitIds).toEqual([]);
   });
 });
@@ -242,13 +288,22 @@ describe("collectPush", () => {
     const first = collectPush(snapshot([], entries), 0, 2);
     expect(first.entries.map((e) => e.updatedAt)).toEqual([100]);
 
-    const second = collectPush(snapshot([], entries), watermarkAfterPush(first, 0), 2);
+    const second = collectPush(
+      snapshot([], entries),
+      watermarkAfterPush(first, 0),
+      2,
+    );
     expect(second.entries.map((e) => e.updatedAt)).toEqual([101, 101]);
   });
 
   it("drains a whole backlog, every record exactly once", () => {
     const entries = Array.from({ length: 23 }, (_, i) =>
-      entry("a", `2026-07-${String(i + 1).padStart(2, "0")}`, 1, 100 + Math.floor(i / 2)),
+      entry(
+        "a",
+        `2026-07-${String(i + 1).padStart(2, "0")}`,
+        1,
+        100 + Math.floor(i / 2),
+      ),
     );
     const local = snapshot([habit("a", 500), habit("b", 105)], entries, 300);
 
@@ -256,7 +311,10 @@ describe("collectPush", () => {
     let watermark = 0;
     for (let trip = 0; trip < 50; trip++) {
       const push = collectPush(local, watermark, 4);
-      seen.push(...push.habits.map((h) => h.id), ...push.entries.map((e) => e.date));
+      seen.push(
+        ...push.habits.map((h) => h.id),
+        ...push.entries.map((e) => e.date),
+      );
       if (push.settings) seen.push("settings");
       watermark = watermarkAfterPush(push, watermark);
       if (push.complete) break;
@@ -279,15 +337,22 @@ describe("watermarkAfterPush", () => {
   });
 
   it("never moves backwards on an empty push", () => {
-    expect(watermarkAfterPush({ habits: [], entries: [], settings: null }, 100)).toBe(100);
+    expect(
+      watermarkAfterPush({ habits: [], entries: [], settings: null }, 100),
+    ).toBe(100);
   });
 
   it("leaves an edit made during the request in flight eligible for the next push", () => {
     // Watermark 300 comes from the payload; an edit stamped 350 arriving mid-flight
     // still sits above it and will be selected next time.
-    const watermark = watermarkAfterPush({ habits: [habit("a", 300)], entries: [], settings: null }, 0);
+    const watermark = watermarkAfterPush(
+      { habits: [habit("a", 300)], entries: [], settings: null },
+      0,
+    );
     const local = snapshot([habit("a", 300), habit("b", 350)], []);
 
-    expect(collectPush(local, watermark).habits.map((h) => h.id)).toEqual(["b"]);
+    expect(collectPush(local, watermark).habits.map((h) => h.id)).toEqual([
+      "b",
+    ]);
   });
 });

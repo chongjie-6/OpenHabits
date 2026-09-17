@@ -22,7 +22,11 @@ const MAX_OFF_AXIS = 0.6;
 /** A slow drag is a scroll that changed its mind, not a flick. */
 const MAX_DURATION_MS = 800;
 
-export function resolveSwipe(dx: number, dy: number, dt: number): SwipeDirection | null {
+export function resolveSwipe(
+  dx: number,
+  dy: number,
+  dt: number,
+): SwipeDirection | null {
   if (dt > MAX_DURATION_MS) return null;
   if (Math.abs(dx) < MIN_DISTANCE) return null;
   if (Math.abs(dy) > Math.abs(dx) * MAX_OFF_AXIS) return null;
@@ -39,7 +43,10 @@ export function resolveSwipe(dx: number, dy: number, dt: number): SwipeDirection
  * `pan-y` on the container would take the horizontal axis away from that
  * scroller, and a descendant cannot give it back.
  */
-function insideHorizontalScroller(target: EventTarget | null, container: Element): boolean {
+function insideHorizontalScroller(
+  target: EventTarget | null,
+  container: Element,
+): boolean {
   let node = target instanceof Element ? target : null;
   while (node && node !== container) {
     if (node.scrollWidth > node.clientWidth) {
@@ -60,7 +67,9 @@ function insideHorizontalScroller(target: EventTarget | null, container: Element
  * since a swipe is announced to neither.
  */
 export function useSwipe(onSwipe: (direction: SwipeDirection) => void) {
-  const from = useRef<{ x: number; y: number; t: number; id: number } | null>(null);
+  const from = useRef<{ x: number; y: number; t: number; id: number } | null>(
+    null,
+  );
   const swiped = useRef(false);
 
   return {

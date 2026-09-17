@@ -91,7 +91,8 @@ export const FACTS: Fact[] = [
   {
     id: "apollo-computer",
     text: "The computer that guided Apollo 11 to the Moon had about 4 KB of memory — less than one small photo on your phone.",
-    source: "MIT Instrumentation Laboratory, Apollo Guidance Computer specification",
+    source:
+      "MIT Instrumentation Laboratory, Apollo Guidance Computer specification",
     tags: ["space", "technology"],
   },
   {
@@ -218,7 +219,8 @@ export const FACTS: Fact[] = [
   {
     id: "sharks-older-than-trees",
     text: "Sharks are older than trees. There were sharks in the ocean 450 million years ago, and not one tree stood anywhere on Earth until roughly 385 million.",
-    source: "Earliest shark scales, c. 450 Ma; Stein et al., Nature, 2007, on the earliest known forest",
+    source:
+      "Earliest shark scales, c. 450 Ma; Stein et al., Nature, 2007, on the earliest known forest",
     tags: ["ocean", "animals", "earth"],
   },
   {
@@ -248,7 +250,8 @@ export const FACTS: Fact[] = [
   {
     id: "axolotl-regrowth",
     text: "An axolotl can regrow a lost limb — bone, muscle and nerve — along with parts of its heart and brain, and leaves no scar.",
-    source: "Regeneration research, Max Planck Institute for Developmental Biology",
+    source:
+      "Regeneration research, Max Planck Institute for Developmental Biology",
     tags: ["animals", "body"],
   },
   {
@@ -278,7 +281,8 @@ export const FACTS: Fact[] = [
   {
     id: "cleopatra-timing",
     text: "Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.",
-    source: "Great Pyramid c. 2560 BC; Cleopatra died 30 BC; Apollo 11 landed 1969",
+    source:
+      "Great Pyramid c. 2560 BC; Cleopatra died 30 BC; Apollo 11 landed 1969",
     tags: ["history", "numbers"],
   },
   {
@@ -290,7 +294,8 @@ export const FACTS: Fact[] = [
   {
     id: "pyramid-tallest",
     text: "The Great Pyramid was the tallest structure on Earth for about 3,800 years, until a cathedral spire went up in Lincoln around 1311.",
-    source: "Structural height records; Lincoln Cathedral central spire, c. 1311",
+    source:
+      "Structural height records; Lincoln Cathedral central spire, c. 1311",
     tags: ["history"],
   },
   {
@@ -302,7 +307,8 @@ export const FACTS: Fact[] = [
   {
     id: "harvard-before-calculus",
     text: "Harvard was founded in 1636, a generation before anybody invented calculus.",
-    source: "Harvard University founding, 1636; Newton and Leibniz, 1660s–1670s",
+    source:
+      "Harvard University founding, 1636; Newton and Leibniz, 1660s–1670s",
     tags: ["history"],
   },
   {
@@ -332,13 +338,15 @@ export const FACTS: Fact[] = [
   {
     id: "wright-flight-wingspan",
     text: "The Wright brothers' first flight covered 36 metres. A Boeing 747 has a longer wingspan than that.",
-    source: "Smithsonian National Air and Space Museum; Boeing 747-400 wingspan, 64.4 m",
+    source:
+      "Smithsonian National Air and Space Museum; Boeing 747-400 wingspan, 64.4 m",
     tags: ["history", "technology"],
   },
   {
     id: "napoleon-height",
     text: "Napoleon was about 1.70 m — an ordinary height for a Frenchman of his day.",
-    source: "Autopsy record, Saint Helena, 1821, giving 5 foot 2 in pre-revolutionary French measure",
+    source:
+      "Autopsy record, Saint Helena, 1821, giving 5 foot 2 in pre-revolutionary French measure",
     note: "The short Napoleon comes from that figure being read as English inches, and from British cartoonists who found it useful.",
     tags: ["history", "body"],
   },
@@ -423,7 +431,8 @@ export const FACTS: Fact[] = [
   {
     id: "trojan-room-coffee-pot",
     text: "The first webcam pointed at a coffee pot. Researchers in a Cambridge computer lab were tired of walking downstairs to find it empty.",
-    source: "Trojan Room coffee pot, University of Cambridge Computer Laboratory, 1991",
+    source:
+      "Trojan Room coffee pot, University of Cambridge Computer Laboratory, 1991",
     tags: ["technology", "history"],
   },
   {

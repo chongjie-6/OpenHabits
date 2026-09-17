@@ -10,12 +10,7 @@
 export type DayKey = string;
 
 export type HabitColorKey =
-  | "green"
-  | "blue"
-  | "violet"
-  | "amber"
-  | "rose"
-  | "teal";
+  "green" | "blue" | "violet" | "amber" | "rose" | "teal";
 
 export const HABIT_COLORS: HabitColorKey[] = [
   "green",
@@ -42,7 +37,8 @@ export function isHexColor(value: unknown): value is HexColor {
 
 /** Palette keys pass through; a hex is lowercased so the sync fingerprint is stable. */
 export function normaliseHabitColor(value: string): HabitColor | null {
-  if (HABIT_COLORS.includes(value as HabitColorKey)) return value as HabitColorKey;
+  if (HABIT_COLORS.includes(value as HabitColorKey))
+    return value as HabitColorKey;
   return isHexColor(value) ? (value.toLowerCase() as HexColor) : null;
 }
 
@@ -274,7 +270,11 @@ export type AnyExportBundle =
  */
 export function normaliseHabit(habit: LegacyHabit): Habit {
   if (habit.updatedAt !== undefined) {
-    return { ...habit, updatedAt: habit.updatedAt, deletedAt: habit.deletedAt ?? null };
+    return {
+      ...habit,
+      updatedAt: habit.updatedAt,
+      deletedAt: habit.deletedAt ?? null,
+    };
   }
 
   // An unparseable createdAt falls back to 0, the stamp that loses every merge.

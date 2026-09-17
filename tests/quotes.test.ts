@@ -48,9 +48,10 @@ describe("the deck", () => {
       const { id } = quoteForDay(day);
       const previous = lastSeen.get(id);
       if (previous !== undefined) {
-        expect(i - previous, `${id} repeated after ${i - previous} days`).toBeGreaterThan(
-          window,
-        );
+        expect(
+          i - previous,
+          `${id} repeated after ${i - previous} days`,
+        ).toBeGreaterThan(window);
       }
       lastSeen.set(id, i);
       day = addDays(day, 1);
@@ -102,8 +103,14 @@ describe("the corpus", () => {
   it("has no duplicated quote text", () => {
     const seen = new Map<string, string>();
     for (const quote of QUOTES) {
-      const key = quote.text.toLowerCase().replace(/[^a-z]/g, "").slice(0, 60);
-      expect(seen.get(key), `${quote.id} duplicates ${seen.get(key)}`).toBeUndefined();
+      const key = quote.text
+        .toLowerCase()
+        .replace(/[^a-z]/g, "")
+        .slice(0, 60);
+      expect(
+        seen.get(key),
+        `${quote.id} duplicates ${seen.get(key)}`,
+      ).toBeUndefined();
       seen.set(key, quote.id);
     }
   });

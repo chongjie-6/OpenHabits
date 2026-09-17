@@ -55,7 +55,16 @@ export const SANS =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 export const SERIF = "Georgia,'Times New Roman',serif";
 
-export const COLOURS = { INK, INK_2, MUTED, RULE, SURFACE, ACCENT, CELL_EMPTY, CELL_LIT };
+export const COLOURS = {
+  INK,
+  INK_2,
+  MUTED,
+  RULE,
+  SURFACE,
+  ACCENT,
+  CELL_EMPTY,
+  CELL_LIT,
+};
 
 /**
  * Escape for an HTML attribute. Every URL here is machine-generated and in
