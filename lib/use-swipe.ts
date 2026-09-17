@@ -39,9 +39,12 @@ export function resolveSwipe(
  * The week grid is a table in an `overflow-x-auto` box, and on a phone it does
  * overflow. Dragging it sideways has to scroll it rather than change the week,
  * so the gesture yields to any horizontal scroller between the press and the
- * element the hook is attached to. This is why the hook sets no `touch-action`:
+ * element the hook is attached to. This is also why the *hook* sets no
+ * `touch-action`: it cannot know which of its surfaces has one under it, and
  * `pan-y` on the container would take the horizontal axis away from that
- * scroller, and a descendant cannot give it back.
+ * scroller, where a descendant cannot give it back. A surface that knows it
+ * holds no sideways scroller may claim an axis itself, and `WeekStrip` does:
+ * a page scroll started on it cancels the pointer and the swipe is never read.
  */
 function insideHorizontalScroller(
   target: EventTarget | null,

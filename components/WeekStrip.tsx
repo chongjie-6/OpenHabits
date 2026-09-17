@@ -28,6 +28,12 @@ import { useToday } from "@/lib/use-today";
  * without the user meaning to look. "This week" goes to today rather than to
  * the same weekday, matching the list's "Today"; the row is always rendered so
  * the button appearing does not move the page.
+ *
+ * It is the one element that claims a touch axis. Nothing inside it scrolls
+ * sideways, so the objection in DESIGN.md §6.8 does not reach it, and without
+ * the claim a thumb drifting downwards turns the touch into a page scroll,
+ * which cancels the pointer and loses the swipe before it can be read. The
+ * price is that the strip cannot be dragged to scroll the page.
  */
 export function WeekStrip() {
   const { hydrated, settings } = useOpenHabits();
@@ -48,7 +54,7 @@ export function WeekStrip() {
   const thisWeek = start === startOfWeek(today, settings.weekStartsOn);
 
   return (
-    <nav aria-label="Week" {...swipe}>
+    <nav aria-label="Week" className="touch-pan-x touch-pinch-zoom" {...swipe}>
       <div className="flex h-6 items-center justify-between gap-3">
         <p
           aria-live="polite"
