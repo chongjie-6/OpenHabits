@@ -33,6 +33,11 @@ import type { NextConfig } from "next";
  * and without it the console fills with `eval() is not supported`. It must never
  * reach a production header, which is why it is keyed off `NODE_ENV` here rather
  * than being written into the constant.
+ *
+ * `frame-ancestors` names the author's portfolio, which embeds the app as a live
+ * demo, and nothing else. There is no `X-Frame-Options` beside it: that header
+ * can only say DENY or SAMEORIGIN, so it cannot allow one other site, and a
+ * browser that sees both obeys `frame-ancestors` anyway.
  */
 const dev = process.env.NODE_ENV !== "production";
 
@@ -48,7 +53,7 @@ const CSP = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
+  "frame-ancestors 'self' https://chongjie.vercel.app",
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -69,7 +74,6 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Content-Security-Policy", value: CSP },
         ],
