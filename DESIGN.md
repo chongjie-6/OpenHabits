@@ -743,14 +743,16 @@ Wrangler is not a dependency of this project, and the Worker has no build step o
 
 **When, and whether, are stored in different places, because they are different kinds of fact.**
 
-|                                     | Lives in                                 | Scope       |
-| ----------------------------------- | ---------------------------------------- | ----------- |
-| **Whether** this device is reminded | `push_subscriptions`, keyed by endpoint  | One browser |
-| **When** the reminder is due        | `Settings.reminderHour`, the synced blob | The account |
+|                                     | Lives in                                                           | Scope       |
+| ----------------------------------- | ------------------------------------------------------------------ | ----------- |
+| **Whether** this device is reminded | `push_subscriptions`, keyed by endpoint                            | One browser |
+| **When** the reminder is due        | `Settings.reminderHour` and `eveningReminderHour`, the synced blob | The account |
 
 The subscription table is the only one here not keyed by `(userId, …)` — see `lib/server/schema.ts`. A push endpoint is the push service's global handle for one browser, so keying it per user would let two accounts hold live rows for the same device, and signing out would leave the previous owner's habits arriving in somebody else's tray. Signing out unsubscribes for the same reason.
 
 **Delivery is claimed before it is attempted.** `last_sent_day` is written by the same `UPDATE … RETURNING` that selects which devices to send to, so an at-least-once cron delivers once; the payload's fixed `tag` is the second line of defence, in the tray. A day on which everything was already done is claimed and left silent — finishing before nine should mean quiet, not a reminder held back until the hour ticks over.
+
+**Added: a second slot.** `Settings.eveningReminderHour` is an optional last call for whatever is still outstanding at the end of the day. `null` is off and it ships off, because a field added to a synced blob must not start waking devices that never asked. It is claimed on its own column, `last_sent_evening_day`: one `last_sent_day` cannot say _which_ of two reminders went, so a shared claim would let the morning silence the evening for the rest of the day. The two hours are checked morning-first, which makes both set to the same hour one reminder rather than two. Nothing else moved — the day is still decided in the device's zone, the body still lists what `habitsForDay` says is outstanding, and a day already finished is still claimed and left silent, which in the evening is the common case.
 
 **Two new endpoints** (a third since — `/api/email`, §13.16), which is the first time §7.1's "`POST /api/sync` is the only one" has bent. Neither carries user data in the sync sense: `/api/reminders` registers a device fact that is deliberately _not_ replicated (every device would otherwise hold a copy of every other device's push endpoint, for nothing), and `/api/cron/reminders` is the scheduler's entry point. The cron route fails closed — with no `CRON_SECRET` it refuses to run at all, because it reads every account's habits and sends to every registered device.
 

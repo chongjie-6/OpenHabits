@@ -197,6 +197,14 @@ function parseSettings(value: unknown): ParseResult<Settings> {
   if (value.reminderHour !== undefined && !isCount(value.reminderHour, 23)) {
     return fail("settings.reminderHour must be 0–23");
   }
+  // Null is off, and undefined is a build from before the evening slot existed.
+  if (
+    value.eveningReminderHour !== undefined &&
+    value.eveningReminderHour !== null &&
+    !isCount(value.eveningReminderHour, 23)
+  ) {
+    return fail("settings.eveningReminderHour must be 0–23 or null");
+  }
   // Optional, unlike its neighbours: a build from before haptics pushes a blob
   // without it, and rejecting that would stop it syncing at all.
   if (value.haptics !== undefined && typeof value.haptics !== "boolean") {
@@ -236,6 +244,8 @@ function parseSettings(value: unknown): ParseResult<Settings> {
       weekStartsOn: value.weekStartsOn,
       dayStartHour: value.dayStartHour,
       reminderHour: value.reminderHour ?? DEFAULT_SETTINGS.reminderHour,
+      eveningReminderHour:
+        (value.eveningReminderHour as number | null | undefined) ?? null,
       haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
       dailyMode: value.dailyMode ?? DEFAULT_SETTINGS.dailyMode,
       favourites: value.favourites as string[],

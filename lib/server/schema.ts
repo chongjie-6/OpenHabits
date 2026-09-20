@@ -175,6 +175,8 @@ export const pushSubscriptions = pgTable(
      * and this is what keeps a mid-morning change of hour from sending twice.
      */
     lastSentDay: text("last_sent_day"),
+    /** The same, for the evening slot, which is claimed independently. */
+    lastSentEveningDay: text("last_sent_evening_day"),
     /**
      * Last time this browser said it still wanted reminders; the sweep drops a
      * row quiet for longer than `SUBSCRIPTION_TTL_MS`. Not `createdAt`, which

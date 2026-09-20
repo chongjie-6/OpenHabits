@@ -181,6 +181,8 @@ function readSettings(stored: unknown): Settings {
     weekStartsOn: value.weekStartsOn ?? DEFAULT_SETTINGS.weekStartsOn,
     dayStartHour: value.dayStartHour ?? DEFAULT_SETTINGS.dayStartHour,
     reminderHour: value.reminderHour ?? DEFAULT_SETTINGS.reminderHour,
+    // `?? null` rather than the default: null is "off" and has to survive.
+    eveningReminderHour: value.eveningReminderHour ?? null,
     haptics: value.haptics ?? DEFAULT_SETTINGS.haptics,
     dailyMode: value.dailyMode ?? DEFAULT_SETTINGS.dailyMode,
     favourites: value.favourites ?? DEFAULT_SETTINGS.favourites,

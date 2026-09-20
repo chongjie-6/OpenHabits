@@ -23,6 +23,34 @@ function formatHour(hour: number): string {
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
+function HourSelect({
+  value,
+  offLabel,
+  onChange,
+}: {
+  value: number | null;
+  offLabel?: string;
+  onChange: (hour: number | null) => void;
+}) {
+  return (
+    // 16px, like every text field: below it a tap zooms iOS in for good.
+    <select
+      value={value ?? ""}
+      onChange={(event) =>
+        onChange(event.target.value === "" ? null : Number(event.target.value))
+      }
+      className="mt-2 h-10 rounded-control border border-border bg-surface-2 px-3 text-[16px] outline-none focus:border-accent"
+    >
+      {offLabel !== undefined && <option value="">{offLabel}</option>}
+      {HOURS.map((hour) => (
+        <option key={hour} value={hour}>
+          {formatHour(hour)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function ReminderCard() {
   const { settings } = useOpenHabits();
   const { data: session, isPending } = authClient.useSession();
@@ -43,6 +71,7 @@ export function ReminderCard() {
           busy={busy}
           error={error}
           hour={settings.reminderHour}
+          eveningHour={settings.eveningReminderHour}
           onEnable={enable}
           onDisable={disable}
         />
@@ -57,6 +86,7 @@ function Body({
   busy,
   error,
   hour,
+  eveningHour,
   onEnable,
   onDisable,
 }: {
@@ -65,6 +95,7 @@ function Body({
   busy: boolean;
   error: string | null;
   hour: number;
+  eveningHour: number | null;
   onEnable: () => void;
   onDisable: () => void;
 }) {
@@ -110,6 +141,11 @@ function Body({
     );
   }
 
+  const when =
+    eveningHour === null
+      ? formatHour(hour)
+      : `${formatHour(hour)} and again at ${formatHour(eveningHour)}`;
+
   if (status === "denied") {
     return (
       <Explain>
@@ -125,15 +161,14 @@ function Body({
       <p className="text-[13px] leading-relaxed text-muted">
         {status === "on" ? (
           <>
-            This device is reminded at {formatHour(hour)} — once a day, and only
-            when something is still outstanding. Finish everything before then
-            and it stays quiet.
+            This device is reminded at {when} — only when something is still
+            outstanding. Finish everything before then and it stays quiet.
           </>
         ) : (
           <>
-            One notification a day listing what is still outstanding, sent at{" "}
-            {formatHour(hour)} in this device&rsquo;s timezone. Nothing arrives
-            on a day you have already finished.
+            A notification listing what is still outstanding, sent at {when} in
+            this device&rsquo;s timezone. Nothing arrives on a day you have
+            already finished.
           </>
         )}
       </p>
@@ -167,27 +202,37 @@ function Body({
       </div>
 
       {status === "on" && (
-        <label className="mt-4 block">
-          <span className="text-[13px] font-medium">Remind me at</span>
-          <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
-            Your local time. Unlike the switch above, this is part of your
-            account — change it here and your other devices follow.
-          </span>
-          {/* 16px, like every text field: below it a tap zooms iOS in for good. */}
-          <select
-            value={hour}
-            onChange={(event) =>
-              updateSettings({ reminderHour: Number(event.target.value) })
-            }
-            className="mt-2 h-10 rounded-control border border-border bg-surface-2 px-3 text-[16px] outline-none focus:border-accent"
-          >
-            {HOURS.map((value) => (
-              <option key={value} value={value}>
-                {formatHour(value)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <>
+          <label className="mt-4 block">
+            <span className="text-[13px] font-medium">Remind me at</span>
+            <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
+              Your local time. Unlike the switch above, this is part of your
+              account — change it here and your other devices follow.
+            </span>
+            <HourSelect
+              value={hour}
+              onChange={(value) =>
+                // Never null: only the evening select offers an off option.
+                updateSettings({ reminderHour: value ?? hour })
+              }
+            />
+          </label>
+
+          <label className="mt-4 block">
+            <span className="text-[13px] font-medium">And again at</span>
+            <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
+              A last call for whatever is still outstanding. Either reminder
+              stays quiet on a day already finished.
+            </span>
+            <HourSelect
+              value={eveningHour}
+              offLabel="Not at all"
+              onChange={(value) =>
+                updateSettings({ eveningReminderHour: value })
+              }
+            />
+          </label>
+        </>
       )}
 
       <p className="mt-4 text-[11px] leading-relaxed text-muted">

@@ -231,6 +231,40 @@ describe("runReminderSweep", () => {
     expect(push.sent).toHaveLength(1);
   });
 
+  it("reminds again in the evening on a day the morning already claimed", async () => {
+    await addHabit("read");
+    await setSettings({ eveningReminderHour: 21 });
+    await addDevice("https://push.example/sydney", "Australia/Sydney");
+
+    const push = recorder();
+    await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send });
+
+    // 11:00Z is 21:00 in Sydney on the same civil day.
+    const evening = new Date("2026-09-05T11:00:00Z");
+    expect(
+      await runReminderSweep(db, { now: evening, send: push.send }),
+    ).toMatchObject({ due: 1, sent: 1 });
+    // The evening slot is claimed on its own column, so it too sends once.
+    expect(
+      await runReminderSweep(db, { now: evening, send: push.send }),
+    ).toMatchObject({ due: 0, sent: 0 });
+
+    expect(push.sent).toHaveLength(2);
+    expect(await lastSentDay("https://push.example/sydney")).toBe(SYDNEY_DAY);
+  });
+
+  it("sends once when both slots land on the same hour", async () => {
+    await addHabit("read");
+    await setSettings({ reminderHour: 9, eveningReminderHour: 9 });
+    await addDevice("https://push.example/sydney", "Australia/Sydney");
+
+    const push = recorder();
+    expect(
+      await runReminderSweep(db, { now: NINE_IN_SYDNEY, send: push.send }),
+    ).toMatchObject({ due: 1, sent: 1 });
+    expect(push.sent).toHaveLength(1);
+  });
+
   it("says nothing on a day already finished, but still spends it", async () => {
     await addHabit("read");
     await tick("read", SYDNEY_DAY);

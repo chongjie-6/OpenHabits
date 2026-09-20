@@ -162,6 +162,12 @@ export type Settings = {
    */
   reminderHour: number;
   /**
+   * A second reminder, for whatever is still outstanding at the end of the
+   * day. `null` is off, and is nullable rather than absent so that a blob from
+   * a build without the field and a user who turned it off read the same.
+   */
+  eveningReminderHour: number | null;
+  /**
    * Buzz on a tick. Inert rather than hidden without a motor, or the toggle
    * vanishes from the desktop where the phone is most likely configured.
    */
@@ -186,6 +192,7 @@ export const DEFAULT_SETTINGS: Settings = {
   weekStartsOn: 1,
   dayStartHour: 0,
   reminderHour: 9,
+  eveningReminderHour: null,
   haptics: true,
   dailyMode: "quotes",
   favourites: [],

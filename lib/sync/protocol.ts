@@ -116,6 +116,7 @@ export function fingerprintSettings(s: { value: Settings }): string {
     s.value.weekStartsOn,
     s.value.dayStartHour,
     s.value.reminderHour,
+    s.value.eveningReminderHour ?? "",
     s.value.haptics,
     s.value.dailyMode,
     // Sorted, so two devices that favourited the same quotes in a different

@@ -50,6 +50,13 @@
       "when": 1788510631772,
       "tag": "0006_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789871632987,
+      "tag": "0007_reflective_alice",
+      "breakpoints": true
     }
   ]
 }
