@@ -1,11 +1,8 @@
 /**
- * The reminder sweep against real Postgres, for the same reason
- * `sync-store.test.ts` is: the interesting parts are SQL. The claim is an
- * `UPDATE … WHERE last_sent_day IS DISTINCT FROM … RETURNING`, and "is distinct
- * from" versus "<>" over a null column is exactly the difference between
- * reminding a new device on its first morning and never reminding it at all.
- *
- * The sender is a stub, so nothing here needs a VAPID keypair or a push service.
+ * The reminder sweep against real Postgres, the interesting parts being SQL:
+ * "is distinct from" against "<>" over a null column is the difference between
+ * reminding a new device on its first morning and never reminding it. The
+ * sender is a stub, so nothing needs a keypair or a push service.
  */
 
 import { readdirSync, readFileSync } from "node:fs";

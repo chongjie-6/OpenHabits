@@ -3,41 +3,20 @@ import type { NextConfig } from "next";
 /**
  * Content-Security-Policy for the app itself. See DESIGN.md §8.7.
  *
- * **`script-src` carries `'unsafe-inline'`, and it is not an oversight.** Three
- * scripts are inlined into every prerendered document: `lib/theme.ts`'s
- * pre-paint block, and two of Next's own flight-data pushes whose contents
- * differ per page and change on every build. Neither of the two ways out is
- * available here:
+ * **`script-src` carries `'unsafe-inline'` deliberately.** Three scripts are
+ * inlined into every prerendered document, and neither way out is available: a
+ * nonce needs per-request rendering, and `public/sw.js` would cache one and
+ * mismatch it next load; hashes cannot name Next's per-build flight scripts.
+ * What is left still pays for itself, `connect-src 'self'` above all — injected
+ * script can run, but it cannot post a year of habits anywhere.
  *
- * - **A nonce** requires rendering the document per request, and every route in
- *   this app is static (§8.1) — `public/sw.js` then caches that HTML, so a nonce
- *   would be cached with it and mismatch the header on the next load. The
- *   offline app would break itself.
- * - **Hashes** would have to cover Next's flight scripts, which are per-page and
- *   per-build. A static header cannot name them.
- *
- * What is left still pays for itself. `connect-src 'self'` is the directive that
- * matters most: injected script can run, but it cannot post a year of habits to
- * an origin the user has never heard of. `base-uri`, `form-action`,
- * `object-src` and the external-origin ban on `script-src` close the rest of the
- * common escalation paths.
- *
- * `style-src` keeps `'unsafe-inline'` for Next's built-in error and not-found
- * documents, which are the only pages here that ship a `<style>` block or a
- * style attribute. This app's own seven pages prerender with neither — the
- * palette writes custom properties through CSSOM (`applyPaletteVars`), which CSP
- * does not govern.
- *
- * `'unsafe-eval'` is added **only under `next dev`**: React's development build
- * evaluates source text to rebuild callstacks across the server/client boundary,
- * and without it the console fills with `eval() is not supported`. It must never
- * reach a production header, which is why it is keyed off `NODE_ENV` here rather
- * than being written into the constant.
- *
- * `frame-ancestors` names the author's portfolio, which embeds the app as a live
- * demo, and nothing else. There is no `X-Frame-Options` beside it: that header
- * can only say DENY or SAMEORIGIN, so it cannot allow one other site, and a
- * browser that sees both obeys `frame-ancestors` anyway.
+ * `style-src` keeps `'unsafe-inline'` for Next's own error documents; this
+ * app's pages ship neither a `<style>` block nor a style attribute.
+ * `'unsafe-eval'` is added **only under `next dev`**, where React's development
+ * build evaluates source text, which is why it is keyed off `NODE_ENV` rather
+ * than written into the constant. `frame-ancestors` names the author's
+ * portfolio and nothing else, with no `X-Frame-Options` beside it: that header
+ * cannot allow one other site, and a browser seeing both obeys this one.
  */
 const dev = process.env.NODE_ENV !== "production";
 
@@ -60,11 +39,9 @@ const nextConfig: NextConfig = {
   experimental: {
     /**
      * Connectivity detection for `lib/sync/client.ts`. It does **not** retry
-     * sync for us — the framework retries its own navigations, prefetches and
-     * Server Actions, and `POST /api/sync` is a plain `fetch` from a client
-     * component, so its retry stays hand-rolled. What this buys is a truthful
-     * answer to "are we offline": `navigator.onLine` reports true for a device
-     * on wifi with no route to the internet, and this polls the origin.
+     * sync — that stays hand-rolled, `POST /api/sync` being a plain fetch. What
+     * it buys is a truthful answer to "are we offline", where
+     * `navigator.onLine` says true on wifi with no route to the internet.
      */
     useOffline: true,
   },

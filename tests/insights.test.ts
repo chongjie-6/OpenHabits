@@ -1,11 +1,7 @@
 /**
- * Second-order reads of the history — `lib/insights.ts`.
- *
- * The rollups themselves are simple sums; what is worth pinning is what they
- * refuse to say. A weekday with nothing scheduled must not read as a weekday
- * that was missed, and a headline built on two data points must not print at
- * all — both are the difference between a useful observation and a lie about
- * the user's week.
+ * Second-order reads of the history. The rollups are sums; what is worth
+ * pinning is what they refuse to say — a weekday with nothing scheduled is not
+ * a weekday missed, and a headline on two data points must not print.
  */
 
 import { describe, expect, it } from "vitest";

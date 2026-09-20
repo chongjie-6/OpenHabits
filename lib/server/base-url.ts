@@ -1,25 +1,16 @@
 import "server-only";
 
 /**
- * Where Better Auth believes it is hosted. See DESIGN.md §13.12.
+ * Where Better Auth believes it is hosted. See DESIGN.md §13.12. Alone in a
+ * file with no imports, so the rule is testable without an auth stack.
  *
- * Alone in a file with no imports, for the reason `auth-types.ts` is: the rule
- * is testable without booting an auth stack.
- *
- * Left unset, Better Auth infers its origin from the request — which means the
- * `Host` header, which the client sends. That inferred origin is what
- * verification links are built from, and `POST /api/auth/send-verification-email`
- * accepts any address with no session at all: a request carrying a forged `Host`
- * makes this app mail a genuine, correctly-branded link pointing at somebody
- * else's server, with a token `autoSignInAfterVerification` turns into a session
- * on arrival. So inference is confined to development, and a production
- * deployment has to say where it lives.
+ * Unset, Better Auth infers the origin from the `Host` header — and that origin
+ * is what verification links are built from, while `send-verification-email`
+ * accepts any address with no session. A forged `Host` would make this app mail
+ * a genuine, branded link into somebody else's server. So production must say.
  */
 
-/**
- * `env` is a parameter rather than a read of `process.env`, so the production
- * branch can be tested without setting `NODE_ENV` for the whole run.
- */
+/** `env` is a parameter so the production branch is testable in isolation. */
 export function resolveBaseURL(
   env: NodeJS.ProcessEnv = process.env,
 ): string | undefined {
@@ -39,23 +30,11 @@ export function resolveBaseURL(
 }
 
 /**
- * Whether this deployment could itself have produced a link at `candidate` —
- * that is, whether the origin is one `resolveBaseURL` above would have handed
- * Better Auth. See DESIGN.md §13.16.
- *
- * It exists because the mail queue puts a verification link somewhere other
- * than a variable on the stack: `email-queue.ts` writes the URL to Redis and
- * the worker reads it back and mails it. Nothing in the threat model lets an
- * attacker choose that value — the envelope id travels only in a signed QStash
- * message — but the whole of §13.12 is about this app being made to mail a
- * genuine, correctly-branded link into an origin it does not own, and a store
- * the request no longer holds is a second place that could be made to say so.
- * So the worker asks this before sending, and a compromise of the envelope
- * store buys a refused send rather than a phishing relay.
- *
- * Lives here rather than beside the queue because this is the module that owns
- * the question, and answering it anywhere else would be a second opinion about
- * the same environment.
+ * Whether this deployment could itself have produced a link at `candidate`. See
+ * §13.16: the queue writes a verification URL to Redis and the worker reads it
+ * back, which is a second place that could be made to name an origin this app
+ * does not own — so a compromised envelope store buys a refused send rather
+ * than a phishing relay. Here because this module owns the question.
  */
 export function mailableOrigin(
   candidate: string,
@@ -78,8 +57,7 @@ export function mailableOrigin(
     }
   }
 
-  // Unset: production already threw on the way in, so this is the development
-  // branch, where the only origin on offer is the developer's own.
+  // Production already threw on the way in, so this is development.
   if (env.NODE_ENV === "production") return false;
   return (
     url.hostname === "localhost" ||

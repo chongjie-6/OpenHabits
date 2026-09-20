@@ -1,16 +1,10 @@
 "use client";
 
 /**
- * The React surface for the theme. See DESIGN.md §13.8 #1.
- *
- * A separate module for the reason `lib/use-palette.ts` is one: `lib/theme.ts`
- * is imported by `app/layout.tsx` — a Server Component — for `THEME_SCRIPT`,
- * and a `"use client"` directive on that file would drag the whole appearance
- * layer into the client graph to serve one string.
- *
- * The shape is `lib/skin.ts`'s, deliberately. Theme, skin and palette are three
- * axes of the same device-local decision, and a reader who has understood one
- * should recognise the other two.
+ * The React surface for the theme (§13.8 #1). Separate because `lib/theme.ts`
+ * is imported by a Server Component for `THEME_SCRIPT`, and `"use client"`
+ * there would drag the appearance layer into the client graph for one string.
+ * Shaped like `lib/skin.ts`, the three axes being one decision.
  */
 
 import { useSyncExternalStore } from "react";
@@ -21,8 +15,8 @@ const listeners = new Set<() => void>();
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
 
-  // `storage` fires in *other* tabs: switch to dark in one, and the rest should
-  // follow rather than sit on the old theme until reload.
+  // `storage` fires in *other* tabs, which would otherwise sit on the old
+  // theme until reload.
   const onStorage = (event: StorageEvent) => {
     if (event.key !== THEME_KEY) return;
     applyTheme(readTheme());
@@ -37,11 +31,9 @@ function subscribe(listener: () => void): () => void {
 }
 
 /**
- * Reactive `readTheme()`. Reports `system` on the server and through hydration,
- * exactly as `useSkin` and `usePalette` do, so **every consumer must sit inside
- * a subtree gated on `store.hydrated`**. Nothing token-level needs this hook:
- * `data-theme` is on the document before first paint, so CSS has the real
- * answer while this still says `system`.
+ * Reactive `readTheme()`, reporting `system` through hydration like `useSkin`
+ * and `usePalette` — so **every consumer sits inside a subtree gated on
+ * `store.hydrated`**. Token-level differences need CSS, not this hook.
  */
 export function useTheme(): Theme {
   return useSyncExternalStore(subscribe, readTheme, () => "system" as Theme);

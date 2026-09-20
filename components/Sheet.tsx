@@ -3,13 +3,10 @@
 import { useEffect, useRef } from "react";
 
 /**
- * A bottom sheet, built on the platform's modal dialog — DESIGN.md §6.7.
- *
- * `showModal()` is what buys the focus trap, Escape-to-dismiss, the inert
- * background and the top layer. A div with a fixed-position backdrop has to
- * reimplement all four, and the version that gets shipped is usually missing
- * the ones a screen reader depends on. Everything here is shape and motion on
- * top of that; the animation itself lives in `globals.css`.
+ * A bottom sheet on the platform's modal dialog (§6.7). `showModal()` buys the
+ * focus trap, Escape, the inert background and the top layer, and a div with a
+ * backdrop has to reimplement all four — usually missing the ones a screen
+ * reader depends on. Everything here is shape and motion on top of that.
  */
 export function Sheet({
   open,
@@ -32,10 +29,8 @@ export function Sheet({
 
     if (open && !element.open) {
       element.showModal();
-      // The dialog's own focusing steps land on the first focusable descendant,
-      // which for a form is a text field. On touch that raises the keyboard
-      // over a sheet pinned to the bottom edge, covering the thing that just
-      // opened, so focus starts on the close button instead.
+      // The dialog's own focusing steps land on the first field, which on touch
+      // raises the keyboard over a sheet pinned to the bottom edge.
       dismiss.current?.focus();
     }
     if (!open && element.open) element.close();
@@ -46,14 +41,11 @@ export function Sheet({
       ref={dialog}
       data-slot="sheet"
       aria-label={title}
-      // Fires for Escape as well as our own close(), so it is the only place
-      // the parent's state has to be put back.
+      // Fires for Escape too, so it is the only place to put the parent back.
       onClose={onClose}
-      // A press on the backdrop targets the dialog element; one on the content
-      // targets the content. Both ends have to be on the backdrop: a drag that
-      // starts on one of the form's range sliders and finishes past the edge of
-      // the sheet delivers a click whose target is the dialog, and dismissing
-      // there throws the form away for setting a slider to its maximum.
+      // Both ends have to be on the backdrop: a drag off the end of a range
+      // slider delivers a click targeting the dialog, and dismissing there
+      // throws the form away for setting a slider to its maximum.
       onPointerDown={(event) => {
         startedOnBackdrop.current = event.target === dialog.current;
       }}

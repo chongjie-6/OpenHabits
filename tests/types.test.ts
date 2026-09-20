@@ -1,10 +1,7 @@
 /**
- * The legacy-import migration and the colour normaliser.
- *
- * `normaliseHabit` runs against data written by an older version of the app —
- * ROADMAP.md phase 1 calls untested code of that shape "the definition of a
- * trap", because the only way to find out it is wrong is a user restoring a
- * backup they made a year ago.
+ * The legacy-import migration and the colour normaliser. `normaliseHabit` runs
+ * against data an older version wrote, where the only way to find out it is
+ * wrong is a user restoring a backup they made a year ago.
  */
 
 import { describe, expect, it } from "vitest";

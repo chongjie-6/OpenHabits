@@ -1,19 +1,11 @@
 /**
- * The global rate limit tier. See DESIGN.md §13.17.
+ * The global rate limit tier. See DESIGN.md §13.17. `proxy.ts` rather than the
+ * deprecated `middleware.ts`, and with no `runtime` export, which throws here.
  *
- * `proxy.ts` rather than `middleware.ts`: Next 16 renamed the convention, and
- * the old name is deprecated. It runs on the Node runtime, and a `runtime`
- * export here throws rather than being ignored — so there is none.
- *
- * The first cross-cutting thing in this app that is not a header in
- * `next.config.ts`, and the matcher is what makes it affordable. Every route in
- * this app but five prerenders to static HTML that a CDN serves; a proxy with no
- * matcher would put a function invocation in front of all of it, and a Redis
- * command in front of every stylesheet. Scoped to `/api`, it runs only where
- * there was already going to be a function.
- *
- * Per the proxy docs it must not expect shared module state to reach the app,
- * and it does not: the verdict is the whole of its output.
+ * The matcher is what makes it affordable: nearly every route prerenders to
+ * static HTML a CDN serves, and an unmatched proxy would put an invocation in
+ * front of all of it. Scoped to `/api`, it runs only where a function already
+ * would. Its verdict is the whole of its output — no module state travels.
  */
 
 import { NextResponse } from "next/server";
@@ -25,8 +17,8 @@ export async function proxy(
 ): Promise<NextResponse | Response> {
   const { pathname } = request.nextUrl;
 
-  // The exclusions live here rather than in the matcher, so the rule about which
-  // endpoints are metered is stated once, in a module a test can import.
+  // Here rather than in the matcher, so which endpoints are metered is stated
+  // once, in a module a test can import.
   if (!metered(pathname)) return NextResponse.next();
 
   const verdict = await check("global", clientIp(request.headers));
@@ -39,13 +31,10 @@ export async function proxy(
 }
 
 /**
- * `/api` and nothing else. Broad rather than exact on purpose: the two endpoints
- * that must not be metered — `/api/email`, where QStash delivers a queued mail,
- * and `/api/cron/…`, the hourly reminder sweep — are excluded by
- * `ratelimit.ts:metered` inside the function instead of by a negative lookahead
- * here. Expressing it twice would mean two rules that have to agree, and only one
- * of them can be unit-tested; the cost of the broad matcher is an invocation that
- * returns immediately without touching Redis.
+ * Broad rather than exact on purpose: the two unmetered endpoints are excluded
+ * by `ratelimit.ts:metered` inside the function, since expressing it twice
+ * would mean two rules that must agree and only one that can be tested. The
+ * cost is an invocation that returns without touching Redis.
  */
 export const config = {
   matcher: ["/api/:path*"],

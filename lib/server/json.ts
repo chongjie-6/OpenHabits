@@ -1,15 +1,11 @@
 import "server-only";
 
 /**
- * The parsed body, or `undefined` if it is not JSON. `undefined` is free to mean
- * failure because no JSON text parses to it — `"null"` comes back as `null`.
- *
- * The caller answers the failure: the routes disagree on the shape of a 400
- * (`/api/sync` owes its client a `SyncErrorBody`), and one caller is not a route.
- *
- * `maxBytes` also reads as failure when the body runs past it. A route that
- * checks `Content-Length` has only checked what the caller *declared*: a chunked
- * request declares nothing, and `request.json()` buffers whatever arrives.
+ * The parsed body, or `undefined` if it is not JSON — free to mean failure
+ * because no JSON text parses to it. The caller answers it, the routes
+ * disagreeing on the shape of a 400. Past `maxBytes` also reads as failure:
+ * `Content-Length` is only what the caller *declared*, and a chunked request
+ * declares nothing while `request.json()` buffers whatever arrives.
  */
 export async function readJson(
   source: Request | string,

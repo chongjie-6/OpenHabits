@@ -1,20 +1,12 @@
 "use client";
 
 /**
- * Where the link in the reset email lands. See DESIGN.md §13.13.
- *
- * A page rather than a panel inside Settings, because the person arriving here
- * is following a link from an email client and may never have had this app open
- * on this device. It is static like everything else: the token comes from
- * `?token=`, read on the client, for the same reason `/habit` takes its id that
- * way (§2.2) — a dynamic segment could not be prerendered, and this page has to
- * work from a cold cache.
- *
- * Better Auth's `GET /api/auth/reset-password/:token` is what actually redirects
- * here, and it has already checked that the token exists and has not expired —
- * an invalid one arrives as `?error=INVALID_TOKEN` instead. That check is not
- * trusted twice: `resetPassword` below consumes the token server-side, and its
- * answer is the one that decides.
+ * Where the link in the reset email lands. See DESIGN.md §13.13. A page rather
+ * than a panel, because whoever arrives may never have had this app open here.
+ * Static like everything else, so the token comes from `?token=` on the client
+ * as `/habit` takes its id (§2.2). Better Auth has already checked the token
+ * before redirecting here, and that check is not trusted twice: `resetPassword`
+ * consumes it server-side, and its answer decides.
  */
 
 import { useState, useSyncExternalStore } from "react";
@@ -35,18 +27,10 @@ type Status =
 const NEVER_CHANGES = () => () => {};
 
 /**
- * The token from `?token=`, or null when the link carried none.
- *
- * `undefined` on the server and through hydration — the same shape as
- * `useMounted` in `AccountCard` and for the same reason (§8.4): this HTML is
- * prerendered and cached by the service worker, so the *absence* of a token has
- * to be the state that renders on the server. Reporting "bad link" first and
- * correcting it after hydration would flash a failure at everyone who arrived
- * with a perfectly good one.
- *
- * A `useSearchParams` read would opt the route out of static prerendering, and
- * the whole app is static (§8.1). Returning a string keeps `getSnapshot` stable:
- * strings compare by value, so React sees no change between renders.
+ * The token from `?token=`, and `undefined` through hydration (§8.4): this HTML
+ * is cached by the service worker, so reporting "bad link" first would flash a
+ * failure at everyone who arrived with a good one. Not `useSearchParams`, which
+ * would opt the route out of prerendering; a string keeps `getSnapshot` stable.
  */
 function useResetToken(): string | null | undefined {
   return useSyncExternalStore(
@@ -84,17 +68,16 @@ export default function ResetPasswordPage() {
     setBusy(false);
 
     if (result.error) {
-      // The token is consumed on the first successful attempt, so a failure
-      // here is usually a link that was already used or has since expired.
+      // The token is consumed on first use, so a failure here is usually a
+      // link already used or since expired.
       setError(
         result.error.message ?? "That link did not work. Ask for a new one.",
       );
       return;
     }
 
-    // No session is created, deliberately: whoever opened the mail proves they
-    // hold the address, not that they are at a device the account should stay
-    // signed in on. They sign in with the new password like anyone else.
+    // No session, deliberately: opening the mail proves they hold the address,
+    // not that this is a device to stay signed in on.
     setDone(true);
   }
 

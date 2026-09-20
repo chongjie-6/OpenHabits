@@ -1,8 +1,6 @@
 /**
- * The fact corpus, bound to the deck. See DESIGN.md §5.3.
- *
- * Shaped exactly like `lib/quotes.ts`: the selection lives in `lib/deck.ts` and
- * the two corpora differ only in their contents and their tag union.
+ * The fact corpus, bound to the deck (§5.3). Shaped exactly like
+ * `lib/quotes.ts`; the two differ only in contents and tag union.
  */
 
 import { FACTS } from "@/data/facts";
@@ -10,13 +8,9 @@ import { itemForDay, seamWindow } from "./deck";
 import type { DayKey, Fact, FactTag } from "./types";
 
 /**
- * Filter the corpus by tag. An empty selection means "everything", and so does
- * a selection this corpus has none of — see `Settings.dailyTags`, which holds
- * one flat list for both corpora.
- *
- * `readonly string[]` rather than the tag union: the caller is the synced
- * settings blob, whose contents a device on an older build cannot be trusted to
- * have narrowed. Membership is decided here, by intersection.
+ * An empty selection means "everything", and so does one this corpus has none
+ * of. `readonly string[]` rather than the union, because the caller is a synced
+ * blob an older build wrote; membership is decided here, by intersection.
  */
 export function deckFor(tags: readonly string[] = []): Fact[] {
   if (tags.length === 0) return FACTS;

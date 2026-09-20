@@ -4,17 +4,11 @@ import { useState } from "react";
 import { renderShareCard, shareImage, type ShareCard } from "@/lib/share-card";
 
 /**
- * Turn a grid into an image and hand it over. See DESIGN.md §4.6.
- *
- * The work is deliberately not done until the tap: rendering a year of cells to
- * a canvas on every visit to Stats would cost every user a paint for a feature
- * most of them will never use, and the tap is the first moment the answer is
- * wanted. `busy` is a real state rather than a courtesy — `toBlob` on a
- * megapixel canvas is not instant on a phone.
- *
- * This is the one place in the app that awaits before something happens, and it
- * is allowed to: §7.2's rule is about the tick, whose whole promise is that it
- * never waits. Nothing here touches the store.
+ * A grid as an image, handed over. See DESIGN.md §4.6. Nothing happens until
+ * the tap: drawing a year of cells on every visit to Stats would cost every
+ * user a paint for a feature most never use. `busy` is a real state, `toBlob`
+ * on a megapixel canvas being slow on a phone. The one place in the app that
+ * awaits before something happens — §7.2's rule is about the tick.
  */
 export function ShareGrid({
   card,

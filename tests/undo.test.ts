@@ -1,10 +1,7 @@
 /**
- * The single undo slot — `lib/undo.ts`.
- *
- * The two things worth pinning are the ones a user would notice going wrong:
- * an undo that fires twice (restoring a habit and then restoring it again over
- * a newer edit), and a stale timer dismissing an offer that replaced the one it
- * was scheduled for.
+ * The single undo slot. The two things worth pinning are an undo that fires
+ * twice, restoring over a newer edit, and a stale timer dismissing the offer
+ * that replaced the one it was scheduled for.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

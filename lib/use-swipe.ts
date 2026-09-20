@@ -1,12 +1,9 @@
 "use client";
 
 /**
- * Horizontal swipe as day/week navigation. See DESIGN.md §6.8.
- *
- * The decision is split out as a pure function because every hard part of this
- * gesture is a threshold, and thresholds are the part worth testing: a list of
- * habits exists to be scrolled vertically, and a thumb dragging down it drifts
- * sideways by tens of pixels without meaning anything by it.
+ * Horizontal swipe as day/week navigation. See DESIGN.md §6.8. The decision is
+ * a pure function because every hard part is a threshold: a thumb scrolling a
+ * list drifts sideways by tens of pixels without meaning anything by it.
  */
 
 import { useRef } from "react";
@@ -23,11 +20,9 @@ export const MAX_OFF_AXIS = 0.6;
 const MAX_DURATION_MS = 800;
 
 /**
- * `dt` is omitted by a gesture that followed the finger the whole way
- * (`lib/use-drag.ts`): there a slow drag is not a scroll that changed its mind,
- * it is someone taking their time over something they can see moving. The other
- * two thresholds still apply, which is why this is an argument rather than a
- * second copy of the rule.
+ * `dt` is omitted by a gesture the surface followed (`use-drag.ts`), where a
+ * slow drag is someone taking their time over something they can see moving.
+ * An argument rather than a second copy of the other two thresholds.
  */
 export function resolveSwipe(
   dx: number,
@@ -41,17 +36,11 @@ export function resolveSwipe(
 }
 
 /**
- * Is the press inside something that scrolls sideways on its own?
- *
- * The week grid is a table in an `overflow-x-auto` box, and on a phone it does
- * overflow. Dragging it sideways has to scroll it rather than change the week,
- * so the gesture yields to any horizontal scroller between the press and the
- * element the hook is attached to. This is also why the *hook* sets no
- * `touch-action`: it cannot know which of its surfaces has one under it, and
- * `pan-y` on the container would take the horizontal axis away from that
- * scroller, where a descendant cannot give it back. A surface that knows it
- * holds no sideways scroller may claim an axis itself, and `WeekStrip` does:
- * a page scroll started on it cancels the pointer and the swipe is never read.
+ * The gesture yields to any horizontal scroller between the press and the
+ * container — the week grid is one, and dragging it must scroll it. It is also
+ * why the hook sets no `touch-action`: `pan-y` on the container would take an
+ * axis a descendant cannot get back. A surface holding no scroller may claim
+ * one itself, as `WeekStrip` does.
  */
 export function insideHorizontalScroller(
   target: EventTarget | null,
@@ -69,12 +58,9 @@ export function insideHorizontalScroller(
 }
 
 /**
- * Spread the result onto the element the gesture applies to.
- *
- * Touch and pen only. On a desktop a horizontal drag is a text selection, and
- * the arrow buttons beside the heading are already the answer there — which is
- * also what keeps the feature reachable from a keyboard and a screen reader,
- * since a swipe is announced to neither.
+ * Touch and pen only: on a desktop a horizontal drag is a text selection, and
+ * the arrow buttons are the answer there — which is also what keeps this
+ * reachable from a keyboard and a screen reader, neither of which hears a swipe.
  */
 export function useSwipe(onSwipe: (direction: SwipeDirection) => void) {
   const from = useRef<{ x: number; y: number; t: number; id: number } | null>(
@@ -101,9 +87,8 @@ export function useSwipe(onSwipe: (direction: SwipeDirection) => void) {
       };
     },
 
-    // Touch pointers are implicitly captured by the element the press landed
-    // on, so the release arrives here by bubbling even if the thumb has left
-    // the row it started on.
+    // Touch pointers are implicitly captured, so the release bubbles here even
+    // if the thumb has left the row it started on.
     onPointerUp(event: React.PointerEvent) {
       const start = from.current;
       from.current = null;
@@ -125,9 +110,8 @@ export function useSwipe(onSwipe: (direction: SwipeDirection) => void) {
     },
 
     /**
-     * A swipe that began on a tick target still ends in a click. Swallowing
-     * that click in the capture phase is the whole reason swiping across the
-     * list does not tick a habit off on the way past.
+     * A swipe that began on a tick target still ends in a click; swallowing it
+     * here is what keeps a swipe from ticking a habit off on the way past.
      */
     onClickCapture(event: React.MouseEvent) {
       if (!swiped.current) return;

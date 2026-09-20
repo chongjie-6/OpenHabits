@@ -5,12 +5,9 @@ import { todayKey } from "./dates";
 import type { DayKey } from "./types";
 
 /**
- * The current civil day, as external state — the clock genuinely is an external
- * system, so React uses the server snapshot (`null`) through hydration and then
- * switches over, with no mismatch and no cascading render.
- *
- * Subscribing also rolls the app over at midnight: a habit tracker left on a
- * bedside table at 23:59 should not still show yesterday at 00:01.
+ * The current civil day as external state, which the clock genuinely is — so
+ * hydration gets the server snapshot and then switches over. Subscribing also
+ * rolls the app over at midnight, for the phone left on a bedside table.
  */
 
 const TICK_MS = 60_000;
@@ -33,8 +30,8 @@ function subscribe(onChange: () => void): () => void {
 
 /** Null on the server and through hydration; a DayKey from then on. */
 export function useToday(dayStartHour: number): DayKey | null {
-  // A DayKey is a string, so React's Object.is check settles on value equality
-  // and a fresh call per snapshot does not loop.
+  // A DayKey is a string, so `Object.is` settles on value equality and a fresh
+  // call per snapshot does not loop.
   const getSnapshot = useCallback(() => todayKey(dayStartHour), [dayStartHour]);
   return useSyncExternalStore(subscribe, getSnapshot, () => null);
 }

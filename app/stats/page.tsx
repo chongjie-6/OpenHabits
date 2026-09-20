@@ -49,9 +49,8 @@ export default function StatsPage() {
     // Streaks and rates read the past, never the tail of future cells.
     const past = stats.filter((s) => s.date <= day);
 
-    // The trend runs on whole calendar months, which the grid's week-aligned
-    // window cannot supply: it starts partway through a month, and the first
-    // bar would be a fraction of one standing beside five whole ones.
+    // Whole calendar months, which the grid's week-aligned window cannot give:
+    // its first bar would be a fraction standing beside five whole ones.
     const trendFrom = startOfMonth(day, TREND_MONTHS - 1);
     const trend = monthRates(
       buildHistory(habits, entries, trendFrom, day, settings.weekStartsOn),
@@ -169,10 +168,8 @@ export default function StatsPage() {
                       label: "perfect days",
                     },
                   ],
-                  // The past only. The grid on screen runs to the end of this
-                  // week and dims what has not happened yet; a still image has
-                  // no way to say "not yet", so a Monday share would otherwise
-                  // show the rest of the week as four missed days.
+                  // The past only: a still image cannot dim what has not
+                  // happened, so a Monday share would read as four missed days.
                   stats: past,
                 })}
                 filename={`openhabits-${day}.png`}

@@ -15,9 +15,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * Metadata is only readable from a Server Component and `page.tsx` here is a
- * client component (it owns the grid's local state), so the route's metadata
- * lives in this layout instead. It adds no markup.
+ * Metadata is readable only from a Server Component, and `page.tsx` here is a
+ * client one, so the route's metadata lives in this layout. It adds no markup.
  */
 export default function WeekLayout({ children }: LayoutProps<"/week">) {
   return children;

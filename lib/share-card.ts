@@ -1,19 +1,10 @@
 "use client";
 
 /**
- * The contribution grid, rendered to an image the user can keep. See DESIGN.md
- * §4.6.
- *
- * Social features are a v1 non-goal and this is not one: nothing is posted,
- * no account is involved, and the file goes wherever the user's own share sheet
- * sends it. It is an *export* — G5's "the data is theirs" pointed at the one
- * screen G2 calls the emotional payoff.
- *
- * Drawn rather than screenshotted. `components/Heatmap.tsx` renders SVG sized
- * for a phone, with a keyboard cursor, selection rings and month gutters that
- * belong to an interface, not to a picture; serialising it would also inline
- * every CSS variable it depends on. The layout here is its own, at a fixed size
- * that does not depend on the viewport.
+ * The contribution grid as an image the user can keep. See DESIGN.md §4.6. An
+ * export, not a social feature: nothing is posted and no account is involved.
+ * Drawn rather than screenshotted, because `Heatmap.tsx` renders an interface —
+ * cursor, selection rings, phone-sized gutters — rather than a picture.
  */
 
 import { levelColor, type Ramp } from "./colors";
@@ -21,10 +12,8 @@ import { formatMonthShort } from "./dates";
 import type { DayStat } from "./history";
 
 /**
- * Fixed cell metrics rather than a fixed canvas: the grid is the subject, and a
- * cell should be the same size whether the card covers twenty weeks or
- * fifty-three. The canvas is sized to fit what it holds, down to a floor wide
- * enough that a short window still reads as a card rather than a strip.
+ * Fixed cells rather than a fixed canvas: a cell is the same size at twenty
+ * weeks as at fifty-three, with a floor so a short window is not a strip.
  */
 const CELL = 22;
 const GAP = 5;
@@ -49,13 +38,10 @@ export type ShareCard = {
 };
 
 /**
- * Every colour the card needs, already resolved to something a canvas accepts.
- *
- * The tokens are CSS custom properties, and two of the ramps are `color-mix`
- * or relative-colour expressions on top of them — none of which
- * `ctx.fillStyle` can parse. So each one is assigned to a throwaway element and
- * read back through `getComputedStyle`, which is the browser's own resolver and
- * the only thing that knows the current theme, skin and palette.
+ * `ctx.fillStyle` parses neither a custom property nor the `color-mix` the
+ * ramps are built from, so each token is assigned to a throwaway element and
+ * read back through `getComputedStyle` — the only resolver that knows the
+ * current theme, skin and palette.
  */
 function resolveColors(values: string[]): string[] {
   const probe = document.createElement("span");
@@ -67,9 +53,8 @@ function resolveColors(values: string[]): string[] {
       probe.style.color = "";
       probe.style.color = value;
       const computed = getComputedStyle(probe).color;
-      // An unparseable value leaves `color` unset, and the computed value is
-      // then whatever the span inherited — wrong, but never invalid, so the
-      // card renders in the wrong colour rather than throwing mid-draw.
+      // An unparseable value leaves the inherited colour: wrong, never invalid,
+      // so the card renders off-colour rather than throwing mid-draw.
       return computed || "#000000";
     });
   } finally {
@@ -116,11 +101,8 @@ export type Geometry = {
 };
 
 /**
- * Canvas size and grid origin for a given number of weeks.
- *
- * Seven rows deep and as many columns as there are weeks. Exported because it
- * is the one part of this file that can be checked without a canvas — and the
- * part where an off-by-one puts the last week over the edge of the image.
+ * Exported because it is the one part of this file checkable without a canvas,
+ * and the part where an off-by-one puts a week over the edge of the image.
  */
 export function geometry(weeks: number): Geometry {
   const grid = Math.max(1, weeks) * STEP - GAP;
@@ -134,10 +116,7 @@ export function geometry(weeks: number): Geometry {
   };
 }
 
-/**
- * Render the card. Returns a PNG blob, or null where the browser gives no 2D
- * context — which is the same answer as "this device cannot share an image".
- */
+/** A PNG blob, or null where there is no 2D context — the same as "cannot share". */
 export async function renderShareCard(card: ShareCard): Promise<Blob | null> {
   const weeks = Math.ceil(card.stats.length / 7);
   const { width, height, left, gridBottom } = geometry(weeks);
@@ -161,8 +140,8 @@ export async function renderShareCard(card: ShareCard): Promise<Blob | null> {
   ctx.font = "400 30px system-ui, sans-serif";
   ctx.fillText(truncate(ctx, card.subtitle, width - PAD * 2), PAD, PAD + 110);
 
-  // Month labels, at the first week of each month with the same three-column
-  // breathing room the on-screen grid uses to keep February off January.
+  // The same three-column breathing room the on-screen grid uses to keep
+  // February off January.
   ctx.font = "400 22px system-ui, sans-serif";
   let previousMonth = "";
   let lastLabelled = -3;
@@ -186,8 +165,7 @@ export async function renderShareCard(card: ShareCard): Promise<Blob | null> {
     const y = GRID_TOP + (index % 7) * STEP;
 
     if (stat.level === "rest") {
-      // A rest day is an outline, exactly as on screen — an empty square and a
-      // day with nothing done are different things and must not look alike.
+      // A rest day is an outline, as on screen: it must not read as a failure.
       ctx.strokeStyle = colors.border;
       ctx.lineWidth = 1.5;
       roundRect(ctx, x + 0.75, y + 0.75, CELL - 1.5, CELL - 1.5, 5);
@@ -257,13 +235,9 @@ function truncate(
 }
 
 /**
- * Hand the image to the user: the system share sheet where there is one, a
- * download where there is not.
- *
- * `canShare` is checked with the actual file, not just for the API's existence
- * — desktop Chrome has `navigator.share` and refuses files — and a cancelled
- * share sheet throws `AbortError`, which is a completed interaction rather than
- * a failure to report.
+ * The share sheet where there is one, a download where there is not. `canShare`
+ * is checked with the actual file, since desktop Chrome has `navigator.share`
+ * and refuses files, and a cancelled sheet throws `AbortError`.
  */
 export async function shareImage(
   blob: Blob,
@@ -278,8 +252,7 @@ export async function shareImage(
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError")
         return "shared";
-      // Anything else — a share target that rejected the file, a permissions
-      // policy — falls through to the download, which always works.
+      // Anything else falls through to the download, which always works.
     }
   }
 

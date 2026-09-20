@@ -2,19 +2,12 @@ import "server-only";
 
 /**
  * Outbound mail, handed to QStash instead of awaited. See DESIGN.md §13.16.
+ * Which implementation runs is a property of the deployment, never of the
+ * caller, and with nothing set this file may as well not exist.
  *
- * The seam has one shape and two implementations, and which one runs is a
- * property of the deployment rather than of the caller: `queueConfigured()`
- * answers honestly, `better-auth.ts` sends inline when it says no, and a
- * deployment with none of these variables behaves exactly as it did before this
- * file existed.
- *
- * **What travels, and what does not.** A verification link is a session
- * (§13.12), and a QStash message body is retained for observability — so the
- * link never enters one. The envelope goes into Redis under a random id with an
- * hour's TTL and the message carries only the id, which means the token is
- * readable by whoever holds the Redis credentials and nobody else, and expires
- * on its own whether or not the worker ever runs.
+ * **The link never enters a QStash body**, which is retained, because a
+ * verification link is a session (§13.12): the envelope goes to Redis under a
+ * random id with an hour's TTL and the message carries only the id.
  */
 
 import { Client } from "@upstash/qstash";
@@ -23,10 +16,7 @@ import { getRedis, redisConfigured } from "./redis";
 import { siteURL } from "../site-url";
 import { type EmailJob, isEmailKind } from "../email";
 
-/**
- * An hour, matching `resetPasswordTokenExpiresIn`. An envelope that outlives
- * its own token is a job whose only possible outcome is a dead link.
- */
+/** Matching `resetPasswordTokenExpiresIn`: a longer-lived envelope only mails a dead link. */
 const ENVELOPE_TTL_SECONDS = 3600;
 
 const QUEUE_NAME = "email";
@@ -36,9 +26,7 @@ const KEY_PREFIX = "openhabits:email:";
 const MAX_ADDRESS = 320;
 const MAX_URL = 2048;
 
-/** Three attempts. A fourth would still be inside the token's hour, but a send
- * that has failed three times is failing for a reason retrying will not fix,
- * and the DLQ is where someone can see it. */
+/** A send that has failed three times fails for a reason retrying will not fix. */
 const RETRIES = 3;
 
 const globalForQueue = globalThis as unknown as {
@@ -46,14 +34,9 @@ const globalForQueue = globalThis as unknown as {
 };
 
 /**
- * `baseUrl` is passed rather than left to the SDK's default, and it is the
- * difference between mail sending and mail vanishing: a QStash account belongs
- * to one region, `https://qstash.upstash.io` *is* eu-central-1, and a token
- * issued in us-east-1 gets a 404 from it — "user not found in this region",
- * which reads like a bad token and is not one. `QSTASH_URL` is what the Upstash
- * console and its Vercel integration hand out beside the token; unset, the
- * default is kept, which is correct for a European account and wrong in a way
- * only production reveals for every other one.
+ * `baseUrl` is passed rather than defaulted because the SDK's default *is*
+ * eu-central-1, and a token from another region gets a 404 that reads like a
+ * bad token and is not one. `QSTASH_URL` is handed out beside the token.
  */
 function client(): Client {
   const token = process.env.QSTASH_TOKEN;
@@ -70,9 +53,7 @@ function client(): Client {
   return globalForQueue.openHabitsQStash;
 }
 
-/** Where QStash calls back. The origin comes from `siteURL()` rather than a
- * second resolver of its own — there is already one module that answers "what
- * is this deployment's public origin". */
+/** Where QStash calls back; `siteURL()` already answers what this origin is. */
 export function workerURL(env: NodeJS.ProcessEnv = process.env): URL {
   return new URL("/api/email", siteURL(env));
 }
@@ -86,12 +67,9 @@ function reachable(url: URL): boolean {
 }
 
 /**
- * Three conditions, and the third is the one that surprises: QStash delivers by
- * making an HTTP request from its own network, so it cannot reach a laptop. A
- * development machine holding a real token would otherwise enqueue messages
- * that fail their way into the DLQ while no mail arrives — worse than not
- * queueing at all, and silently so. So localhost answers "not configured" and
- * mail is sent inline, which is the behaviour a developer wants anyway.
+ * The third condition is the one that surprises: QStash delivers over HTTP from
+ * its own network, so it cannot reach a laptop, and a development machine with
+ * a real token would fill the DLQ while no mail arrived. Localhost is inline.
  */
 export function queueConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
   return (
@@ -106,13 +84,9 @@ function isString(value: unknown, max: number): value is string {
 }
 
 /**
- * Validated on the way out *and* on the way back in. The re-check in the worker
- * is not paranoia about our own writes: it is the one thing standing between a
- * compromised envelope store and this app mailing a genuine, branded link into
- * somebody else's origin — see `base-url.ts:mailableOrigin` and §13.12.
- *
- * Hand-rolled like `app/api/reminders/route.ts:parse`, for the same reason:
- * there is no schema library in this tree and one predicate does not justify one.
+ * Validated on the way out *and* back in: the re-check is what stands between a
+ * compromised envelope store and this app mailing a branded link into someone
+ * else's origin (§13.12). Hand-rolled, there being no schema library here.
  */
 export function parseEmailJob(
   value: unknown,
@@ -131,16 +105,13 @@ export function parseEmailJob(
 }
 
 /**
- * Awaited by the caller, and the distinction matters: this is a hand-off, not a
- * send. A failure here is a failure to accept the job at all, which is why
- * §13.10's rule survives the change — `better-auth.ts` still throws on it, and
- * Better Auth still rolls the sign-up back and frees the address.
+ * A hand-off, not a send, and the distinction matters: a failure here is a
+ * failure to accept the job at all, which still rolls the sign-up back.
  */
 export async function enqueueEmail(job: EmailJob): Promise<void> {
   const id = crypto.randomUUID();
 
-  // The envelope first. Enqueueing before storing would let QStash deliver
-  // before the worker has anything to read, spending a retry on a race.
+  // The envelope first, or QStash delivers before the worker has anything to read.
   await getRedis().set(`${KEY_PREFIX}${id}`, job, { ex: ENVELOPE_TTL_SECONDS });
 
   try {
@@ -150,11 +121,9 @@ export async function enqueueEmail(job: EmailJob): Promise<void> {
       retries: RETRIES,
     });
   } catch (cause) {
-    // Nothing will ever read this envelope, and it holds a live link for the
-    // hour of its TTL. Dropping it also means an orphan in Redis is evidence of
-    // a lost *send* rather than of a rejected hand-off, which is the one signal
-    // that tells these two failures apart from the outside — the reset path
-    // reports nothing to its caller by design (§13.13).
+    // Nothing will read this envelope, and it holds a live link for an hour.
+    // Dropping it also makes an orphan evidence of a lost send rather than of a
+    // rejected hand-off, which is the only signal that tells the two apart.
     await getRedis()
       .del(`${KEY_PREFIX}${id}`)
       .catch(() => {});
@@ -163,15 +132,10 @@ export async function enqueueEmail(job: EmailJob): Promise<void> {
 }
 
 /**
- * Read, but deliberately **not** claimed. `lib/server/reminders.ts` does the
- * opposite — it claims a device with the same `UPDATE` that selects it, so an
- * at-least-once cron sends at most once — and the divergence is intentional:
- * there a retry is the thing to prevent, here it is the entire reason the queue
- * exists. A consumed envelope would make a failed send unretryable.
- *
- * The cost is that a send whose 200 is lost produces a second mail. For a
- * verification or reset link that is a duplicate in the inbox, not a wrong
- * outcome, and the alternative is a link that never arrives at all.
+ * Read, deliberately **not** claimed — the opposite of `server/reminders.ts`,
+ * where a retry is the thing to prevent and here it is the whole point. The
+ * cost is a duplicate in the inbox when a 200 is lost, against a link that
+ * never arrives at all.
  */
 export async function dequeueEmail(
   id: string,
@@ -182,9 +146,7 @@ export async function dequeueEmail(
   return parseEmailJob(stored, env);
 }
 
-/** Called only after the send succeeded, so a retry has something to read
- * until then. A missing key on a later retry is how the worker knows the mail
- * is already gone. */
+/** Only after a successful send: a missing key is how a retry knows the mail went. */
 export async function completeEmail(id: string): Promise<void> {
   await getRedis().del(`${KEY_PREFIX}${id}`);
 }

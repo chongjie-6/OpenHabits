@@ -1,33 +1,14 @@
 /**
- * Custom palettes — the third appearance axis. See DESIGN.md §6.6.
+ * Custom palettes — the third appearance axis. See DESIGN.md §6.6. Colour
+ * tokens only, with a light and a dark half, so it composes with theme and skin.
  *
- * `theme` is light or dark. `skin` is which design. A palette is which
- * *colours*, and it composes with both: it overrides colour tokens only, so a
- * custom palette under `blocks` is still hard-edged and uppercase, and each
- * palette carries a light half and a dark half so the theme toggle keeps
- * working.
+ * **It wins by being inline**, which beats every `:root[data-skin=…]` block —
+ * so no skin knows palettes exist. **Device-local like skin**, never in the
+ * synced blob (§13.8 #1). **Contrast moves to the user**: `deriveSwatches`
+ * builds one that passes AA by construction and `audit` re-measures, but
+ * neither refuses a bad colour.
  *
- * **It wins by being inline.** Every skin defines its tokens through an
- * attribute selector on `:root`; a palette is written to the document element's
- * `style` property, and an inline declaration beats any selector regardless of
- * specificity. That is what lets this file stay out of `app/globals.css`
- * entirely — no fourth `data-skin` block, and nothing to keep in step with the
- * three that exist.
- *
- * **Device-local, like skin and for the same reason** (see `lib/skin.ts`): it
- * lives in `localStorage` alone and never enters the synced settings blob.
- * Repainting someone's laptop because they tried a colour on their phone is the
- * wart DESIGN.md §13.8 #1 already records once.
- *
- * **Contrast moves to the user.** The shipped skins were measured by hand at
- * author time — that is what the header of `app/globals.css` records. Nobody
- * measures a palette typed in at runtime, so `deriveSwatches` builds one that
- * passes AA by construction, and `audit` re-measures after every edit. Neither
- * refuses a bad colour: the user asked for full control and gets it, with the
- * numbers in front of them.
- *
- * This module is pure. Storage and the DOM live in `lib/theme.ts`, beside the
- * pre-paint script; the React surface is `lib/use-palette.ts`.
+ * Pure. Storage and the DOM are `lib/theme.ts`; React is `lib/use-palette.ts`.
  */
 
 import { AA_NON_TEXT, AA_TEXT, contrastRatio } from "./contrast";
@@ -36,17 +17,9 @@ import { hexToOklch, oklchToHex } from "./oklch";
 export type Mode = "light" | "dark";
 
 /**
- * Every colour token a skin defines, and nothing else.
- *
- * Not here on purpose:
- *
- * - **The six habit accents.** A habit's colour is its identity across the app
- *   (the note in `app/globals.css`), and every habit already accepts any colour
- *   individually. A palette changes the room, not which habit is the blue one.
- * - **`--habit-l-min` / `--habit-l-max`.** They describe the lightness band the
- *   *theme* occupies, which is the axis they already track.
- * - **Radii, border width, shadow, type.** Those are the skin's job, and a
- *   palette that also changed them would be a fourth skin under another name.
+ * Every colour token a skin defines, and nothing else. Out on purpose: the six
+ * habit accents (a habit's colour is its identity), the `--habit-l-*` band
+ * (which tracks the theme), and every shape and type token (the skin's job).
  */
 export const PALETTE_TOKENS = [
   "--background",
@@ -140,12 +113,9 @@ export function isPaletteHex(value: unknown): value is string {
 }
 
 /**
- * A stored palette, or null if it is anything else.
- *
- * Strict on purpose — every token present, every value a full lowercase hex.
- * A partial palette would inherit the rest from whichever skin happened to be
- * active, so the same saved colours would render differently depending on a
- * setting the palette has already overridden.
+ * Strict on purpose — every token, every value a lowercase hex. A partial
+ * palette would inherit the rest from the active skin, so the same saved
+ * colours would render differently depending on a setting it has overridden.
  */
 export function normalisePalette(value: unknown): Palette | null {
   if (typeof value !== "object" || value === null) return null;
@@ -172,15 +142,9 @@ export function normalisePalette(value: unknown): Palette | null {
 
 /**
  * The lightness that puts `hue`/`chroma` at `target` contrast against a colour.
- *
- * Binary search rather than algebra: luminance depends on all three OKLCh axes
- * through two non-linear transfer functions, and chroma is clipped to the sRGB
- * gamut on the way out, so there is nothing to invert.
- *
- * `direction` is which way to walk from the target — `"darker"` for text on a
- * light ground, `"lighter"` for the reverse. When the target cannot be reached
- * at all the extreme is returned rather than throwing: the caller still gets
- * the best colour available, and `audit` reports the shortfall.
+ * Binary search because there is nothing to invert: luminance is non-linear in
+ * all three axes and chroma is gamut-clipped on the way out. An unreachable
+ * target returns the extreme rather than throwing; `audit` reports it.
  */
 function fitLightness(
   hue: number,
@@ -243,14 +207,9 @@ const DANGER_HUE = 27;
 const DANGER_CHROMA = 0.19;
 
 /**
- * Build a full palette for one mode from a single seed colour.
- *
- * Lightness is fixed for the neutrals and *solved* for everything that carries
- * text, so the result clears AA whatever hue it is handed. Chroma is the seed's,
- * scaled down hard for the neutrals — enough to tint a surface, never enough to
- * colour it — and left alone for the accents. Out-of-gamut combinations are not
- * a special case: `oklchToHex` reduces chroma until they fit, which is also why
- * the pale end of the ramp comes out less saturated without being told to.
+ * A full palette for one mode from one seed. Lightness is fixed for neutrals
+ * and *solved* wherever text sits, so any hue clears AA; chroma is the seed's,
+ * scaled hard for neutrals. `oklchToHex` handles out-of-gamut by reducing it.
  */
 export function deriveSwatches(seed: string, mode: Mode): Swatches {
   const base = hexToOklch(seed);
@@ -269,22 +228,17 @@ export function deriveSwatches(seed: string, mode: Mode): Swatches {
   const foreground = hex(neutral.foreground.l, neutral.foreground.c * tint);
   const empty = hex(neutral.empty.l, neutral.empty.c * tint);
 
-  // Away from the page: darker on a light ground, lighter on a dark one. Every
-  // solved colour walks this way, including the accent — whose label is white
-  // in light mode and near-black in dark, so "legible against its own label"
-  // and "away from the page" happen to point the same way.
+  // Away from the page: darker on a light ground, lighter on a dark one.
   const away = mode === "light" ? "darker" : "lighter";
 
   const mutedChroma = 0.012 * tint;
-  // The inset is the darkest surface in light mode and the lightest in dark, so
-  // it is the binding constraint for secondary text either way.
+  // The inset is the binding constraint for secondary text in either mode.
   const muted = hex(
     fitLightness(hue, mutedChroma, inset, TEXT_TARGET, away),
     mutedChroma,
   );
 
-  // The accent is solved against its own label rather than against the page: it
-  // is a filled button before it is anything else.
+  // Solved against its own label: an accent is a filled button first.
   const accentFg =
     mode === "light" ? "#ffffff" : hex(0.18, Math.min(chroma, 0.04));
   const accent = hex(
@@ -316,9 +270,7 @@ export function deriveSwatches(seed: string, mode: Mode): Swatches {
     "--muted": muted,
     "--accent": accent,
     "--accent-fg": accentFg,
-    // One accent, twice. The second exists for `blocks`, which paints on black
-    // and cannot use the first; a derived palette has no such problem, and the
-    // editor still lets it be changed by hand.
+    // One accent twice: the second exists for `blocks`, which paints on black.
     "--accent-2": accent,
     "--accent-2-fg": accentFg,
     "--ring": ring,
@@ -352,21 +304,10 @@ export const PRESETS: { id: string; label: string; seed: string }[] = [
 ];
 
 /**
- * The pairings worth checking.
- *
- * Not every combination — most of them never meet on screen, and a wall of
- * green ticks teaches the user to stop reading the panel. These are the ones a
- * real screen puts together.
- *
- * `kind: "visible"` rows are not a WCAG bar. There is no standard for "a filled
- * heatmap cell should be distinguishable from an empty one", but it is the
- * thing most likely to go wrong in a hand-built ramp, so it gets a stated floor
- * rather than being left to the eye. Both floors are set just under what the
- * shipped skins already achieve — classic's level 1 sits at 1.19 on its empty
- * cell and its border at 1.21 on the page — because a floor the default theme
- * would fail is a floor that teaches the user to ignore the panel. They catch
- * the degenerate case, which is the one that matters: a step that has vanished
- * into the one below it.
+ * The pairings a real screen puts together, not every combination — a wall of
+ * green ticks teaches the user to stop reading the panel. `kind: "visible"` is
+ * not a WCAG bar but a stated floor, set just under what the shipped skins
+ * achieve, to catch the degenerate case: a step lost in the one below it.
  */
 export const CONTRAST_PAIRS: {
   label: string;
@@ -469,8 +410,7 @@ export type AuditRow = (typeof CONTRAST_PAIRS)[number] & {
 export function audit(swatches: Swatches): AuditRow[] {
   return CONTRAST_PAIRS.map((pair) => {
     const ratio = contrastRatio(swatches[pair.fg], swatches[pair.bg]) ?? 1;
-    // Rounded before comparing, so the chip can never disagree with the number
-    // printed beside it.
+    // Rounded before comparing, so the chip cannot disagree with the number.
     const shown = Math.round(ratio * 10) / 10;
     return { ...pair, ratio, passes: shown >= pair.min };
   });

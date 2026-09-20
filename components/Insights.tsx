@@ -7,16 +7,10 @@ import {
 } from "@/lib/insights";
 
 /**
- * The two second-order reads of the grid. See DESIGN.md §4.5.
- *
- * Both are bar rows rather than charts. The grid above them is already the
- * densest thing on the screen, and a second visual language beside it would
- * compete with the one thing §1's G2 calls the payoff — so these borrow its
- * colours and stay flat.
- *
- * A null rate is a real answer and is drawn as an empty track: "nothing was
- * ever scheduled on a Sunday" and "every Sunday was missed" must not look the
- * same.
+ * The two second-order reads of the grid. See DESIGN.md §4.5. Bar rows rather
+ * than charts: the grid above is already the densest thing on screen, so these
+ * borrow its colours and stay flat. A null rate is a real answer, drawn as an
+ * empty track — "never scheduled" must not look like "always missed".
  */
 
 export function WeekdayRates({ rates }: { rates: WeekdayRate[] }) {
@@ -67,11 +61,8 @@ export function WeekdayRates({ rates }: { rates: WeekdayRate[] }) {
 }
 
 /**
- * Months as columns, oldest to newest.
- *
- * Vertical rather than horizontal, unlike its neighbour: a weekday list has
- * seven fixed rows and reads as a ranking, where a run of months reads as a
- * direction and needs to be seen left to right.
+ * Vertical, unlike its neighbour: seven weekdays read as a ranking, where a run
+ * of months reads as a direction and has to be seen left to right.
  */
 export function MonthlyTrend({ months }: { months: MonthRate[] }) {
   if (months.length < 2) return null;
@@ -92,8 +83,8 @@ export function MonthlyTrend({ months }: { months: MonthRate[] }) {
               {month.rate === null ? "" : Math.round(month.rate * 100)}
             </span>
             <span
-              // A fixed track with the bar grown from the bottom, so a bad month
-              // is a short bar in a visible column rather than a missing one.
+              // A fixed track, so a bad month is a short bar rather than a
+              // missing one.
               className="flex h-20 w-full items-end rounded-xs bg-surface-2"
               aria-hidden="true"
             >

@@ -2,21 +2,10 @@
 
 /**
  * One slot of undo, held in memory for a few seconds. See DESIGN.md §7.4.
- *
- * Separate from `lib/store.ts` on purpose: this is a piece of interface state
- * with a timer attached, and the store is the data. It is shaped like
- * `lib/skin.ts` — a module-level value, a listener set, and
- * `useSyncExternalStore` — so nothing has to thread a callback through the tree.
- *
- * **One slot, not a stack.** Undo here is a way out of the tap you just
- * regretted, not a history: a stack would need every entry to stay valid as the
- * ones under it were undone, and the actions worth undoing at all are the rare,
- * loud ones. Offering a second undo pushes the first out.
- *
- * The offer expires. An undo that sits in the corner for ten minutes is a
- * button whose meaning nobody remembers, and the payload it holds — a deleted
- * habit's entire history — is not something to keep alive indefinitely for a
- * user who has moved on.
+ * Separate from `lib/store.ts` on purpose: interface state with a timer, not
+ * data. **One slot, not a stack** — a way out of the tap you just regretted,
+ * where a stack would need every entry to survive the ones beneath it. The
+ * offer expires, both for the meaning and for the history it is holding.
  */
 
 import { useSyncExternalStore } from "react";
@@ -56,10 +45,8 @@ function clearTimer(): void {
 }
 
 /**
- * Offer an undo. Returns the offer, mostly so a test can name it.
- *
- * `undo` is called at most once: `dismiss()` runs first, so a double tap on a
- * slow device cannot restore the same habit twice.
+ * Returns the offer, mostly so a test can name it. `undo` runs at most once:
+ * `dismiss()` goes first, so a double tap cannot restore the same habit twice.
  */
 export function offerUndo(message: string, undo: () => void): UndoOffer {
   clearTimer();
@@ -67,8 +54,8 @@ export function offerUndo(message: string, undo: () => void): UndoOffer {
   offer = { message, undo, id };
 
   timer = setTimeout(() => {
-    // Guarded on the id so a stale timer cannot dismiss a newer offer — a
-    // second offer replaces the first while the first timer is still pending.
+    // Guarded on the id: a second offer replaces the first while its timer is
+    // still pending.
     if (offer?.id === id) dismiss();
   }, UNDO_TTL_MS);
 
@@ -95,11 +82,7 @@ export function currentOffer(): UndoOffer | null {
   return offer;
 }
 
-/**
- * Reactive `currentOffer()`. Reports null on the server and through hydration,
- * which is the honest answer: nothing has been undone yet at that point, and
- * the bar has nothing to render either way.
- */
+/** Reactive `currentOffer()`, and null through hydration is the honest answer. */
 export function useUndoOffer(): UndoOffer | null {
   return useSyncExternalStore(subscribe, currentOffer, () => null);
 }

@@ -1,9 +1,7 @@
 /**
- * The identity contract, alone in a file with no imports, so `sync-store.ts` does
- * not pull Better Auth — and through it a database adapter — into its import
- * graph just to name its argument. That is what lets
- * `tests/server/sync-store.test.ts` run the real store against PGlite with no
- * auth configured at all.
+ * Alone in a file with no imports, so `sync-store.ts` can name its argument
+ * without pulling an auth stack into its graph — which is what lets its test
+ * run the real store against PGlite with no auth configured.
  */
 export type SyncUser = {
   /** Stable, opaque account id. Half of every primary key. */

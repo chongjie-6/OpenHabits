@@ -6,24 +6,15 @@ import { toggleEntry } from "@/lib/store";
 import type { DayKey } from "@/lib/types";
 
 /**
- * The tick target — the single most-used control in the app. See DESIGN.md
- * §6.5 for why there are three of them.
+ * The tick target, in one shape per skin (§6.5) and one file, because what must
+ * never differ between them is the mutation: all three go through the same
+ * `TickTarget`, where the whole control is the button, 44px on its shortest
+ * side, and the write is synchronous.
  *
- * One shape per skin: a row (`classic`), a denser row carrying its own recent
- * history (`grid`), and a tile (`blocks`). They live in one file on purpose.
- * What must never differ between them is the mutation, and the way to keep that
- * true is for all three to go through the same `TickTarget`: the whole control
- * is the button, it is at least 44px on its shortest side, and the write is
- * synchronous — no await and no spinner.
- *
- * `readOnly` is the one thing that disables it, and it is never about waiting:
- * a day that has not happened yet cannot be ticked (§6.8), the same rule the
- * week grid applies to its future columns.
- *
- * `onEdit` swaps what the press does rather than adding a second target beside
- * it (§6.10): the row stays one button, and ticking and editing are never live
- * at the same moment. It outranks `readOnly`, because a future day's habits are
- * still the user's to change.
+ * `readOnly` is the only thing that disables it, and never for waiting — a day
+ * that has not happened cannot be ticked (§6.8). `onEdit` swaps what the press
+ * does rather than adding a second target (§6.10), and outranks `readOnly`,
+ * because a future day's habits are still the user's to change.
  */
 
 function TickTarget({
@@ -119,10 +110,7 @@ function Checkbox({
   );
 }
 
-/**
- * Takes the checkbox's place in edit mode. The checkbox has to go rather than
- * sit beside it: a row still showing its tick state reads as tickable.
- */
+/** The checkbox goes rather than sits beside it: a tick state reads as tickable. */
 function EditMark({ color, size = 28 }: { color: string; size?: number }) {
   return (
     <span
@@ -221,11 +209,9 @@ export function HabitRow({
 }
 
 /**
- * `grid` — the same row with its own last-14-days strip and streak.
- *
- * `trail` and `streak` are optional so the row still renders if a caller has
- * not computed them; the emoji goes, because in a dense column the habit's
- * colour bar identifies it faster than a glyph does.
+ * `grid` — the same row with its own last-14-days strip and streak, both
+ * optional so a caller need not compute them. The emoji goes: in a dense
+ * column the colour bar identifies the habit faster than a glyph.
  */
 export function HabitRowDense({
   state,
@@ -315,13 +301,10 @@ export function HabitRowDense({
 const MAX_SEGMENTS = 8;
 
 /**
- * `blocks` — a tile you hit rather than a line you tick.
- *
- * A done tile flips to `--accent-2` wholesale, which is what makes the grid
- * readable at arm's length. The habit's own colour rides a bar across the top
- * of every tile, done or not, so identity survives the flip: filling the tile
- * with an arbitrary habit colour instead would put text on a colour nobody
- * validated it against.
+ * `blocks` — a tile you hit rather than a line you tick. A done tile flips to
+ * `--accent-2` wholesale, which is what carries at arm's length, and the
+ * habit's colour rides a bar so identity survives the flip — filling the tile
+ * would put text on a colour nobody validated it against.
  */
 export function HabitTile({
   state,

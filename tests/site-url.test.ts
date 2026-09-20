@@ -1,9 +1,7 @@
 /**
- * Where `metadataBase` comes from. See DESIGN.md §8.6.
- *
- * The property worth protecting is the one §8.6 chose deliberately: a build with
- * no environment set stays warning-free, because every variable in
- * `.env.example` is optional and CI builds with none of them.
+ * Where `metadataBase` comes from (§8.6). The property worth protecting is that
+ * a build with no environment set stays warning-free — every variable is
+ * optional, and CI builds with none of them.
  */
 
 import { describe, expect, it, vi } from "vitest";

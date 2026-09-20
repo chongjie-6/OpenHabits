@@ -1,17 +1,10 @@
 "use client";
 
 /**
- * The colour editor — DESIGN.md §6.6.
- *
- * Every change applies to the whole app immediately, the same way a habit tick
- * does (§7.2): there is no save button and nothing to await. The palette *is*
- * the preview.
- *
- * The one thing that cannot preview itself is the half you are not currently
- * in — editing dark colours on a device in light mode repaints nothing you can
- * see. Hence `Preview`, which renders a miniature of the app from whichever
- * half is being edited, and the audit panel beside it, which measures that half
- * rather than the one on screen.
+ * The colour editor (§6.6). Every change applies immediately, like a habit tick
+ * — no save button, nothing to await, the palette *is* the preview. The one
+ * thing that cannot preview itself is the half you are not in, hence `Preview`
+ * and an audit panel that measure the edited half rather than the one on screen.
  */
 
 import { useMemo, useState } from "react";
@@ -34,21 +27,15 @@ import { changePalette, paletteFromSkin, usePalette } from "@/lib/use-palette";
 export function PaletteEditor() {
   const palette = usePalette();
   const skin = useSkin();
-  // Safe to read the document here: this component only ever renders inside the
-  // page's `hydrated` gate, so the pre-paint script has already run.
+  // Safe to read the document: this only renders inside the page's `hydrated`
+  // gate, so the pre-paint script has already run.
   const [mode, setMode] = useState<Mode>(resolveMode);
 
-  // What the editor shows when nothing is customised yet: the active skin's own
-  // colours, so "customise" starts from exactly what is on screen.
-  //
-  // Memoised because `paletteFromSkin` drives `data-theme` through both modes to
-  // read them — it restores everything it touches and never yields to a paint,
-  // but it is not something to run on every keystroke.
-  //
-  // `skin` is the dependency even though it is not an argument: the colours come
-  // out of the stylesheet, and which ones the stylesheet answers with is exactly
-  // what `data-skin` decides. The linter cannot see through the DOM read, and
-  // dropping it would leave the editor seeding from the previous design.
+  // The active skin's own colours, so "customise" starts from what is on
+  // screen. Memoised because `paletteFromSkin` drives `data-theme` through both
+  // modes to read them. `skin` is the dependency though it is not an argument:
+  // it is what decides the stylesheet's answers, and the linter cannot see
+  // through the DOM read.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const skinPalette = useMemo(() => paletteFromSkin(), [skin]);
   const shown: Palette = palette ?? skinPalette;
@@ -220,12 +207,9 @@ export function PaletteEditor() {
 }
 
 /**
- * A miniature of the app in the half being edited.
- *
- * Colours are passed explicitly rather than as inline custom properties on the
- * wrapper: the surrounding page has its own palette applied, and a `var()` here
- * would resolve against whichever of the two won, which is exactly the confusion
- * this preview exists to remove.
+ * A miniature of the app in the half being edited. Colours are passed
+ * explicitly, not as custom properties: the page has its own palette applied,
+ * and a `var()` would resolve against whichever of the two won.
  */
 function Preview({ swatches }: { swatches: Swatches }) {
   return (
@@ -318,9 +302,8 @@ function Field({
   const [draft, setDraft] = useState(value);
   const [seen, setSeen] = useState(value);
 
-  // A preset or a base-colour change rewrites this field from outside. Adjusting
-  // during render rather than in an effect keeps the input from showing the old
-  // colour for a frame.
+  // A preset rewrites this field from outside; adjusting during render rather
+  // than in an effect keeps the old colour off the screen for a frame.
   if (seen !== value) {
     setSeen(value);
     setDraft(value);

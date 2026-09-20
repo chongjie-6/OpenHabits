@@ -1,11 +1,7 @@
 /**
- * Share-card layout — the part of `lib/share-card.ts` that has no canvas in it.
- *
- * The drawing itself needs a browser and is left to the field pass. What can be
- * checked here is the arithmetic that decides whether the last week of the year
- * lands inside the image or half a cell off the edge of it — the one failure
- * that would ship silently, because a card that is very slightly wrong still
- * looks like a card.
+ * The canvas-free part of `lib/share-card.ts`: the arithmetic deciding whether
+ * the last week lands inside the image or half a cell off the edge. The one
+ * failure that ships silently, a slightly wrong card still looking like one.
  */
 
 import { describe, expect, it } from "vitest";

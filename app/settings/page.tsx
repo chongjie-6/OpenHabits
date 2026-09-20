@@ -26,8 +26,7 @@ import type { AnyExportBundle, Habit, Settings } from "@/lib/types";
 
 export default function SettingsPage() {
   const { hydrated, habits, settings } = useOpenHabits();
-  // Safe here for the same reason it is safe on Today: everything below sits
-  // behind the `hydrated` gate, so this has the real answer before it renders.
+  // Safe as on Today: everything below sits behind the `hydrated` gate.
   const skin = useSkin();
   // Same gating rule as `useSkin` — behind `hydrated`, this has the real answer.
   const palette = usePalette();
@@ -49,18 +48,16 @@ export default function SettingsPage() {
     link.href = url;
     link.download = `openhabits-backup-${bundle.exportedAt.slice(0, 10)}.json`;
     link.click();
-    // Deferred: revoking in the same task can cancel a download that has not
-    // started reading the blob yet, and holding the URL a while costs nothing.
+    // Revoking in the same task can cancel a download that has not started
+    // reading the blob yet.
     setTimeout(() => URL.revokeObjectURL(url), 30_000);
     setNotice("Backup downloaded.");
   }
 
   /**
-   * Parse and hold, rather than import on sight. `importBundle` has always had
-   * a "replace" mode that wipes the device first, and until now nothing could
-   * reach it — the file picker hard-coded "merge". A complete destructive path
-   * with no caller is worse than either having it or not, so the choice is put
-   * to the user at the one moment they have the context to answer it.
+   * Parse and hold rather than import on sight: `importBundle`'s "replace" mode
+   * wipes the device first, and the choice belongs to the user at the one
+   * moment they have the context to answer it.
    */
   async function choose(file: File) {
     try {
@@ -174,8 +171,7 @@ export default function SettingsPage() {
           ]}
           onChange={(haptics) => {
             updateSettings({ haptics });
-            // Switching it on should demonstrate what was switched on — the
-            // alternative is going to Today and ticking something to find out.
+            // Switching it on should demonstrate what was switched on.
             if (haptics) vibrate(HAPTIC_DONE);
           }}
         />
@@ -256,10 +252,9 @@ export default function SettingsPage() {
             ref={fileInput}
             type="file"
             accept="application/json,.json"
-            // Named and removed from the tab order: `sr-only` hides it visually
-            // but leaves it focusable, so a keyboard user was landing on an
-            // invisible, unlabelled file input. The visible button beside it is
-            // the real control — this is the mechanism behind it.
+            // `sr-only` hides it visually but leaves it focusable, so a
+            // keyboard user landed on an invisible, unlabelled file input. The
+            // visible button is the control; this is the mechanism behind it.
             aria-label="Choose a backup file to import"
             tabIndex={-1}
             className="sr-only"
@@ -350,16 +345,10 @@ export default function SettingsPage() {
 }
 
 /**
- * Which tags the daily card may draw from — `Settings.dailyTags`, §5.3.
- *
- * Only the active mode's tags are offered. The stored list is flat across both
- * corpora, so a selection made under quotes survives a trip through facts and
- * back; showing both vocabularies at once would put nineteen chips on screen to
- * narrow a deck of one.
- *
- * Nothing here can empty the deck. Deselecting everything is the default —
- * "all of them" — and `lib/daily.ts` falls back to the whole corpus rather than
- * leaving the card with nothing to say.
+ * Which tags the daily card may draw from (§5.3). Only the active mode's are
+ * offered, though the stored list is flat across both, so a selection survives
+ * a trip through the other corpus. Nothing here can empty the deck:
+ * deselecting everything is the default, and `lib/daily.ts` falls back.
  */
 function DeckTags({ settings }: { settings: Settings }) {
   const mode = settings.dailyMode;

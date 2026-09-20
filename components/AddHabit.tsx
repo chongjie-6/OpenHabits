@@ -7,9 +7,8 @@ import { MOBILE, useMediaQuery } from "@/lib/use-media-query";
 
 export function AddHabit() {
   const [open, setOpen] = useState(false);
-  // Bumped on the way in, never on the way out: it leaves the sheet that is
-  // animating out with its contents intact, while making sure a half-filled
-  // draft is not still sitting there next time.
+  // Bumped on the way in, never out: the sheet animating out keeps its
+  // contents, and a half-filled draft is gone by the next open.
   const [instance, setInstance] = useState(0);
   const sheet = useMediaQuery(MOBILE);
 

@@ -1,16 +1,8 @@
 /**
- * The daily card's corpus, whichever one is selected. See DESIGN.md §5.3.
- *
- * Quotes and facts are separate corpora with separate tag unions, and this is
- * the one module that knows both. Everything downstream — the card, the
- * collection, the settings footer — reads a `DailyItem` and never learns which
- * corpus produced it, which is what keeps the two skins' markup from growing a
- * second variant apiece.
- *
- * The two decks run independently (`lib/deck.ts`), so switching modes lands you
- * mid-sequence in the other rather than restarting it: the sequence is a pure
- * function of the date, and the date does not care what you were reading
- * yesterday.
+ * The daily card's corpus, whichever is selected. See DESIGN.md §5.3. The one
+ * module that knows both: everything downstream reads a `DailyItem` and never
+ * learns which corpus produced it, so no skin grows a second variant. The two
+ * decks run independently, so switching modes lands you mid-sequence.
  */
 
 import { FACTS } from "@/data/facts";
@@ -21,11 +13,9 @@ import { deckFor as quoteDeckFor, QUOTE_TAGS } from "./quotes";
 import type { DailyMode, DayKey, Fact, Quote } from "./types";
 
 /**
- * A quote or a fact, flattened for display.
- *
- * `byline` is the line under the text and is always present — an author for a
- * quote, the source for a fact, which is the only attribution a fact has.
- * `detail` is the second line, which only a quote with a source has.
+ * A quote or a fact, flattened for display. `byline` is always there — an
+ * author, or a fact's source, which is all the attribution a fact has — and
+ * `detail` is the second line only a quote with a source has.
  */
 export type DailyItem = {
   id: string;
@@ -63,15 +53,10 @@ export function corpusFor(mode: DailyMode): DailyItem[] {
 }
 
 /**
- * The deck a mode actually draws from, once `Settings.dailyTags` has been
- * applied. A separate idea from `corpusFor`, which is everything there is to
- * browse: the collection still shows the whole shelf while the card reads from
- * the narrowed pile.
- *
- * Every function that answers a question *about the sequence* — what shows
- * today, when a given item comes round, how long the gap is — has to be given
- * the same tags, or the collection's schedule column starts describing a deck
- * the card is not using.
+ * What a mode draws from once `dailyTags` is applied, as against `corpusFor`,
+ * which is everything there is to browse. Every function answering a question
+ * about the *sequence* takes the same tags, or the collection's schedule
+ * describes a deck the card is not using.
  */
 function deckFor(
   mode: DailyMode,
@@ -91,11 +76,8 @@ export function dailyForDay(
 }
 
 /**
- * When each item in the mode's deck next comes up.
- *
- * Items filtered out have no next appearance and are simply absent from the
- * map — which is what lets the collection sort them to the end and say nothing
- * about a day they will never land on.
+ * Filtered-out items are absent rather than dated, which is what lets the
+ * collection sort them last and promise nothing about a day.
  */
 export function scheduleFor(
   from: DayKey,
@@ -107,11 +89,7 @@ export function scheduleFor(
     : upcomingSchedule(from, quoteDeckFor(tags));
 }
 
-/**
- * What to call one of these on screen, in the four grammatical shapes the UI
- * actually needs. Collected here so a new mode cannot be added without someone
- * having to write its nouns down.
- */
+/** Here so a new mode cannot be added without someone writing its nouns down. */
 export const MODE_COPY: Record<
   DailyMode,
   { one: string; many: string; label: string }
@@ -143,11 +121,9 @@ export const deckCountFor = (
 ): number => deckFor(mode, tags).length;
 
 /**
- * The guaranteed minimum number of days between two showings.
- *
- * Reads the *filtered* deck, because that is the promise the user is actually
- * being made: narrow the tags far enough and the gap shrinks with them, and the
- * settings screen says so rather than repeating a number from the full corpus.
+ * The guaranteed gap between two showings, read off the *filtered* deck —
+ * narrow the tags and the gap shrinks with them, which the settings screen says
+ * rather than repeating a number from the full corpus.
  */
 export const repeatGapFor = (
   mode: DailyMode,

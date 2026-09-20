@@ -1,17 +1,10 @@
 /**
  * GET/POST /api/reminders — the push subscription register. See DESIGN.md §8.5.
+ * Deliberately not part of `/api/sync`: a subscription is a device fact, and
+ * folding it in would give every device a copy of every other's endpoint.
  *
- * The second endpoint the app has ever had, and it is deliberately not part of
- * `/api/sync`: a subscription is a device fact, not replicated state, and
- * folding it into the sync payload would give every device a copy of every other
- * device's push endpoint for no purpose.
- *
- * `GET` answers whether this deployment can send at all, and hands back the
- * public VAPID key needed to subscribe. Asked *before* the browser's permission
- * prompt on purpose — permission is expensive to ask for and can only be
- * refused once, and §8.5's warning is that a reminder toggle that silently does
- * nothing is the worst outcome available. A deployment with no keys says so and
- * the UI offers no switch.
+ * `GET` answers whether this deployment can send at all, asked *before* the
+ * browser's permission prompt, which can only be refused once.
  */
 
 import { isTimeZone } from "@/lib/dates";
@@ -30,7 +23,7 @@ export const runtime = "nodejs";
 /** Both handlers read the environment and the database per request. */
 export const dynamic = "force-dynamic";
 
-/** A push endpoint URL is long — FCM's run past 200 characters — but bounded. */
+/** FCM's run past 200 characters, but they are bounded. */
 const MAX_ENDPOINT = 1024;
 const MAX_KEY = 256;
 /** An endpoint, two keys and a zone name, with room to spare. */
@@ -74,9 +67,8 @@ function isKey(value: unknown): value is string {
 }
 
 /**
- * https only, and length-capped. The endpoint is a URL this server will make
- * requests to on a schedule, so an unvalidated one turns the cron into a
- * request forgery primitive pointed wherever the caller likes.
+ * https only, and length-capped: this is a URL the server will request on a
+ * schedule, so an unvalidated one makes the cron a request forgery primitive.
  */
 function isEndpoint(value: unknown): value is string {
   if (
@@ -107,8 +99,8 @@ function parse(body: unknown): Subscribe | Unsubscribe | null {
     !isKey(body.keys.auth)
   )
     return null;
-  // Checked against the runtime's ICU rather than a regex: the cron formats a
-  // date in this zone, and an unknown one throws there instead of here.
+  // Against the runtime's ICU rather than a regex: the cron formats a date in
+  // this zone, and an unknown one would throw there instead.
   if (!isTimeZone(body.timeZone)) return null;
 
   return {
@@ -128,10 +120,8 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) return error(401, "Sign in to turn on reminders.");
 
   /**
-   * Keyed by account, like `/api/sync`. Above the real cadence with room to
-   * spare: `announce()` re-posts the subscription on app start and whenever the
-   * settings card is opened, which is a handful of writes a day, not thirty a
-   * minute. See DESIGN.md §13.17.
+   * Keyed by account, like `/api/sync`, and well above the real cadence:
+   * `announce()` is a handful of writes a day. See §13.17.
    */
   const metered = await check("reminders", user.id);
   if (!metered.ok) {
@@ -151,10 +141,8 @@ export async function POST(request: Request): Promise<Response> {
   const db = getDb();
 
   if (command.action === "unsubscribe") {
-    // Scoped to the account: an endpoint is a device handle anyone holding it
-    // could send, and deleting it must be the owner's call. The `user_id`
-    // clause is now said twice — here and by the RLS policy — which is the
-    // arrangement §13.15 is after rather than a redundancy to tidy up.
+    // Scoped to the account: deleting a device handle must be the owner's
+    // call. The `user_id` clause is said twice on purpose (§13.15).
     await asUser(db, user.id, (tx) =>
       tx
         .delete(pushSubscriptions)
@@ -169,14 +157,13 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (!pushConfigured()) {
-    // Refused rather than stored. A row here with no keypair behind it is a
-    // subscription that will never fire, and the client has just spent the
-    // user's one notification-permission prompt on it.
+    // Refused rather than stored: a row with no keypair behind it never fires,
+    // and the client has just spent the one permission prompt on it.
     return error(503, "This deployment cannot send reminders.");
   }
 
-  // The same upsert `runSync` opens with — a device can subscribe before it has
-  // ever synced, and the foreign key needs the account row to exist.
+  // The same upsert `runSync` opens with: a device can subscribe before it has
+  // ever synced, and the foreign key needs the account row.
   await asUser(db, user.id, (tx) =>
     tx
       .insert(users)
@@ -186,13 +173,10 @@ export async function POST(request: Request): Promise<Response> {
       }),
   );
 
-  // `asServer`, and it has to be: the upsert below conflicts on the endpoint
-  // alone, so on a device that has changed hands it writes over a row belonging
-  // to the previous account — a row this account's own scope cannot see, and
-  // `on conflict do update` against an invisible row is an error rather than a
-  // no-op. Postgres has no way to say "you may take over a row you may not
-  // read", so the takeover is done in the scope that admits what it is. The
-  // `userId` written is the session's, never the caller's to choose.
+  // `asServer`, and it has to be: conflicting on the endpoint alone means
+  // writing over a row this account's scope cannot see, and Postgres has no way
+  // to say "you may take over a row you may not read". The `userId` written is
+  // the session's, never the caller's to choose.
   await asServer(db, (tx) =>
     tx
       .insert(pushSubscriptions)
@@ -204,10 +188,9 @@ export async function POST(request: Request): Promise<Response> {
         timeZone: command.timeZone,
         lastSeenAt: new Date(),
       })
-      // Conflict on the endpoint alone, which is how a device that changed hands
-      // stops belonging to the previous account (see `schema.ts`). `lastSentDay`
-      // is deliberately left as it was: resubscribing after this morning's
-      // reminder should not produce a second one.
+      // On the endpoint alone, which is how a device that changed hands stops
+      // belonging to the previous account. `lastSentDay` is left as it was, or
+      // resubscribing would produce a second reminder this morning.
       .onConflictDoUpdate({
         target: pushSubscriptions.endpoint,
         set: {
@@ -215,10 +198,8 @@ export async function POST(request: Request): Promise<Response> {
           p256dh: command.keys.p256dh,
           auth: command.keys.auth,
           timeZone: command.timeZone,
-          // This upsert is the heartbeat the sweep ages a device against: the
-          // client re-sends it on app start and whenever the settings card is
-          // opened. Without it a browser that stopped visiting is indistinguishable
-          // from one being used daily, and neither is ever collected.
+          // The heartbeat the sweep ages a device against: without it a browser
+          // that stopped visiting looks like one used daily.
           lastSeenAt: new Date(),
         },
       }),

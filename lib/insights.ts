@@ -1,15 +1,8 @@
 /**
- * Second-order reads of the history. See DESIGN.md §4.5.
- *
- * `lib/history.ts` answers "what happened on this day"; this answers "what is
- * the shape of it" — which weekday you lose, whether last month beat the one
- * before, which habit is actually carrying the streak. Everything here is a
- * rollup of a `DayStat[]` that was already built for the grid, so it is derived
- * from derived data and, like its source, is never persisted.
- *
- * Rest days are excluded from every denominator rather than counted as misses.
- * A habit that only runs on Sundays would otherwise report a 14% completion
- * rate for doing exactly what was asked of it.
+ * Second-order reads of the history. See DESIGN.md §4.5. Where `history.ts`
+ * answers "what happened on this day", this answers "what is the shape of it",
+ * rolled up from a `DayStat[]` built for the grid and never persisted. Rest
+ * days leave every denominator: a Sundays-only habit is not 14% complete.
  */
 
 import {
@@ -51,12 +44,9 @@ function rate(scheduled: number, completed: number): Rate {
 }
 
 /**
- * Completion by day of the week, in the user's week order.
- *
- * The most actionable number in the app: "you miss Saturdays" is something a
- * person can act on, where an overall percentage is not. Counted in habit-days
- * rather than whole days, so one bad Saturday out of twenty does not read the
- * same as twenty half-done ones.
+ * The most actionable number here: "you miss Saturdays" is something a person
+ * can act on. In habit-days, so one bad Saturday out of twenty does not read
+ * the same as twenty half-done ones.
  */
 export function weekdayRates(
   stats: DayStat[],
@@ -87,12 +77,9 @@ export function weekdayRates(
 }
 
 /**
- * Completion by calendar month, oldest first.
- *
- * Calendar months rather than rolling 30-day windows: a trend is read against
- * the months a person remembers living through, and "March" is a label they
- * already have. A month with nothing scheduled is kept, with a null rate, so a
- * gap in the middle of a trend stays visible rather than closing up.
+ * Calendar months rather than rolling windows, because "March" is a label the
+ * reader already has. An empty month is kept with a null rate, so a gap in a
+ * trend stays visible rather than closing up.
  */
 export function monthRates(stats: DayStat[]): MonthRate[] {
   const order: string[] = [];
@@ -119,15 +106,9 @@ export function monthRates(stats: DayStat[]): MonthRate[] {
 }
 
 /**
- * Each habit's own streaks over the window.
- *
- * The number a person actually wants, and the one the Stats header cannot give
- * them: a 40-day run on one habit is invisible in an aggregate streak that
- * breaks the moment any habit is missed.
- *
- * Built through `buildHabitHistory`, so a counted habit is scored the way its
- * own grid scores it and an unscheduled day steps over the streak rather than
- * ending it.
+ * The number the Stats header cannot give: a 40-day run on one habit is
+ * invisible in an aggregate streak that breaks when any habit is missed. Built
+ * through `buildHabitHistory`, so an unscheduled day steps over the streak.
  */
 export function perHabitStreaks(
   habits: Habit[],
@@ -146,11 +127,7 @@ export function perHabitStreaks(
   return out;
 }
 
-/**
- * Enough scheduled habit-days on a weekday for its rate to mean anything, and a
- * wide enough gap between the best and worst for the comparison to be worth
- * printing. Without both, the headline is built on one bad Tuesday.
- */
+/** Without both, the headline is built on one bad Tuesday. */
 const MIN_SAMPLE = 8;
 const MIN_SPREAD = 0.2;
 

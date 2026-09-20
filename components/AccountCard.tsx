@@ -2,10 +2,8 @@
 
 /**
  * Sign in, create an account, sign out. See DESIGN.md §13.6 and §13.10.
- *
- * Everything is gated on `mounted` (§8.4): these routes prerender to static HTML
- * that the service worker caches, so anything account-shaped rendered on the
- * server would be handed to the next visitor.
+ * Everything is gated on `mounted` (§8.4): the service worker caches this
+ * route's HTML, so anything account-shaped here would reach the next visitor.
  */
 
 import { useState, useSyncExternalStore } from "react";
@@ -23,38 +21,26 @@ import { syncNow } from "@/lib/sync/client";
 type Mode = "sign-in" | "sign-up";
 
 /**
- * What just happened to the account. Held here rather than in `SignedOut`, which
- * unmounts the moment a mailer-less sign-up flips `useSession` — a confirmation
- * held in that subtree would flash and vanish.
+ * What just happened to the account, held here rather than in `SignedOut`,
+ * which unmounts the moment a mailer-less sign-up flips `useSession`.
  *
- * `verify` is reachable from both sides — a sign-up that created no session, and
- * a 403 on sign-in — and `origin` is the only difference the copy has.
- *
- * `created` is only ever certain with no mailer: under `requireEmailVerification`
- * Better Auth answers a duplicate sign-up with a synthetic success, so the client
- * cannot know an account was made and must not claim to.
- *
- * `habits` is counted at sign-up rather than read live, because the `syncNow()`
- * fired alongside can come back 409 and empty the store — a live count would
- * narrate that wipe as a welcome. `session` binds the banner to the token that
- * earned it, so an unrelated session ending cannot leave it to congratulate the
- * next sign-in.
+ * `verify` is reachable from both sides, and `origin` is the only difference in
+ * the copy. `created` is certain only with no mailer, since Better Auth hides a
+ * duplicate behind a synthetic success. `habits` is counted at sign-up rather
+ * than read live, because a 409 can empty the store mid-banner, and `session`
+ * binds the banner to the token that earned it.
  */
 type Outcome =
   | { kind: "verify"; email: string; origin: Mode }
   | { kind: "created"; email: string; habits: number; session: string }
   /** A reset was asked for. Says "sent" whether or not the address exists. */
   | { kind: "reset-sent"; email: string }
-  /**
-   * Signed in, but sync is held until the habits already on this device are
-   * either claimed or abandoned. See DESIGN.md §13.8 #8 and `ConfirmMerge`.
-   */
+  /** Signed in, sync held until the local habits are claimed (§13.8 #8). */
   | { kind: "confirm-merge"; email: string; habits: number };
 
 /**
- * False on the server and through hydration, true afterwards. The server snapshot
- * reports the hidden case, so account UI only ever appears — never flashes out of
- * cached HTML and disappears (§8.4).
+ * False on the server and through hydration. The server snapshot reports the
+ * hidden case, so account UI only ever appears, never disappears (§8.4).
  */
 const NEVER_CHANGES = () => () => {};
 
@@ -70,9 +56,9 @@ const UNREACHABLE =
   "Could not reach the server. Check your connection and try again.";
 
 /**
- * The auth client's answer, or null when the request threw instead of
- * answering. Better Auth reports a refusal as `{ error }`; a dead network
- * rejects, and every handler here sets `busy` before awaiting.
+ * The auth client's answer, or null when the request threw rather than
+ * answering — Better Auth reports a refusal as `{ error }`, a dead network
+ * rejects.
  */
 async function attempt<T>(request: () => Promise<T>): Promise<T | null> {
   try {
@@ -87,9 +73,8 @@ export function AccountCard() {
   const { syncStatus } = useOpenHabits();
   const mounted = useMounted();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
-  // The wait renders instead of `SignedOut`, so leaving it is a remount with
-  // every field blank — and retyping the address you were just shown reads as
-  // the sign-up having come undone.
+  // Leaving the wait remounts `SignedOut` with every field blank, which reads
+  // as the sign-up having come undone.
   const [resumeEmail, setResumeEmail] = useState("");
 
   if (!mounted || isPending) {
@@ -103,8 +88,7 @@ export function AccountCard() {
     );
   }
 
-  // Ahead of the session check: the wait is the state of a browser with no
-  // session, and the 403 route into it is not the state of that account either.
+  // Ahead of the session check: the wait is a browser with no session.
   if (outcome?.kind === "verify") {
     return (
       <Card>
@@ -128,9 +112,8 @@ export function AccountCard() {
     );
   }
 
-  // Ahead of the session check, like the verification wait: a session exists,
-  // but until this is answered the device is not syncing and the card must not
-  // present itself as settled.
+  // Ahead of the session check: a session exists, but the device is not
+  // syncing until this is answered.
   if (outcome?.kind === "confirm-merge") {
     return (
       <Card>
@@ -188,14 +171,13 @@ function SignedOut({
     setError(null);
 
     const credentials = { email: email.trim(), password };
-    // Guarded for the reason `finish` guards its sign-out: a request that
-    // throws instead of answering would leave the button on "Working…" for good.
+    // A request that throws rather than answering would leave the button on
+    // "Working…" for good.
     const result = await attempt(() =>
       mode === "sign-up"
         ? authClient.signUp.email({
             ...credentials,
-            // The schema requires a name and this app never asks for one; an
-            // empty string would look like a bug in any admin tool.
+            // The schema requires a name and this app never asks for one.
             name: credentials.email.split("@")[0] || "OpenHabits",
           })
         : authClient.signIn.email(credentials),
@@ -209,8 +191,8 @@ function SignedOut({
     }
 
     if (result.error) {
-      // The server already resent the mail on its way out (`sendOnSignIn`), so
-      // a 403 here is the wait entered from the other side, not a failure.
+      // `sendOnSignIn` already resent the mail, so a 403 is the wait entered
+      // from the other side, not a failure.
       if (result.error.code === "EMAIL_NOT_VERIFIED") {
         onOutcome({
           kind: "verify",
@@ -219,9 +201,8 @@ function SignedOut({
         });
         return;
       }
-      // Only reachable with no mailer: `requireEmailVerification` makes Better
-      // Auth hide duplicates behind a synthetic success, and the wait carries the
-      // case instead. Both spellings — the sign-up route throws the longer one.
+      // Only reachable with no mailer, since Better Auth otherwise hides a
+      // duplicate behind a synthetic success. Both spellings are thrown.
       if (
         result.error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" ||
         result.error.code === "USER_ALREADY_EXISTS"
@@ -238,9 +219,8 @@ function SignedOut({
       return;
     }
 
-    // A sign-up under mandatory verification returns a null token. Nothing to
-    // sync yet, and the hint must stay unset or `lib/sync/client.ts` spends the
-    // wait collecting 401s.
+    // A sign-up under mandatory verification returns a null token: the hint
+    // must stay unset, or sync spends the wait collecting 401s.
     if (!result.data?.token) {
       onOutcome({
         kind: "verify",
@@ -251,19 +231,11 @@ function SignedOut({
     }
 
     /**
-     * The first sync from a device that has never been attached to an account
-     * uploads whatever is already on it (§13.8 #8). For the common case — your
-     * own phone, your own account — that is exactly right, and it is why the
-     * copy above promises it. On a borrowed one it silently donates the owner's
-     * habits to the guest's account, and neither of them is ever told.
-     *
-     * So the merge is consented to rather than assumed. Nothing has been
-     * uploaded at this point: the session cookie exists, but `syncEnabled()`
-     * reads the local hint, and withholding it is what holds the push.
-     *
-     * A sign-*up* is exempt. The account it just made is empty and belongs to
-     * whoever is holding the device, so there is no second person's data for the
-     * habits to land in.
+     * A first sync uploads whatever is on the device (§13.8 #8) — right on your
+     * own phone, a silent donation on a borrowed one, so it is consented to
+     * rather than assumed. Nothing is uploaded while it waits: the cookie
+     * exists, but withholding the local hint holds the push. A sign-*up* is
+     * exempt, its account being empty and its owner the one holding the device.
      */
     if (
       mode === "sign-in" &&
@@ -278,13 +250,12 @@ function SignedOut({
       return;
     }
 
-    // Set here rather than waiting for `useSessionSync` to notice, so the first
-    // sync starts on this tick instead of the next fetch.
+    // Set here rather than awaiting `useSessionSync`, so the first sync starts
+    // on this tick.
     markSignedIn();
     void syncNow();
 
-    // Signing in explains itself — the card becomes the signed-in card. Being
-    // handed one silently, because this deployment has no mailer, does not.
+    // Signing in explains itself; being handed a session silently does not.
     if (mode === "sign-up") {
       onOutcome({
         kind: "created",
@@ -296,15 +267,10 @@ function SignedOut({
   }
 
   /**
-   * Ask for a reset link. The endpoint answers the same way for an address it
-   * has never seen (`lib/server/better-auth.ts`), so there is nothing to report
-   * but "sent" — branching on the response would build the account-enumeration
-   * oracle the server is careful not to be.
-   *
-   * `RESET_PASSWORD_DISABLED` is the one answer worth surfacing: it means this
-   * deployment has no mailer at all, which is a fact about the server rather
-   * than about the address, and the person otherwise waits for mail that was
-   * never going to come.
+   * The endpoint answers the same for an address it has never seen, so there is
+   * nothing to report but "sent" — branching would build the enumeration oracle
+   * the server avoids. `RESET_PASSWORD_DISABLED` is the one answer worth
+   * surfacing, being a fact about the server rather than about the address.
    */
   async function forgot() {
     const address = email.trim();
@@ -323,8 +289,7 @@ function SignedOut({
     );
     setBusy(false);
 
-    // A request that never arrived is not "sent", and saying so reveals
-    // nothing about the address.
+    // A request that never arrived is not "sent", and says nothing about the address.
     if (!result) {
       setError({ text: UNREACHABLE });
       return;
@@ -445,15 +410,11 @@ function SignedOut({
 }
 
 /**
- * The gap between signing up and clicking the link (§13.10).
- *
- * A state of the form, not the app: no session exists and the local habits are
- * untouched, which the copy has to say or "check your email" reads as data loss.
- * Arriving from a 403 there is no sign-up to confirm, hence `origin`.
- *
- * The resend endpoint answers identically for an address that is unknown,
- * verified, or waiting, so it cannot be used to test whether an account exists —
- * nothing to branch on, and nothing to report but "sent".
+ * The gap between signing up and clicking the link (§13.10). A state of the
+ * form, not the app: no session, local habits untouched, which the copy must
+ * say or "check your email" reads as data loss. Arriving from a 403 there is no
+ * sign-up to confirm, hence `origin`. Resend answers identically for an unknown
+ * address, so there is nothing to branch on.
  */
 function AwaitingVerification({
   email,
@@ -558,14 +519,9 @@ function AwaitingVerification({
 }
 
 /**
- * The consent step in front of the first upload. See DESIGN.md §13.8 #8.
- *
- * Both answers are non-destructive, and that is the whole design. "Add them"
- * does what signing in always did. "Not mine" does **not** wipe the device to
- * make room for the account — on the borrowed phone this exists to protect,
- * the habits on it belong to the person who lent it, and deleting them to
- * resolve the ambiguity would be a worse outcome than the one being avoided.
- * It signs out instead, leaving the device exactly as it was found.
+ * The consent step in front of the first upload (§13.8 #8). Both answers are
+ * non-destructive: "not mine" signs out rather than wiping the device, because
+ * on a borrowed phone those habits belong to whoever lent it.
  */
 function ConfirmMerge({
   email,
@@ -602,8 +558,7 @@ function ConfirmMerge({
       return;
     }
 
-    // The hint was never set, so nothing was ever pushed and there is no
-    // account state to reset — the store is untouched and stays that way.
+    // The hint was never set, so nothing was pushed and the store is untouched.
     markSignedOut();
     onDone();
   }
@@ -659,11 +614,8 @@ function ConfirmMerge({
 }
 
 /**
- * After a reset link has been asked for.
- *
- * Deliberately says nothing about whether that address has an account. The
- * server answers identically either way, and a screen that said "check your
- * email" only for real accounts would undo that in the UI.
+ * Says nothing about whether the address has an account: the server answers
+ * identically either way, and this screen must not undo that in the UI.
  */
 function ResetRequested({
   email,
@@ -719,14 +671,12 @@ function SignedIn({
   async function attemptSignOut() {
     setBusy(true);
 
-    // Push before wiping: anything ticked offline since the last sync exists
-    // nowhere else.
+    // Push before wiping: anything ticked offline exists nowhere else.
     await syncNow();
     setBusy(false);
 
-    // `syncNow` reports through the store rather than throwing. Ask a second
-    // time instead of deciding for them. Read from the store, not the prop: the
-    // prop is this render's status, from before the sync just awaited.
+    // `syncNow` reports through the store rather than throwing, and the prop
+    // is this render's status — from before the sync just awaited.
     if (currentState().syncStatus.kind === "error") {
       setWarned(true);
       return;
@@ -739,16 +689,13 @@ function SignedIn({
     setBusy(true);
     setFailed(false);
 
-    // Before the cookie goes: unsubscribing proves this device's push endpoint
-    // belongs to the account, and only the session can. A row left behind keeps
-    // the cron pushing these habits into the tray of whoever holds the device
-    // next. Done ahead of a sign-out that may fail, because the safe direction
-    // for a reminder is off.
+    // Before the cookie goes, since only the session proves this endpoint
+    // belongs to the account — and a row left behind keeps the cron pushing
+    // these habits into the tray of whoever holds the device next.
     await disableReminders();
 
-    // Unguarded, a dead network leaves the button on "Saving…" for good. The
-    // wipe waits on success because the cookie survives a failed sign-out —
-    // `useSession` would report a session over an already-emptied store.
+    // The wipe waits on success: the cookie survives a failed sign-out, and
+    // `useSession` would then report a session over an emptied store.
     let ok = false;
     try {
       ok = (await authClient.signOut()).error == null;
@@ -763,8 +710,8 @@ function SignedIn({
     }
 
     markSignedOut();
-    // Same path as the 409 mismatch: emptied and the cursor reset, so the next
-    // person to sign in here starts from their own server state.
+    // Emptied and the cursor reset, so the next person here starts from their
+    // own server state.
     adoptAccount(null);
     setConfirming(false);
     setWarned(false);
@@ -866,10 +813,7 @@ function describe(status: SyncStatus): string {
   }
 }
 
-/**
- * `alert` interrupts a screen reader and `status` waits its turn: a failure
- * stands between you and what you asked for, a confirmation does not.
- */
+/** `alert` interrupts a screen reader and `status` waits its turn. */
 function Banner({
   tone,
   children,

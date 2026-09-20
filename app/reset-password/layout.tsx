@@ -5,9 +5,8 @@ const DESCRIPTION = "Set a new password for your OpenHabits account.";
 export const metadata: Metadata = {
   title: "Choose a new password",
   description: DESCRIPTION,
-  // Noindex for the reason `/habit` is: the page is meaningless without the
-  // `?token=` a crawler will never have, and the URL a crawler *would* index is
-  // one that only ever renders the dead-link state.
+  // Noindex as `/habit` is: without the `?token=` a crawler will never have,
+  // this URL only ever renders the dead-link state.
   robots: { index: false, follow: false },
   openGraph: {
     type: "website",

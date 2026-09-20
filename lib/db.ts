@@ -1,13 +1,8 @@
 /**
- * IndexedDB persistence. See DESIGN.md §7.3.
- *
- * Dependency-free: the surface needed is small enough that a wrapper library
- * would cost more in supply chain than it saves in lines.
- *
- * Stores
- *   habits   keyPath 'id'
- *   entries  keyPath ['habitId', 'date']   ← the compound key from §3
- *   kv       keyPath 'key'                 ← settings and other singletons
+ * IndexedDB persistence. See DESIGN.md §7.3. Dependency-free: the surface
+ * needed is small enough that a wrapper would cost more in supply chain than
+ * it saves. Stores: `habits` by id, `entries` by the compound key from §3,
+ * `kv` for settings and other singletons.
  */
 
 import {
@@ -18,8 +13,7 @@ import {
   type Settings,
 } from "./types";
 
-/** Pre-rebrand name, kept: renaming the database orphans every existing
- *  install's habits, and IndexedDB is the source of truth. */
+/** Pre-rebrand name, kept: a rename orphans every existing install's habits. */
 const DB_NAME = "hapi";
 const DB_VERSION = 2;
 
@@ -54,8 +48,7 @@ function openDb(): Promise<IDBDatabase> {
 
     request.onsuccess = () => {
       const db = request.result;
-      // Another tab is opening a newer version. Stepping aside is the only way
-      // it can: an open connection blocks the upgrade for as long as this tab
+      // An open connection blocks another tab's upgrade for as long as this tab
       // lives. The next write here reopens, at the new version.
       db.onversionchange = () => {
         db.close();
@@ -68,8 +61,7 @@ function openDb(): Promise<IDBDatabase> {
       reject(new Error("OpenHabits database blocked by another open tab"));
   });
 
-  // A failed open is not cached: a blocked upgrade or a transient error would
-  // otherwise fail every write for the rest of the session.
+  // A failed open is not cached, or one blocked upgrade fails every later write.
   const opening = dbPromise;
   opening.catch(() => {
     if (dbPromise === opening) dbPromise = null;
@@ -79,13 +71,9 @@ function openDb(): Promise<IDBDatabase> {
 }
 
 /**
- * Give every pre-sync record the metadata sync needs.
- *
- * Habits get `updatedAt` from their creation day, not the clock: stamping a
- * year-old habit "now" would let a stale local copy outrank later edits already
- * on the server. Settings get the clock — they have no creation date, so two
- * devices upgrading separately means the later one wins the first settings merge.
- * A fair outcome for a preferences blob, not for a year of history.
+ * Habits get `updatedAt` from their creation day, not the clock, so a stale
+ * local copy cannot outrank later server edits. Settings get the clock, having
+ * no creation date — a fair outcome for a blob, not for a year of history.
  */
 function backfillSyncMetadata(transaction: IDBTransaction): void {
   const cursorRequest = transaction.objectStore("habits").openCursor();
@@ -124,9 +112,8 @@ function tx(
 export type Snapshot = {
   habits: Habit[];
   /**
-   * Deleted habits, kept so sync can tell peers. Handed back separately because
-   * every UI surface reads `habits`, and one forgotten filter would put a deleted
-   * habit back on the Today list.
+   * Kept so sync can tell peers, and handed back separately because one
+   * forgotten filter would put a deleted habit back on the Today list.
    */
   tombstones: Habit[];
   entries: Entry[];
@@ -136,9 +123,8 @@ export type Snapshot = {
 };
 
 /**
- * Local sync bookkeeping. `cursor` is the server's `seq`; `pushedThrough` is a
- * local `updatedAt` watermark. Different clocks, never to be compared — see the
- * header of `lib/sync/protocol.ts`.
+ * `cursor` is the server's `seq`, `pushedThrough` a local `updatedAt`
+ * watermark: different clocks, never to be compared. See `sync/protocol.ts`.
  */
 export type SyncMeta = {
   cursor: number;
@@ -176,8 +162,7 @@ export async function loadAll(): Promise<Snapshot> {
   return {
     habits: live.sort((a, b) => a.order - b.order),
     tombstones,
-    // Entries belonging to a deleted habit were removed when the tombstone was
-    // written, so nothing here needs filtering against it.
+    // A tombstone's entries were removed when it was written.
     entries,
     settings: readSettings(settingsRow?.value),
     settingsUpdatedAt: settingsRow?.updatedAt ?? 0,
@@ -186,13 +171,9 @@ export async function loadAll(): Promise<Snapshot> {
 }
 
 /**
- * Stored settings, field by field.
- *
- * Spread over the defaults, so a field added in a later release does not arrive
- * as undefined for an existing user. Named rather than spread *back*, so a field
- * this release no longer has cannot ride along either: `theme` was in this blob
- * until §13.8 #1 moved appearance to the device, and a stale copy of it sitting
- * in IndexedDB would otherwise be pushed to the account on the next sync.
+ * Field by field, not a spread back: a new field must not arrive undefined, and
+ * a field this release no longer has must not ride along — `theme` left the
+ * blob in §13.8 #1, and a stale copy would otherwise be pushed on the next sync.
  */
 function readSettings(stored: unknown): Settings {
   const value = (stored ?? {}) as Partial<Settings>;
@@ -221,20 +202,17 @@ export async function putHabits(habits: Habit[]): Promise<void> {
 }
 
 /**
- * Delete by writing a tombstone, not by removing the row: on a store that
- * replicates, a missing row and a row the peer has not seen yet are the same
- * observation, so a hard delete would be re-learned on the next sync.
+ * A tombstone rather than a removed row: on a replicated store a missing row is
+ * indistinguishable from an unseen one, so a hard delete is re-learned.
  */
 export async function deleteHabitRecord(habit: Habit): Promise<void> {
   const db = await openDb();
   const t = tx(db, ["habits", "entries"], "readwrite");
 
-  // Both requests are issued before either is awaited. An IndexedDB transaction
-  // auto-commits once its request queue drains, so awaiting the first would let
-  // the transaction close before the second was ever queued.
+  // A transaction auto-commits once its queue drains, so awaiting the first
+  // request would close it before the second was queued.
   const wrote = promisify(t.objectStore("habits").put(habit));
-  // Entries are keyed [habitId, date], so a bounded key range deletes every
-  // entry for this habit without scanning the whole store.
+  // The compound key makes a bounded range a delete without a full scan.
   const cleared = promisify(
     t
       .objectStore("entries")
@@ -245,12 +223,8 @@ export async function deleteHabitRecord(habit: Habit): Promise<void> {
 }
 
 /**
- * Remove habit rows outright, tombstone and all.
- *
- * The one place a habit is genuinely deleted rather than tombstoned, and it is
- * only ever reached by the collector in `lib/store.ts` — see
- * `TOMBSTONE_TTL_MS`. Entries were dropped when the tombstone was written, so
- * there is nothing else to clear.
+ * The one place a habit is genuinely removed rather than tombstoned, reached
+ * only by the collector in `lib/store.ts` — see `TOMBSTONE_TTL_MS`.
  */
 export async function forgetHabits(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
@@ -295,10 +269,8 @@ export async function putSyncMeta(meta: SyncMeta): Promise<void> {
 }
 
 /**
- * Write a merged pull to disk as one transaction. The caller only advances the
- * cursor after this resolves, so a failure means the payload is fetched again —
- * whereas a partial commit under a saved cursor leaves a permanent hole no later
- * sync would think to fill.
+ * One transaction: a failure re-fetches the payload, where a partial commit
+ * under a saved cursor leaves a hole no later sync would think to fill.
  */
 export async function applyMerge(input: {
   habits: Habit[];
@@ -322,8 +294,8 @@ export async function applyMerge(input: {
       promisify(entryStore.delete(IDBKeyRange.bound([id, ""], [id, "￿"]))),
     );
   }
-  // After the purge, so an entry that survived the merge for a habit deleted in
-  // the same payload is not reinstated by request ordering.
+  // After the purge, so an entry for a habit deleted in the same payload is
+  // not reinstated by request ordering.
   for (const entry of input.entries)
     pending.push(promisify(entryStore.put(entry)));
   if (input.settings) {
@@ -343,11 +315,9 @@ export async function applyMerge(input: {
 }
 
 /**
- * Swap the whole store for new contents, as one transaction — the wipe and the
- * writes commit together or not at all. As separate transactions, a tab closed
- * between them leaves the device empty on disk: a replacing import loses both
- * copies, and "Delete all data" loses its tombstones, so the next pull puts
- * everything back.
+ * The wipe and the writes commit together or not at all. Split in two, a tab
+ * closed between them leaves the device empty: an import loses both copies,
+ * and a wipe loses the tombstones that stop the next pull undoing it.
  */
 export async function replaceAll(input: {
   habits: Habit[];
@@ -361,8 +331,7 @@ export async function replaceAll(input: {
   const entryStore = t.objectStore("entries");
   const kv = t.objectStore("kv");
 
-  // Requests on a store run in the order they were issued, so the clears land
-  // before the puts that follow them.
+  // Requests run in issue order, so the clears land before the puts.
   const pending: Promise<unknown>[] = [
     promisify(habitStore.clear()),
     promisify(entryStore.clear()),
@@ -388,10 +357,7 @@ export async function replaceAll(input: {
   await Promise.all(pending);
 }
 
-/**
- * Ask the browser to move our data out of the evictable bucket. Without it, a
- * year of streaks can be reclaimed under storage pressure.
- */
+/** Without it, a year of streaks can be reclaimed under storage pressure. */
 export async function requestPersistence(): Promise<boolean> {
   if (typeof navigator === "undefined" || !navigator.storage?.persist)
     return false;

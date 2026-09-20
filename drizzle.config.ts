@@ -1,18 +1,16 @@
 import { defineConfig } from "drizzle-kit";
 
 /**
- * Migrations are generated, reviewed, and committed — never `drizzle-kit push`,
- * which diffs a live schema and can decide the way to reconcile a renamed column
- * is to drop it. These tables hold history that exists nowhere else once a device
- * is wiped.
+ * Migrations are generated, reviewed and committed — never `drizzle-kit push`,
+ * which can resolve a rename by dropping the column, and these tables hold
+ * history that exists nowhere else once a device is wiped.
  *
  *   npx drizzle-kit generate   # write the SQL
  *   npx drizzle-kit migrate    # apply it
  */
 export default defineConfig({
   dialect: "postgresql",
-  // Separate modules, one migration history — see `lib/server/auth-schema.ts`
-  // for why the tables are kept apart.
+  // Separate modules, one migration history — see `lib/server/auth-schema.ts`.
   schema: ["./lib/server/schema.ts", "./lib/server/auth-schema.ts"],
   out: "./drizzle",
   dbCredentials: {

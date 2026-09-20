@@ -1,10 +1,7 @@
 /**
- * The last-write-wins rule and the fingerprints it breaks ties on.
- *
- * CLAUDE.md names `wins` an invariant and says the rule lives in exactly one
- * place — the server calls the same function the client does. It was reached
- * only through `mergeIncoming` and `runSync`, which test the rule's *effects*;
- * these test the rule.
+ * The last-write-wins rule and the fingerprints it breaks ties on. `wins` was
+ * reached only through `mergeIncoming` and `runSync`, which test the rule's
+ * *effects*; these test the rule.
  */
 
 import { describe, expect, it } from "vitest";

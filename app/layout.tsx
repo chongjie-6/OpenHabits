@@ -24,18 +24,11 @@ const geistMono = Geist_Mono({
 });
 
 /**
- * The skin faces — DESIGN.md §6.5.
- *
- * `preload: false` on all four, and it is not an oversight. Which skin is
- * active is a client fact (`lib/skin.ts`), so the prerendered HTML cannot know
- * which of these three sets to preload; preloading all of them would push four
- * families down the wire on every first paint to use at most two. Without the
- * preload hint they are fetched when the skin's CSS actually references them,
- * which is the moment they are needed. `display: "swap"` — inherited from
- * next/font's default — means a skinned first paint lands on the fallback stack
- * and swaps, and each skin's fallbacks were chosen with that in mind.
- *
- * Classic pays nothing for any of this: `classic` references only Geist.
+ * The skin faces (§6.5). `preload: false` on all four is not an oversight:
+ * which skin is active is a client fact, so preloading would push four families
+ * down the wire to use at most two. Without the hint each is fetched when the
+ * skin's CSS references it, and `display: "swap"` means a skinned first paint
+ * lands on the fallback stack — which each skin's fallbacks were chosen for.
  */
 const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
@@ -79,10 +72,9 @@ const DESCRIPTION =
 
 export const metadata: Metadata = {
   /**
-   * Every URL-based metadata field resolves against this, `opengraph-image`
-   * included. §8.6 deferred it until a canonical origin existed; `siteURL()` is
-   * that origin, and it falls back to the localhost Next would have inferred
-   * anyway, so a build with no environment set stays warning-free.
+   * Every URL-based metadata field resolves against this. `siteURL()` falls
+   * back to the localhost Next would infer anyway, so a build with no
+   * environment set stays warning-free.
    */
   metadataBase: siteURL(),
   title: {
@@ -111,8 +103,7 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: light)", color: "#fbfbf9" },
     { media: "(prefers-color-scheme: dark)", color: "#0d1117" },
   ],
-  // The app is a fixed-chrome standalone surface; letting it zoom breaks the
-  // bottom nav against the safe area.
+  // Zooming a fixed-chrome surface breaks the bottom nav against the safe area.
   viewportFit: "cover",
 };
 

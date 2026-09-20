@@ -1,33 +1,16 @@
 /**
- * The shell both OpenHabits emails are built in. See DESIGN.md §13.9.
+ * The shell both OpenHabits emails are built in. See DESIGN.md §13.9. One shell
+ * rather than two that agree by hand: two mails that look like two senders is
+ * what a phishing filter, and a person, reads as suspicious.
  *
- * Extracted when the password-reset mail arrived and wanted the same chrome:
- * the grid, the ground, the rule, the footer. Two mails that look like two
- * different senders is exactly the smell a phishing filter — and a person —
- * reads as suspicious, so the shell is one thing rather than two that agree by
- * hand.
+ * Tables and inline styles, because `<td>` margins and external stylesheets are
+ * each ignored somewhere that matters, and no `<img>` anywhere, because a mail
+ * whose only content is a blocked image is an empty mail.
  *
- * ## The rules mail imposes
- *
- * Layout is tables and inline styles because margins on `<td>` and external
- * stylesheets are both ignored somewhere that matters. There are no `<img>`
- * tags anywhere: images are blocked by default in most clients, and an email
- * whose only content is a blocked image is an empty email. The artwork is table
- * cells with background colours, which nothing blocks.
- *
- * ## Dark mode
- *
- * Both mails used to lock themselves to light with `color-scheme: light only`,
- * which is what §13.9 recorded as "worth doing, not done". Clients that honour
- * `prefers-color-scheme` in a `<head>` `<style>` block — Apple Mail, Gmail on
- * iOS and Android, Outlook.com — get the dark palette through the class hooks
- * below. Everything else ignores the block entirely and keeps the inline light
- * styles, which is why the light values stay inline rather than moving into the
- * stylesheet: the media query is an enhancement, and the mail has to be right
- * without it.
- *
- * Gmail's web client strips a `<style>` block out of `<body>` but keeps one in
- * `<head>`, which is the only reason this works there at all.
+ * Dark mode reaches the clients that honour `prefers-color-scheme` in a `<head>`
+ * block, through the class hooks below; everything else keeps the inline light
+ * values, which is why those stay inline. Gmail's web client strips a `<style>`
+ * out of `<body>` and keeps one in `<head>`, which is why this works there.
  */
 
 const INK = "#1a1a19";
@@ -39,10 +22,7 @@ const ACCENT = "#216e39";
 const CELL_EMPTY = "#ebedf0";
 const CELL_LIT = "#30a14e";
 
-/**
- * The dark halves. Held to the same contrast bar as the app: `--muted` passes
- * AA with no headroom, so its counterpart here lightens rather than fades.
- */
+/** Held to the app's contrast bar: the muted counterpart lightens rather than fades. */
 const DARK_INK = "#e6edf3";
 const DARK_INK_2 = "#c2ccd6";
 const DARK_MUTED = "#9aa4ae";
@@ -66,11 +46,7 @@ export const COLOURS = {
   CELL_LIT,
 };
 
-/**
- * Escape for an HTML attribute. Every URL here is machine-generated and in
- * practice carries nothing worse than `&`, but it is interpolated into an
- * `href`, and "in practice" is not a security argument.
- */
+/** Interpolated into an `href`, and "these URLs are machine-generated" is not an argument. */
 export function escapeAttribute(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -84,13 +60,9 @@ const COLUMNS = 10;
 const ROWS = 7;
 
 /**
- * The hero grid, built rather than hand-written: seventy literal `<td>`s in a
- * template string is seventy chances to typo a hex value. Gaps come from
- * `cellspacing` — margins on table cells are ignored almost everywhere, and
- * padding would grow the cells instead of separating them.
- *
- * `lit` is the cell that carries the mail's meaning, so each message picks its
- * own: verification lights a first day, a reset lights the day you came back.
+ * Built rather than hand-written: seventy literal `<td>`s is seventy chances to
+ * typo a hex. Gaps come from `cellspacing`, margins being ignored on table
+ * cells. `lit` carries the mail's meaning, so each message picks its own.
  */
 export function grid(lit: { row: number; column: number }): string {
   const rows: string[] = [];
@@ -120,9 +92,8 @@ export function button(href: string, label: string): string {
 }
 
 /**
- * The `prefers-color-scheme` half. Class hooks rather than element selectors,
- * so a client that supports the query but not descendant combinators still
- * matches — and so adding a row to a mail cannot silently opt out of dark mode.
+ * Class hooks rather than element selectors, so a client without descendant
+ * combinators still matches and a new row cannot silently opt out of dark mode.
  */
 const DARK_STYLES = `
     @media (prefers-color-scheme: dark) {
@@ -136,9 +107,8 @@ const DARK_STYLES = `
     }`;
 
 /**
- * `preheader` is what an inbox list shows after the subject; it is then hidden
- * in the body by the usual zero-height div, padded with word joiners so the
- * client does not pull the next real sentence in after it.
+ * What an inbox list shows after the subject, hidden in the body by the usual
+ * zero-height div and padded with word joiners so nothing is pulled in after it.
  */
 export function shell({
   title,

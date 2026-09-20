@@ -1,10 +1,7 @@
 /**
- * All DayKey arithmetic. See DESIGN.md §9.
- *
- * The only module that should call `new Date()` to produce a DayKey. Day maths is
- * done in UTC-space on parsed components so a DST transition can never shift a
- * boundary; conversion to and from *local* civil time happens only at the edges
- * (`dayKeyFromDate`, `todayKey`, and the formatters).
+ * All DayKey arithmetic. See DESIGN.md §9. The only module that should call
+ * `new Date()` to produce a DayKey, and day maths is done in UTC-space so no
+ * DST transition can shift a boundary — local civil time only at the edges.
  */
 
 import type { DayKey } from "./types";
@@ -45,10 +42,7 @@ export function dateFromDayKey(key: DayKey): Date {
   return new Date(y, m - 1, d);
 }
 
-/**
- * Today, honouring the user's `dayStartHour`. With `dayStartHour: 4`, anything
- * before 4am still counts as yesterday.
- */
+/** Honours `dayStartHour`: at 4, anything before 4am still counts as yesterday. */
 export function todayKey(dayStartHour = 0): DayKey {
   const now = new Date();
   if (dayStartHour > 0) now.setHours(now.getHours() - dayStartHour);
@@ -75,13 +69,9 @@ export function startOfWeek(key: DayKey, weekStartsOn: 0 | 1): DayKey {
 }
 
 /**
- * The first day of the month `key` falls in, `monthsBack` months earlier if
- * given.
- *
- * Here rather than at the caller because it is the one piece of month
- * arithmetic in the app, and this file is where `new Date()` is allowed to
- * produce a DayKey. `Date.UTC` normalises a negative month index into the
- * previous year on its own, so December needs no special case.
+ * The first day of `key`'s month, `monthsBack` months earlier if given. Here
+ * because this file is where `new Date()` may produce a DayKey; `Date.UTC`
+ * normalises a negative month index, so December needs no special case.
  */
 export function startOfMonth(key: DayKey, monthsBack = 0): DayKey {
   const { y, m } = parseDayKey(key);
@@ -113,11 +103,8 @@ export function formatWeekdayLong(key: DayKey): string {
 }
 
 /**
- * "Today" / "Yesterday" / "Tomorrow", or null for anything further out.
- *
- * Null rather than a formatted date so the caller picks its own fallback: the
- * three skins each give the date a different shape, and a heading that reads
- * "Today" at 32px reads as a date at 12px in the line under it.
+ * Null rather than a formatted date for anything further out, so each skin
+ * picks its own fallback shape.
  */
 export function relativeDayLabel(key: DayKey, today: DayKey): string | null {
   switch (daysBetween(today, key)) {
@@ -133,11 +120,8 @@ export function relativeDayLabel(key: DayKey, today: DayKey): string | null {
 }
 
 /**
- * "Sep 14 – 20", "Sep 28 – Oct 4" — the seven days from `start`.
- *
- * `formatRange` rather than two formatted days joined by a dash, because it is
- * what drops the repeated month (and orders day and month) the way the locale
- * expects.
+ * "Sep 14 – 20", "Sep 28 – Oct 4". `formatRange` rather than two days and a
+ * dash, because it drops the repeated month the way the locale expects.
  */
 export function formatWeekRange(start: DayKey): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -168,10 +152,7 @@ export function weekdayIndex(key: DayKey, weekStartsOn: 0 | 1): number {
   return (weekdayOf(key) - weekStartsOn + 7) % 7;
 }
 
-/**
- * Formatters are cached because the reminder cron builds one per subscription
- * and constructing an `Intl.DateTimeFormat` is the expensive half.
- */
+/** Cached: the cron builds one per subscription, and construction is the expensive half. */
 const zoneFormatters = new Map<string, Intl.DateTimeFormat>();
 
 function zoneFormatter(timeZone: string): Intl.DateTimeFormat {
@@ -183,8 +164,7 @@ function zoneFormatter(timeZone: string): Intl.DateTimeFormat {
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
-      // Without this the hour comes back as "24" at midnight under some
-      // locales' default cycle, and `Number("24")` is a day that never matches.
+      // Without it midnight can format as "24" under some locales' cycle.
       hourCycle: "h23",
     });
     zoneFormatters.set(timeZone, formatter);
@@ -205,16 +185,10 @@ export function isTimeZone(value: unknown): value is string {
 }
 
 /**
- * The civil day and the wall-clock hour at `at`, in someone else's timezone.
- *
- * The reminder cron needs this and `todayKey` cannot give it: the server's own
- * clock is UTC, and nine in the morning is a fact about where the user is. Parts
- * are read by name rather than off a formatted string, so no locale's ordering
- * or separators can change the answer.
- *
- * `hour` is the real wall-clock hour — it is what a reminder time is compared
- * against. `day` honours `dayStartHour` the way `todayKey` does, so the tasks
- * listed in the notification are the ones the app would show at that moment.
+ * The civil day and wall-clock hour in someone else's zone, which `todayKey`
+ * cannot give: the server's clock is UTC and nine in the morning is a fact
+ * about where the user is. Parts are read by name, so no locale's ordering can
+ * change the answer. `day` honours `dayStartHour`; `hour` is the real hour.
  */
 export function civilInZone(
   timeZone: string,

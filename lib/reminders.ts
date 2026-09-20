@@ -1,24 +1,17 @@
 "use client";
 
 /**
- * The client half of daily reminders. See DESIGN.md §8.5.
- *
- * §8.5's rule is that a reminder switch which silently does nothing is worse
- * than no switch, so this module's job is less "subscribe" than "find out
- * truthfully whether a reminder could arrive". Every way it cannot is a distinct
- * `ReminderStatus`, and `components/ReminderCard.tsx` says which one out loud
- * rather than showing a toggle over it.
- *
- * The order of the checks is deliberate. The server is asked whether it can send
- * *before* `Notification.requestPermission()` — a browser grants that prompt
- * once, and spending it on a deployment with no VAPID keypair leaves the user
- * with a permission they gave for nothing and no obvious way to be asked again.
+ * The client half of daily reminders. See DESIGN.md §8.5. A switch that
+ * silently does nothing is worse than no switch, so the job here is less
+ * "subscribe" than "find out truthfully whether a reminder could arrive": every
+ * way it cannot is a distinct `ReminderStatus`. The server is asked whether it
+ * can send *before* `requestPermission()`, which a browser grants only once.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ReminderStatus =
-  /** Before the first check resolves, and the server snapshot. Shows nothing. */
+  /** Before the first check resolves, and the server snapshot. */
   | "checking"
   /** No Push API. Safari on iOS until the app is installed to the home screen. */
   | "unsupported"
@@ -60,8 +53,7 @@ function timeZone(): string {
 
 /**
  * `getRegistration` rather than `ready`, which never settles when no worker was
- * ever registered — that is every development build (see `AppChrome.tsx`), and a
- * promise that hangs would leave the card on its skeleton forever.
+ * registered — every development build — leaving the card on its skeleton.
  */
 async function registration(): Promise<ServiceWorkerRegistration | null> {
   try {
@@ -80,9 +72,9 @@ async function readConfig(): Promise<Config> {
 }
 
 /**
- * VAPID keys travel base64url; `PushManager` wants the raw bytes. Backed by an
- * explicit `ArrayBuffer` because `BufferSource` excludes a view over a
- * `SharedArrayBuffer`, which is what the bare `Uint8Array` constructor widens to.
+ * VAPID keys travel base64url; `PushManager` wants raw bytes. The explicit
+ * `ArrayBuffer` is because `BufferSource` excludes the `SharedArrayBuffer`
+ * view a bare `Uint8Array` widens to.
  */
 function decodeKey(value: string): Uint8Array<ArrayBuffer> {
   const padded = value + "=".repeat((4 - (value.length % 4)) % 4);
@@ -109,10 +101,9 @@ async function post(body: unknown): Promise<Response> {
 }
 
 /**
- * Tell the server about a subscription this browser already holds. Idempotent,
- * and worth doing on every visit to the settings screen: it repairs a row lost
- * to a sign-out on another device, and it is the only moment the stored timezone
- * catches up with a user who has moved.
+ * Idempotent, and worth doing on every visit to the settings screen: it repairs
+ * a row lost to a sign-out elsewhere, and is the only moment the stored
+ * timezone catches up with a user who has moved.
  */
 async function announce(subscription: PushSubscription): Promise<boolean> {
   const keys = keysOf(subscription);
@@ -128,17 +119,10 @@ async function announce(subscription: PushSubscription): Promise<boolean> {
 }
 
 /**
- * Tell the server this browser is still here, if it holds a subscription at all.
- *
- * The heartbeat `SUBSCRIPTION_TTL_MS` ages a device against. Without it
- * `last_seen_at` would only move when someone opened the settings card, and a
- * daily user who never does would have their reminders collected out from under
- * them at six months.
- *
- * Cheap by construction: `getSubscription()` is local, and a browser with
- * reminders switched off returns null and makes no request at all. Failures are
- * swallowed — this is bookkeeping, and the app has no business reporting a
- * network error nobody asked for. Called once per app start from `Hydrator`.
+ * The heartbeat `SUBSCRIPTION_TTL_MS` ages a device against — without it
+ * `last_seen_at` only moves when someone opens the settings card, and a daily
+ * user who never does loses their reminders at six months. Cheap by
+ * construction, failures swallowed, and called once per app start.
  */
 export async function touchReminders(): Promise<void> {
   if (!supported()) return;
@@ -153,10 +137,8 @@ export async function touchReminders(): Promise<void> {
 }
 
 /**
- * Drop this browser's subscription, locally and on the server. Called from the
- * settings card and from signing out — a row left behind after a sign-out would
- * deliver the previous account's habits into the tray of whoever has the device
- * now.
+ * Locally and on the server: a row left behind after a sign-out delivers the
+ * previous account's habits into the tray of whoever has the device now.
  */
 export async function disableReminders(): Promise<void> {
   if (!supported()) return;
@@ -166,12 +148,12 @@ export async function disableReminders(): Promise<void> {
   if (!subscription) return;
 
   // Server first: an unsubscribed browser can no longer prove it owned the
-  // endpoint, and a row nothing will ever delete keeps waking the device.
+  // endpoint, and the orphaned row keeps waking the device.
   try {
     await post({ action: "unsubscribe", endpoint: subscription.endpoint });
   } catch {
-    // Offline. The local unsubscribe below still stops delivery on this device,
-    // and the push service answers 410 for the row on the next sweep.
+    // Offline. The local unsubscribe still stops delivery, and the push
+    // service answers 410 for the row on the next sweep.
   }
 
   await subscription.unsubscribe().catch(() => false);
@@ -180,20 +162,17 @@ export async function disableReminders(): Promise<void> {
 const INITIAL: ReminderState = { status: "checking", busy: false, error: null };
 
 /**
- * Reminder state for the settings card, plus the two actions that change it.
- *
- * `status` is `checking` on the server and through hydration — the same rule
- * §8.4 applies to install UI. These routes prerender to static HTML that the
- * service worker caches, so a card rendered server-side would tell the next
- * visitor about a subscription that is not theirs.
+ * `status` is `checking` on the server and through hydration, by §8.4's rule:
+ * the service worker caches this HTML, so a card rendered server-side would
+ * tell the next visitor about a subscription that is not theirs.
  */
 export function useReminders(signedIn: boolean): ReminderState & {
   enable: () => void;
   disable: () => void;
 } {
   const [state, setState] = useState<ReminderState>(INITIAL);
-  // Both resolved during the check and held, so `enable` can run its first
-  // statement without an `await` — see the note on the permission prompt there.
+  // Held from the check so `enable` can run without an `await` — see the note
+  // on the permission prompt there.
   const config = useRef<Config | null>(null);
   const worker = useRef<ServiceWorkerRegistration | null>(null);
   const alive = useRef(true);
@@ -220,8 +199,7 @@ export function useReminders(signedIn: boolean): ReminderState & {
     try {
       ready = await readConfig();
     } catch {
-      // Offline, most likely. Reported as unconfigured rather than guessed at:
-      // this screen must not offer a switch it cannot honour.
+      // Offline, most likely: this screen must not offer a switch it cannot honour.
       return set({ status: "unconfigured" });
     }
     config.current = ready;
@@ -250,11 +228,9 @@ export function useReminders(signedIn: boolean): ReminderState & {
       return set({ status: "unconfigured" });
     }
 
-    // First statement, before any `await`: Safari only grants the permission
-    // prompt from inside the user gesture that asked for it, and a resolved
-    // promise is a later task. Asking here still keeps the ordering §8.5 wants —
-    // the server was asked whether it can send at all when the card mounted, not
-    // now.
+    // First statement, before any `await`: Safari only grants the prompt from
+    // inside the gesture that asked for it, and a resolved promise is a later
+    // task. §8.5's ordering still holds — the server was asked on mount.
     const asked = Notification.requestPermission();
     set({ busy: true, error: null });
 
@@ -270,8 +246,7 @@ export function useReminders(signedIn: boolean): ReminderState & {
       let subscription: PushSubscription;
       try {
         subscription = await registered.pushManager.subscribe({
-          // Required by every browser, and Chrome refuses a subscription
-          // without it: a push that shows no notification is not allowed.
+          // Chrome refuses a subscription without it.
           userVisibleOnly: true,
           applicationServerKey: decodeKey(serverKey),
         });
@@ -284,9 +259,8 @@ export function useReminders(signedIn: boolean): ReminderState & {
       }
 
       if (!(await announce(subscription))) {
-        // Rolled back rather than left half-done: a browser holding a
-        // subscription the server does not know about looks switched on and
-        // never fires.
+        // Rolled back: a subscription the server does not know about looks
+        // switched on and never fires.
         await subscription.unsubscribe().catch(() => false);
         return set({
           busy: false,

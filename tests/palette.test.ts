@@ -58,10 +58,9 @@ describe("deriveSwatches", () => {
   });
 
   /**
-   * The point of deriving rather than hand-authoring: a palette built from any
-   * hue at all should clear the same bar the shipped skins were measured
-   * against. A failure here means a user can reach an inaccessible theme
-   * through the ordinary path, not just by hand-editing.
+   * The point of deriving rather than hand-authoring: any hue clears the bar
+   * the shipped skins were measured against. A failure here is an inaccessible
+   * theme reachable through the ordinary path.
    */
   it("passes its own audit at every hue", () => {
     for (let hue = 0; hue < 360; hue += 10) {

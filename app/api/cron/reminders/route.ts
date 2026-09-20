@@ -1,15 +1,10 @@
 /**
  * GET /api/cron/reminders — the hourly reminder sweep. See DESIGN.md §8.5.
+ * Hourly because "9am" is a wall clock; `workers/reminders.ts` holds the
+ * schedule and calls this with the `CRON_SECRET` bearer.
  *
- * Hourly, not daily. "9am" is a wall clock, and one daily invocation can only be
- * nine o'clock in a single timezone; `lib/server/reminders.ts` decides per device
- * whether it is that hour *there*. `workers/reminders.ts` holds the schedule — a Cloudflare
- * Worker cron trigger, which calls this route with the `CRON_SECRET` bearer.
- *
- * It fails closed. `CRON_SECRET` unset is not "no authentication needed" — it is
- * a deployment that cannot authenticate the caller, and this route reads every
- * account's habits and sends to every registered device, so it refuses to run at
- * all rather than run for whoever asks.
+ * It fails closed: an unset secret is a deployment that cannot authenticate its
+ * caller, and this route reads every account's habits.
  */
 
 import { timingSafeEqual } from "node:crypto";
@@ -25,10 +20,7 @@ export const maxDuration = 60;
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
-/**
- * Constant-time, and length-safe: `timingSafeEqual` throws on a length mismatch,
- * which would leak the secret's length through a 500 rather than a 401.
- */
+/** Length-checked first: `timingSafeEqual` throws on a mismatch, leaking the length. */
 function authorised(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -57,9 +49,8 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (!syncConfigured() || !pushConfigured()) {
-    // Not an error: a deployment can perfectly well run with the cron wired up
-    // and reminders switched off, and answering 200 keeps the scheduler from
-    // alerting about it every hour.
+    // Not an error: the cron can be wired up with reminders switched off, and a
+    // 200 keeps the scheduler from alerting every hour.
     return Response.json(
       { skipped: "Reminders are not configured on this deployment." },
       { headers: NO_STORE },
@@ -68,8 +59,7 @@ export async function GET(request: Request): Promise<Response> {
 
   try {
     const summary = await runReminderSweep(getDb());
-    // Counts only. The interesting fields — who, and which habits — are the
-    // ones that must not end up in a log aggregator.
+    // Counts only: who, and which habits, must not reach a log aggregator.
     console.log("openhabits: reminder sweep", summary);
     return Response.json(summary, { headers: NO_STORE });
   } catch (cause) {

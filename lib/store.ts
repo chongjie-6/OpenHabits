@@ -1,14 +1,9 @@
 "use client";
 
 /**
- * The client store. See DESIGN.md §7.2.
- *
- * Reads are synchronous from an in-memory cache; writes go to IndexedDB
- * fire-and-forget. The optimistic path is the *only* path — the UI never awaits
- * a write, because a habit tick that spins is a habit that dies.
- *
- * `useSyncExternalStore` rather than a `useState` + emitter, which would tear
- * under React 19 concurrent rendering.
+ * The client store. See DESIGN.md §7.2. Reads are synchronous from memory,
+ * writes go to IndexedDB fire-and-forget — the UI never awaits one.
+ * `useSyncExternalStore` rather than `useState` + emitter, which would tear.
  */
 
 import { useEffect, useSyncExternalStore } from "react";
@@ -87,21 +82,14 @@ const getSnapshot = () => version;
 const getServerSnapshot = () => 0;
 
 /**
- * The state as it stands, read without subscribing.
- *
- * For the callers that are not components — `lib/sync/client.ts` reaching for
- * `syncMeta()`, the consent step in `AccountCard` counting habits — and for the
- * tests, which drive the store through its functions rather than through React.
- * A component wants `useOpenHabits`, or it will not re-render.
+ * The state as it stands, read without subscribing. For the callers that are
+ * not components, and for the tests. A component wants `useOpenHabits`.
  */
 export function currentState(): State {
   return state;
 }
 
-/**
- * Subscribe to the store. `EMPTY` with `hydrated: false` on the server and the
- * first client render, which is what keeps SSR and hydration in agreement.
- */
+/** `EMPTY` on the server and the first client render, so SSR and hydration agree. */
 export function useOpenHabits(): State {
   useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return currentState();
@@ -116,10 +104,7 @@ export function useHydrate(): void {
 
 let hydrating: Promise<void> | null = null;
 
-/**
- * Exported for `tests/store.test.ts`, which drives the store through its own
- * functions rather than through React. The app should call `useHydrate`.
- */
+/** Exported for the tests, which drive the store directly; the app uses `useHydrate`. */
 export function hydrate(): Promise<void> {
   if (state.hydrated) return Promise.resolve();
   if (hydrating) return hydrating;
@@ -146,8 +131,7 @@ export function hydrate(): Promise<void> {
       };
       emit();
 
-      // After the emit: the app is already usable, and a tidy-up has no business
-      // sitting in front of the first paint.
+      // After the emit: a tidy-up has no business in front of the first paint.
       if (expired.length > 0) persist(() => db.forgetHabits(expired));
     })
     .catch((error) => {
@@ -162,15 +146,9 @@ export function hydrate(): Promise<void> {
 }
 
 /**
- * Split tombstones into the ones still worth keeping and the ones to forget.
- *
- * Done on hydrate rather than on a timer: the collection is only interesting
- * once per session, and doing it here means it happens on exactly the devices
- * that are being used. A device that is never opened keeps its tombstones,
- * which costs nothing and is the safe direction anyway.
- *
- * `deletedAt` rather than `updatedAt`, which a merge can move without the
- * deletion getting any newer. See `TOMBSTONE_TTL_MS` for what the window bounds.
+ * Collected on hydrate rather than on a timer: once per session is enough, and
+ * an unopened device keeping its tombstones is the safe direction. `deletedAt`
+ * rather than `updatedAt`, which a merge can move without the delete ageing.
  */
 function collectTombstones(tombstones: Habit[]): {
   kept: Habit[];
@@ -217,10 +195,7 @@ export function toggleEntry(habitId: string, date: DayKey): void {
   const current = countFor(habitId, date);
   const next = current >= habit.target ? 0 : current + 1;
 
-  // Every tick in the app funnels through here, so the buzz lives here too
-  // rather than on each of the three tick targets. Silent on the wrap back to
-  // zero: that is a correction, and confirming it feels like having recorded
-  // something.
+  // Silent on the wrap back to zero: that is a correction, not a record.
   if (state.settings.haptics && next > 0) {
     vibrate(next >= habit.target ? HAPTIC_DONE : HAPTIC_TICK);
   }
@@ -298,22 +273,15 @@ export function updateHabit(
 }
 
 /**
- * Everything a delete throws away, in the shape `restore` puts back.
- *
- * The entries have to travel in it. A tombstone tells every peer *and the
- * server* to drop the habit's history — `lib/server/sync-store.ts` deletes those
- * rows outright — so after a delete this object is the only copy that exists
- * anywhere.
+ * The entries travel in it because a tombstone tells the server to drop the
+ * habit's history outright — after a delete this is the only copy anywhere.
  */
 export type DeletedHabit = { habit: Habit; entries: Entry[] };
 
 /**
- * Delete locally and leave a tombstone for the other devices. See
- * `db.deleteHabitRecord` for why the row cannot simply be dropped.
- *
- * Returns what was removed so the caller can offer an undo (`lib/undo.ts`).
- * Ignoring the return value is a complete delete, which is what every path did
- * before undo existed.
+ * Delete locally, leaving a tombstone for the other devices. Returns what was
+ * removed so the caller can offer an undo (`lib/undo.ts`); ignoring the return
+ * value is a complete delete.
  */
 export function deleteHabit(id: string): DeletedHabit | null {
   const habit = state.habits.find((h) => h.id === id);
@@ -343,23 +311,9 @@ export function deleteHabit(id: string): DeletedHabit | null {
 }
 
 /**
- * Put deleted records back, as a fresh edit.
- *
- * Everything restored is re-stamped with the current time, and that is the whole
- * trick: the delete it is undoing wrote a tombstone stamped *now*, which every
- * peer and the server will apply. Restoring a habit under its original
- * `updatedAt` would lose that comparison, so the undo would appear to work on
- * this device and be quietly re-deleted by the next pull. The same applies to
- * every entry — they were dropped server-side when the tombstone landed, so
- * they have to be pushed again to exist anywhere but here.
- *
- * Takes a plain record rather than a habit id: by the time this runs the store
- * no longer holds the thing being restored.
- *
- * Nothing here waits for the delete's own writes to land. It does not have to:
- * both go through the same cached `openDb()` promise and IndexedDB runs
- * overlapping readwrite transactions on a store in the order they were created,
- * so the tombstone is committed before these rows are put back.
+ * Put deleted records back as a fresh edit. Re-stamping habit *and entries*
+ * with now is the whole trick: under their original `updatedAt` they lose to
+ * the tombstone the delete wrote and the next pull quietly re-deletes them.
  */
 export function restore(deleted: DeletedHabit): void {
   const now = Date.now();
@@ -383,9 +337,7 @@ export function restore(deleted: DeletedHabit): void {
   };
   emit();
 
-  // Both issued at once rather than in sequence: they are separate object
-  // stores with no ordering between them, and awaiting the first would leave
-  // the second a microtask behind the state the UI is already showing.
+  // Separate object stores with no ordering between them, so issue both at once.
   persist(() => Promise.all([db.putHabit(habit), db.putEntries(entries)]));
 }
 
@@ -394,9 +346,8 @@ export function moveHabit(id: string, direction: -1 | 1): void {
   const habit = ordered.find((h) => h.id === id);
   if (!habit) return;
 
-  // Swap within the habit's own group. Active and archived habits are shown as
-  // separate lists, so stepping over an archived neighbour would look like the
-  // button had done nothing.
+  // Active and archived are separate lists, so a swap across the two would
+  // look like the button did nothing.
   const isActive = (h: Habit) => h.archivedAt === null;
   const group = ordered.filter((h) => isActive(h) === isActive(habit));
 
@@ -493,9 +444,8 @@ export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
     }
   }
 
-  // Renumbering is a genuine local edit, so the habits it touches get a fresh
-  // stamp. The rest keep the stamp they came with, which is what stops an old
-  // backup from outranking newer server data.
+  // Only the renumbered habits get a fresh stamp; the rest keep theirs, which
+  // stops an old backup outranking newer server data.
   const now = Date.now();
   habits = habits
     .sort((a, b) => a.order - b.order)
@@ -514,9 +464,8 @@ export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
     entries,
     settings,
     settingsUpdatedAt,
-    // A replace drops the tombstones this device was holding: a peer that has
-    // not had them yet never will. Accepted, because the alternative is a
-    // restore that silently re-deletes the habits it was meant to bring back.
+    // A replace drops held tombstones, else the restore re-deletes what it
+    // was meant to bring back.
     tombstones: replacing ? [] : state.tombstones,
   };
   emit();
@@ -537,14 +486,12 @@ export function importBundle(bundle: AnyExportBundle, mode: ImportMode): void {
   });
 }
 
-// The dependency runs one way: `lib/sync/client.ts` imports from here, and this
-// file knows nothing about it. That is what keeps the app whole with sync off.
+// The dependency runs one way: sync imports the store, never the reverse.
 
 /** The store's contents in the shape `lib/sync/merge.ts` expects. */
 export function localSnapshot(): LocalSnapshot {
   return {
-    // Recombined here: the merge rules need to see tombstones to apply them,
-    // even though no screen does.
+    // Recombined: the merge rules need tombstones, even though no screen does.
     habits: [...state.habits, ...state.tombstones],
     entries: state.entries,
     settings: { value: state.settings, updatedAt: state.settingsUpdatedAt },
@@ -557,7 +504,7 @@ export function syncMeta(): db.SyncMeta {
 
 export function setSyncStatus(syncStatus: SyncStatus): void {
   if (state.syncStatus.kind === syncStatus.kind) {
-    // Re-rendering the tree for an identical status is pure cost.
+    // Re-rendering for an identical status is pure cost.
     if (syncStatus.kind !== "error") return;
     if (
       (state.syncStatus as { message: string }).message === syncStatus.message
@@ -575,10 +522,9 @@ export function saveSyncMeta(meta: db.SyncMeta): void {
 }
 
 /**
- * Adopt a merged pull. Memory first, disk after (§7.2): a failed write means the
- * old cursor is re-read and the same payload pulled again, which the merge
- * absorbs. The reverse — a cursor ahead of the data it describes — loses
- * records, so `db.applyMerge` writes both in one transaction.
+ * Adopt a merged pull. Memory first, disk after (§7.2): a failed write re-pulls
+ * the same payload, which the merge absorbs, where a cursor ahead of its data
+ * loses records — hence `db.applyMerge`'s single transaction.
  */
 export function applyPulled(merged: MergeResult, meta: db.SyncMeta): void {
   const { snapshot } = merged;
@@ -608,10 +554,8 @@ export function applyPulled(merged: MergeResult, meta: db.SyncMeta): void {
 }
 
 /**
- * Hand this device over to a different account: signing in as someone else must
- * neither merge two people's habits nor push the previous account's data up
- * under the new identity. Emptied and reset, so the new account's history
- * arrives as a first sync.
+ * Hand the device to a different account. Emptied and reset rather than merged,
+ * so neither two people's habits mix nor the old data pushes under the new id.
  */
 export function adoptAccount(accountId: string | null): void {
   const meta: db.SyncMeta = { ...db.NO_SYNC, accountId };
@@ -633,11 +577,9 @@ export function adoptAccount(accountId: string | null): void {
 }
 
 /**
- * Delete everything on this device — and, if signed in, everywhere else.
- *
- * The habits become tombstones rather than vanishing: on a synced account a
- * local-only wipe is undone by the next pull, so the button would appear to work
- * and then quietly put a year of data back.
+ * Delete everything here — and, if signed in, everywhere else. Habits become
+ * tombstones rather than vanishing, because on a synced account a local-only
+ * wipe is undone by the next pull.
  */
 export function resetEverything(): void {
   const now = Date.now();

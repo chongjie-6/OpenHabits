@@ -1,18 +1,13 @@
 "use client";
 
 /**
- * The daily reminder card on Settings. See DESIGN.md §8.5.
+ * The daily reminder card on Settings. See DESIGN.md §8.5. A switch shows in
+ * the one state where a reminder can arrive, and every other branch names its
+ * obstacle — which is why a nominal checkbox has six of them.
  *
- * §8.5 spent its length on one warning — a "remind me at 9:00" toggle that
- * silently does nothing is the worst outcome available — so this card shows a
- * switch only in the one state where a reminder can actually arrive, and names
- * the obstacle in every other. That is why there are six branches for what is
- * nominally a checkbox.
- *
- * The split between the two controls is real, not cosmetic. **Whether** this
- * device is reminded is a property of this browser's push subscription and lives
- * on the server per device; **when** is a preference in the synced settings blob,
- * so a phone and a laptop cannot disagree about morning.
+ * The two controls differ in kind: **whether** this device is reminded lives on
+ * the server per device; **when** is a synced preference, so a phone and a
+ * laptop cannot disagree about morning.
  */
 
 import { authClient } from "@/lib/session";
@@ -103,8 +98,7 @@ function Body({
     );
   }
 
-  // Checked after the capability branches: being signed out is the one obstacle
-  // with a fix on this very screen, and saying so is only useful once the
+  // After the capability branches: saying "sign in" is only useful once the
   // browser and the deployment can actually deliver.
   if (!signedIn) {
     return (

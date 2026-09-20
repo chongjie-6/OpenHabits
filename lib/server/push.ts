@@ -1,16 +1,9 @@
 import "server-only";
 
 /**
- * Web Push transport. See DESIGN.md §8.5.
- *
- * The seam between "we decided to remind someone" (`reminders.ts`) and the
- * protocol that carries it. Kept apart so the sweep is testable without a VAPID
- * keypair or a push service: `runReminderSweep` takes its sender as an argument.
- *
- * Configured or not, like everything else in `lib/server/` — with no keys set
- * `pushConfigured()` is false, the endpoint says so in as many words, and no
- * reminder UI ever offers a toggle. §8.5's warning is the whole reason this is
- * answered honestly rather than assumed: a "remind me at 9:00" switch that
+ * Web Push transport. See DESIGN.md §8.5. Apart from `reminders.ts` so the
+ * sweep is testable with no keypair and no push service. Configured or not,
+ * answered honestly: §8.5's warning is that a "remind me at 9:00" switch which
  * silently does nothing is worse than no switch.
  */
 
@@ -21,18 +14,14 @@ export type PushKeys = { p256dh: string; auth: string };
 export type PushTarget = { endpoint: string } & { keys: PushKeys };
 
 /**
- * `gone` means the push service has disowned the endpoint — the browser was
- * cleared, the app uninstalled, the subscription rotated. It is the one outcome
- * that must reach the database, because the row will never work again.
+ * `gone` is the push service disowning the endpoint, and the one outcome that
+ * must reach the database — the row will never work again.
  */
 export type PushResult = "sent" | "gone" | "failed";
 
 /**
- * A `mailto:` or `https:` contact the push service can use to reach the operator
- * about a misbehaving sender. Required by the VAPID spec, so a deployment with
- * keys but no subject is not configured for push.
- *
- * `BETTER_AUTH_URL` is accepted as a fallback only when it is an https origin.
+ * The contact a push service uses to reach the operator. Required by VAPID, so
+ * keys without a subject are not a configured deployment.
  */
 function subject(): string | null {
   const explicit = process.env.VAPID_SUBJECT?.trim();
@@ -60,12 +49,9 @@ export function pushConfigured(): boolean {
 }
 
 /**
- * The public half of the VAPID pair, which the browser needs to create a
- * subscription. Public by construction — it is handed to a third-party push
- * service on every subscribe — so it is served rather than baked in at build
- * time with a `NEXT_PUBLIC_` variable. Fetching it also proves the server can
- * actually send before the app asks for notification permission, and permission
- * refused once is expensive to ask for again.
+ * Public by construction, so served rather than baked in with a `NEXT_PUBLIC_`
+ * variable. Fetching it also proves the server can send before the app spends
+ * the one notification prompt a browser grants.
  */
 export function applicationServerKey(): string | null {
   return keys()?.publicKey ?? null;
@@ -77,10 +63,7 @@ export type PushPayload = {
   body: string;
   /** Where a click lands. Same-origin path, never a full URL. */
   url: string;
-  /**
-   * Collapse key. Two reminders for the same day replace each other in the tray
-   * rather than stacking, which is what makes an at-least-once cron harmless.
-   */
+  /** Collapse key: two reminders for a day replace rather than stack. */
   tag: string;
 };
 
@@ -97,8 +80,8 @@ export async function sendPush(
       JSON.stringify(payload),
       {
         vapidDetails: vapid,
-        // The push service holds an undelivered message this long for a device
-        // that is offline. A morning reminder is stale by the evening.
+        // How long an undelivered message is held: a morning reminder is stale
+        // by the evening.
         TTL: 6 * 60 * 60,
         urgency: "normal",
       },
@@ -108,8 +91,7 @@ export async function sendPush(
     const status = (cause as { statusCode?: number }).statusCode;
     if (status === 404 || status === 410) return "gone";
 
-    // Logged in outline: the error carries the endpoint, which identifies a
-    // device, and the body, which is the user's habit names.
+    // In outline only: the error carries the endpoint and the habit names.
     console.error(`openhabits: push failed with status ${status ?? "unknown"}`);
     return "failed";
   }

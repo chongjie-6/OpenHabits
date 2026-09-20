@@ -1,10 +1,7 @@
 /**
- * The decidable half of `lib/server/ratelimit.ts` — which caller a request is
- * attributed to, and which tier a path falls into. See DESIGN.md §13.17.
- *
- * The limiters themselves need a store and are not tested here; these three
- * functions are pure for exactly that reason, the way `base-url.ts` takes its
- * environment as a parameter so the interesting rule stays testable.
+ * The decidable half of `lib/server/ratelimit.ts` (§13.17): who a request is
+ * attributed to, and which tier a path falls into. The limiters need a store,
+ * which is exactly why these three functions are pure.
  */
 
 import { describe, expect, it } from "vitest";

@@ -204,8 +204,8 @@ export function HabitDetail() {
                     { value: String(view.streaks.longest), label: "longest" },
                     { value: `${Math.round(rate * 100)}%`, label: "completed" },
                   ],
-                  // Ends today: a still image cannot dim a day that has not
-                  // happened yet, so the rest of this week would read as missed.
+                  // Ends today: a still image cannot dim what has not happened,
+                  // so the rest of the week would read as missed.
                   stats: view.past,
                   ramp: habit.color,
                 })}

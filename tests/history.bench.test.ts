@@ -1,13 +1,8 @@
 /**
- * Performance floor for the heatmap pipeline. See DESIGN.md §10.
- *
- * Measures the part that is measurable without a browser: the computation turning
- * habits and entries into the `DayStat[]` the grid renders. Paint cost needs a
- * real device (§11).
- *
- * Thresholds are deliberately loose, roughly 4× the observed figures. One tight
- * enough to catch a 20% drift would fail on a busy CI box and get deleted; this
- * still catches the regression that matters, an accidental O(n²) in the day loop.
+ * Performance floor for the heatmap pipeline (§10) — the computation, paint
+ * cost needing a real device. Thresholds are loose on purpose, roughly 4×
+ * observed: one tight enough to catch a 20% drift fails on a busy CI box and
+ * gets deleted, where this still catches an accidental O(n²).
  */
 
 import { describe, expect, it } from "vitest";

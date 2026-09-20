@@ -6,25 +6,13 @@ import { toggleFavourite, useOpenHabits } from "@/lib/store";
 import { useToday } from "@/lib/use-today";
 
 /**
- * The hero. See DESIGN.md §5.1, §5.3, §6.5.
+ * The hero. See DESIGN.md §5.1, §5.3, §6.5. The day is resolved on the client:
+ * this page prerenders, so a server-computed date pins every visitor to the
+ * build day's quote, and the service worker caches that. Hence the fixed-height
+ * placeholder until mount — which is also what makes `useSkin` safe here.
  *
- * The day is resolved on the client. This page prerenders to static HTML, so a
- * server-computed date would pin every visitor to the *build* day's quote — and
- * even request-time rendering is stale once the service worker serves from cache.
- * Showing the wrong quote and correcting it is worse than showing none for a
- * beat, hence the fixed-height placeholder until mount. The selection itself is
- * pure and synchronous, so it lands on the first client render.
- *
- * That placeholder is also what makes `useSkin` safe here: it reports `classic`
- * until mount, and nothing it decides is rendered until `day` is non-null, by
- * which point it has the real answer. Where the card sits on the page is a
- * separate question, settled in CSS (`app/page.tsx`).
- *
- * Which corpus it draws from is `settings.dailyMode`, narrowed by whichever
- * tags `settings.dailyTags` names, and the three skins below never learn either
- * answer — `lib/daily.ts` hands them a flattened item regardless. A quote's
- * byline is its author with the source beneath; a fact's byline *is* its
- * source, because that is the only attribution a fact has.
+ * The three skins never learn which corpus is on screen; `lib/daily.ts` hands
+ * them a flattened item either way.
  */
 export function DailyCard() {
   const { settings } = useOpenHabits();
@@ -76,9 +64,8 @@ function DailyCardClassic({ item, saved }: Props) {
 }
 
 /**
- * `grid` demotes the card to a footnote under the data — no card, no serif,
- * one rule down the left. It sits at the foot of the page, so it has to read as
- * an endnote rather than a second hero.
+ * `grid` demotes the card to a footnote under the data — no card, no serif, one
+ * rule down the left, reading as an endnote rather than a second hero.
  */
 function DailyRule({ item, saved }: Props) {
   return (
@@ -107,10 +94,9 @@ function DailyRule({ item, saved }: Props) {
 }
 
 /**
- * `blocks` inverts it: the one solid mass on a page of outlines. The trio of
- * `--quote-*` tokens exists for this — in the dark theme the page is already
- * near-black, so the block flips to the acid accent instead and the meta line
- * goes dark on it.
+ * `blocks` inverts it: the one solid mass on a page of outlines. The `--quote-*`
+ * trio exists for this — in dark the page is near-black already, so the block
+ * flips to the acid accent instead.
  */
 function DailyBlock({ item, saved }: Props) {
   return (
@@ -138,10 +124,7 @@ function DailyBlock({ item, saved }: Props) {
   );
 }
 
-/**
- * `tone="quote"` is for a skin that paints the card in its own colours: the
- * button has to take its ink from the block it sits on, not from the page.
- */
+/** `tone="quote"` takes its ink from the block the button sits on, not the page. */
 function SaveButton({
   itemId,
   saved,
@@ -182,9 +165,8 @@ function SaveButton({
 }
 
 /**
- * Holds the card's footprint so the page does not shift when the card lands.
- * Sized for the classic card; the other two skins are shorter, so they settle
- * upward rather than pushing the habit list down.
+ * Holds the footprint so the page does not shift. Sized for the classic card,
+ * the other two being shorter, so they settle upward rather than push down.
  */
 function DailyCardPlaceholder() {
   return (

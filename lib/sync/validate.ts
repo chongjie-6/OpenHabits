@@ -1,15 +1,9 @@
 /**
- * Payload validation for the sync endpoint, and for the backup files whose
- * records it will go on to carry.
- *
- * The caps matter beyond rejecting malformed data: these records go back out to
- * the user's *other* devices, so a field accepted here is a field every one of
- * them renders. Bounding at the boundary keeps one bad request from becoming a
- * payload that breaks the user's phone on every sync.
- *
- * Hand-written rather than schema-library-driven, as in `lib/db.ts`: the surface
- * is small and fixed, and this is where a supply chain dependency is least
- * welcome.
+ * Payload validation for the sync endpoint and for backup files. The caps do
+ * more than reject malformed data: what is accepted here goes back out to every
+ * other device, so bounding at the boundary keeps one bad request from becoming
+ * a payload that breaks the user's phone on every sync. Hand-written, the
+ * surface being small and fixed.
  */
 
 import {
@@ -36,7 +30,8 @@ const MAX_TAGS = 200;
 const MAX_ORDER = 100_000;
 
 export type ParseResult<T> =
-  { ok: true; value: T } | { ok: false; message: string };
+  | { ok: true; value: T }
+  | { ok: false; message: string };
 
 function fail(message: string): { ok: false; message: string } {
   return { ok: false, message };
@@ -67,9 +62,8 @@ function isStamp(value: unknown): value is number {
 }
 
 /**
- * A civil date, checked for existence rather than shape. The round-trip
- * comparison is what rejects '2026-02-30', which `Date` would silently roll
- * forward to March 2nd.
+ * Checked for existence, not shape: the round trip rejects '2026-02-30', which
+ * `Date` would roll forward to March 2nd.
  */
 function isDayKey(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))
@@ -94,8 +88,8 @@ function parseCadence(value: unknown): ParseResult<Cadence> {
         return fail("cadence.days has more than seven days");
       if (!value.days.every((d) => isCount(d, 6)))
         return fail("cadence.days must be 0–6");
-      // Sorted so the fingerprint in `protocol.ts` is stable across devices
-      // that stored the same days in another order.
+      // Sorted so the fingerprint is stable across devices that stored the
+      // same days in another order.
       const days = [...new Set(value.days as number[])].sort((a, b) => a - b);
       return { ok: true, value: { kind: "weekdays", days } };
     }
@@ -138,9 +132,8 @@ function parseHabit(value: unknown): ParseResult<Habit> {
     return fail("habit.deletedAt must be epoch ms or null");
   }
 
-  // A palette key or a #rrggbb the user picked from the wheel, lowercased here
-  // so two devices that spelled the same colour differently still fingerprint
-  // alike in `protocol.ts:wins`.
+  // Lowercased so two devices that spelled one colour differently still
+  // fingerprint alike in `protocol.ts:wins`.
   const color =
     typeof value.color === "string" ? normaliseHabitColor(value.color) : null;
   if (color === null)
@@ -151,8 +144,7 @@ function parseHabit(value: unknown): ParseResult<Habit> {
 
   return {
     ok: true,
-    // Field by field rather than spread, so an unexpected property cannot ride
-    // into the database and back out to other devices.
+    // Field by field, so no unexpected property rides into the database.
     value: {
       id: value.id,
       name: value.name,
@@ -193,31 +185,25 @@ function parseEntry(value: unknown): ParseResult<Entry> {
 
 function parseSettings(value: unknown): ParseResult<Settings> {
   if (!isObject(value)) return fail("settings must be an object");
-  // `theme` is deliberately not read. It was a synced field until §13.8 #1 made
-  // appearance device-local, and a device still on the older build pushes a blob
-  // carrying it. Rejecting that would stop such a device syncing its habits over
-  // a preference this build no longer stores; the field is accepted and dropped
-  // by the field-by-field construction below.
+  // `theme` is accepted and dropped, not rejected: it was synced until §13.8 #1,
+  // and refusing an older build's blob would stop it syncing habits too.
   if (value.weekStartsOn !== 0 && value.weekStartsOn !== 1) {
     return fail("settings.weekStartsOn must be 0 or 1");
   }
   if (!isCount(value.dayStartHour, 6))
     return fail("settings.dayStartHour must be 0–6");
-  // Optional for the reason `haptics` is: a device on a build from before
-  // reminders existed pushes a blob without it, and refusing that would stop it
-  // syncing habits too.
+  // Optional for the reason `haptics` is: a build from before reminders pushes
+  // a blob without it.
   if (value.reminderHour !== undefined && !isCount(value.reminderHour, 23)) {
     return fail("settings.reminderHour must be 0–23");
   }
-  // Optional, unlike its neighbours: a device still on a build from before
-  // haptics existed pushes a blob without the field, and rejecting that would
-  // stop it syncing anything at all until it updated.
+  // Optional, unlike its neighbours: a build from before haptics pushes a blob
+  // without it, and rejecting that would stop it syncing at all.
   if (value.haptics !== undefined && typeof value.haptics !== "boolean") {
     return fail("settings.haptics must be a boolean");
   }
-  // Optional for the same reason, and checked against the union rather than
-  // "is a string": an unknown mode would reach every other device and leave the
-  // daily card with no corpus to draw from.
+  // Checked against the union, not "is a string": an unknown mode would leave
+  // every other device's daily card with no corpus.
   if (
     value.dailyMode !== undefined &&
     value.dailyMode !== "quotes" &&
@@ -232,10 +218,9 @@ function parseSettings(value: unknown): ParseResult<Settings> {
   if (!value.favourites.every(isId)) {
     return fail("settings.favourites must be quote or fact ids");
   }
-  // Optional like `haptics`, and checked for shape rather than membership: the
-  // tag unions grow, and a device on a newer build must be able to push a tag
-  // this one has never heard of. `lib/daily.ts` intersects with the corpus it
-  // is about to draw from, so an unknown tag narrows nothing and breaks nothing.
+  // Shape rather than membership: the unions grow, and a newer build must be
+  // able to push a tag this one has never heard of — `lib/daily.ts` intersects
+  // with the corpus, so an unknown tag narrows nothing.
   if (value.dailyTags !== undefined) {
     if (!Array.isArray(value.dailyTags))
       return fail("settings.dailyTags must be an array");
@@ -274,8 +259,8 @@ function parseList<T>(
   const out: T[] = [];
   for (let i = 0; i < value.length; i++) {
     const parsed = parse(value[i]);
-    // The client chunks its push, so without the index a rejected batch gives
-    // no way to find the record at fault.
+    // The client chunks its push; without the index there is no way to find
+    // the record at fault.
     if (!parsed.ok) return fail(`${field}[${i}]: ${parsed.message}`);
     out.push(parsed.value);
   }
@@ -283,16 +268,10 @@ function parseList<T>(
 }
 
 /**
- * A backup file, held to the rules a sync push is held to. Everything an import
- * brings in is pushed on the next sync, and a record the server refuses stops
- * this device syncing anything at all (`lib/sync/client.ts`, the 400 branch)
- * with no way for the user to find the one at fault. Checking here turns that
- * into a message at the moment they chose the file.
- *
- * Uncapped where a push is capped: a year of history is one file, not one
- * request. v1 habits get their sync metadata from `normaliseHabit` first, as
- * `importBundle` always gave them. Tombstones are dropped — an export never
- * writes one, and one arriving in `habits` would put a deleted habit on Today.
+ * Held to the rules a push is held to, because everything imported is pushed
+ * next sync and one refused record stops this device syncing at all — checked
+ * here, that is a message at the moment the file was chosen. Uncapped, a year
+ * of history being one file; tombstones dropped, an export never writing one.
  */
 export function parseBackup(value: unknown): ParseResult<ExportBundle> {
   if (!isObject(value)) return fail("the file is not a backup");
@@ -316,8 +295,7 @@ export function parseBackup(value: unknown): ParseResult<ExportBundle> {
   const entries = parseList(value.entries, "entries", parseEntry, Infinity);
   if (!entries.ok) return entries;
 
-  // Over the defaults, as a replacing import always spread them: a file from
-  // before a setting existed does not carry it.
+  // Over the defaults: a file from before a setting existed does not carry it.
   const stored = isObject(value.settings) ? value.settings : {};
   const settings = parseSettings({ ...DEFAULT_SETTINGS, ...stored });
   if (!settings.ok) return settings;

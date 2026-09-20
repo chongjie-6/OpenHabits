@@ -8,14 +8,10 @@ import type { DayKey } from "@/lib/types";
 import { useMediaQuery, WIDE } from "@/lib/use-media-query";
 
 /**
- * The contribution grid. See DESIGN.md §4.
- *
- * One `<svg>`, one delegated listener, and a single tab stop with a virtual
- * cursor — not 371 React components with 371 handlers.
- *
- * Below 640px the grid transposes to 7 columns × N rows and flows vertically,
- * because a horizontally-scrolling year strip on a phone traps vertical scroll
- * and hides most of the data.
+ * The contribution grid. See DESIGN.md §4. One `<svg>`, one delegated listener
+ * and a single tab stop with a virtual cursor, not 371 components with 371
+ * handlers. Below 640px it transposes and flows vertically, a horizontally
+ * scrolling year strip on a phone trapping vertical scroll.
  */
 
 const H = { cell: 11, gap: 3, padTop: 18, padLeft: 26 };
@@ -62,8 +58,7 @@ export function Heatmap({
       : { x: geo.padLeft + day * step, y: geo.padTop + week * step };
   }
 
-  // Month labels: first week of each new month, with breathing room so short
-  // months do not collide.
+  // First week of each month, with breathing room so short ones do not collide.
   const monthLabels = useMemo(() => {
     const out: { key: string; label: string; index: number }[] = [];
     let previous = "";
@@ -88,8 +83,8 @@ export function Heatmap({
   }
 
   function onKeyDown(event: React.KeyboardEvent) {
-    // In the transposed layout the arrow keys keep their spatial meaning:
-    // left/right still moves by a day, up/down still moves by a week.
+    // Transposed, the arrows keep their spatial meaning: left/right a day,
+    // up/down a week.
     const map: Record<string, number> = {
       ArrowLeft: -1,
       ArrowRight: 1,

@@ -1,15 +1,9 @@
 /**
- * The password-reset email. See DESIGN.md §13.13.
- *
- * Says less than the verification mail on purpose. This one is sent to an
- * address on request from an unauthenticated form, so it reaches people who did
- * not ask for it whenever someone types their address into the box — it must
- * not confirm that an account exists, must not name the person, and must read
- * as calm rather than urgent. "Someone asked" is the framing, not "your account
- * is at risk".
- *
- * The lit square is the last one rather than the first: the verification mail
- * is a beginning, this is a return.
+ * The password-reset email. See DESIGN.md §13.13. Says less than the
+ * verification mail on purpose: an unauthenticated form sends it, so it reaches
+ * people who did not ask. It must not confirm an account exists, must not name
+ * anyone, and reads as "someone asked", not "your account is at risk". The lit
+ * square is the last rather than the first — this is a return, not a beginning.
  */
 
 import { button, hero, shell } from "./layout";

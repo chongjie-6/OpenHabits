@@ -1,16 +1,19 @@
 /**
- * Core domain types. See DESIGN.md §3.
- *
- * All dates are local civil dates serialised as `YYYY-MM-DD`. Never store a UTC
- * timestamp for day membership — a 23:00 tick in UTC+11 must land on the day the
- * user actually experienced.
+ * Core domain types. See DESIGN.md §3. Dates are local civil `YYYY-MM-DD`:
+ * never a UTC timestamp for day membership, or a 23:00 tick in UTC+11 lands
+ * on a day the user did not experience.
  */
 
 /** 'YYYY-MM-DD' in the user's local timezone. */
 export type DayKey = string;
 
 export type HabitColorKey =
-  "green" | "blue" | "violet" | "amber" | "rose" | "teal";
+  | "green"
+  | "blue"
+  | "violet"
+  | "amber"
+  | "rose"
+  | "teal";
 
 export const HABIT_COLORS: HabitColorKey[] = [
   "green",
@@ -25,9 +28,8 @@ export const HABIT_COLORS: HabitColorKey[] = [
 export type HexColor = `#${string}`;
 
 /**
- * A palette key or any colour the user picked. Keys stay keys rather than being
- * flattened to hex on save: each one resolves to a different value per theme
- * (see `app/globals.css`), and a stored hex can only ever be one of the two.
+ * Keys stay keys rather than flattening to hex on save: each resolves to a
+ * different value per theme, and a stored hex can only be one of the two.
  */
 export type HabitColor = HabitColorKey | HexColor;
 
@@ -51,20 +53,16 @@ export type Cadence =
   | { kind: "weekly"; times: number };
 
 /**
- * Sync metadata carried by every record that syncs. See DESIGN.md §13.
- *
- * The unit split is deliberate: `createdAt`/`archivedAt` are civil dates because
- * they answer domain questions and must not shift under a timezone.
- * `updatedAt`/`deletedAt` are epoch ms because a day's resolution would make
- * every same-day edit a tie.
+ * Sync metadata. See DESIGN.md §13. The unit split is deliberate: civil dates
+ * answer domain questions and must not shift under a timezone, where epoch ms
+ * keeps a day's worth of edits from all tying.
  */
 export type Synced = {
   /** Epoch ms of the last local edit. Last-write-wins merge key. */
   updatedAt: number;
   /**
-   * Epoch ms of deletion, or null if live. Kept as a tombstone rather than
-   * removed: on a replicated store a missing row is indistinguishable from one
-   * the peer has not seen yet.
+   * Epoch ms of deletion, null if live. A tombstone rather than a removal: a
+   * missing row is indistinguishable from one the peer has not seen yet.
    */
   deletedAt: number | null;
 };
@@ -84,13 +82,9 @@ export type Habit = Synced & {
 };
 
 /**
- * A habit's state on one day.
- *
- * Entries carry no tombstone by decision, not omission. "Not done" is `count: 0`,
- * a value LWW merges like any other, and the only bulk removal is a habit
- * deletion whose own tombstone already tells peers to drop the entries. A second
- * tombstone per entry would add no information and multiply the synced rows by
- * the length of the user's history.
+ * A habit's state on one day. No tombstone by decision: "not done" is
+ * `count: 0`, which LWW merges like any other value, and a habit deletion
+ * already tells peers to drop the entries.
  */
 export type Entry = {
   habitId: string;
@@ -136,9 +130,8 @@ export type FactTag =
   | "food";
 
 /**
- * A fun fact. The sibling of `Quote`, not a variant of it: a fact has no author
- * to stand behind it, so `source` — where it can be *checked* — is required
- * rather than optional, and there is no line to attribute.
+ * The sibling of `Quote`, not a variant: a fact has no author, so `source` —
+ * where it can be checked — is the whole of its provenance and is required.
  */
 export type Fact = {
   id: string;
@@ -153,10 +146,9 @@ export type Fact = {
 export type DailyMode = "quotes" | "facts";
 
 /**
- * The synced half of a user's preferences. Appearance is **not** in here —
- * `theme`, `skin` and `palette` are all device-local (`lib/theme.ts`,
- * `lib/skin.ts`), because a look chosen on a phone has no business repainting a
- * laptop. See DESIGN.md §13.8 #1.
+ * The synced half of a user's preferences. Appearance is **not** in here:
+ * `theme`, `skin` and `palette` are device-local, because a look chosen on a
+ * phone has no business repainting a laptop. See DESIGN.md §13.8 #1.
  */
 export type Settings = {
   /** 0 = Sunday, 1 = Monday. */
@@ -164,47 +156,28 @@ export type Settings = {
   /** 0–6. `4` means "the day rolls over at 4am" for night owls. */
   dayStartHour: number;
   /**
-   * Wall-clock hour, 0–23, at which the daily reminder is sent. A preference
-   * rather than a switch: whether a reminder arrives at all is whether *this
-   * device* holds a push subscription, which is per device and lives on the
-   * server (see DESIGN.md §8.5). The hour rides in the synced blob so a phone
-   * and a laptop cannot disagree about when morning is.
+   * Wall-clock hour, 0–23, for the daily reminder — *when*, never *whether*,
+   * which is per device and lives on the server (§8.5). Synced so a phone and
+   * a laptop cannot disagree about when morning is.
    */
   reminderHour: number;
   /**
-   * Buzz on a tick, where the device has a motor. Inert rather than hidden on
-   * hardware that cannot vibrate: the toggle would otherwise vanish from the
-   * one screen — a desktop — where a user is most likely to be configuring the
-   * phone they carry.
+   * Buzz on a tick. Inert rather than hidden without a motor, or the toggle
+   * vanishes from the desktop where the phone is most likely configured.
    */
   haptics: boolean;
   /**
-   * Whether the daily card shows a quote or a fun fact. Synced rather than
-   * device-local, unlike the three appearance axes: this picks *what the app
-   * says to you*, not how it looks, and someone who came for facts did not come
-   * for quotes on their laptop.
+   * Quote or fun fact. Synced, unlike the appearance axes: it decides what the
+   * app says to you, not how it looks.
    */
   dailyMode: DailyMode;
-  /**
-   * Saved quote and fact ids. One list across both corpora — the ids are
-   * distinct, and a saved thing should not disappear because the mode changed.
-   */
+  /** One list across both corpora: a saved thing should survive a mode change. */
   favourites: string[];
   /**
-   * Tags the daily card is allowed to draw from. Empty means the whole corpus,
-   * which is the default and stays the default.
-   *
-   * One flat list across both corpora, like `favourites`, and for the same
-   * reason: the two tag unions are disjoint, so the mode on screen decides
-   * which half is read and the other half sits harmlessly by. Filtering to
-   * nothing a corpus has is *not* an empty deck — `lib/daily.ts` falls back to
-   * the whole corpus, because a card with nothing on it is a worse answer than
-   * a card that ignored a filter.
-   *
-   * `string[]` rather than `(QuoteTag | FactTag)[]`: a tag added in a later
-   * release has to survive a round trip through a device on an older build,
-   * and a union type here would make that device reject the whole settings
-   * blob — and with it every habit in the same push.
+   * Tags the daily card may draw from; empty is the whole corpus. One flat list
+   * across both, whose unions are disjoint, and filtering to nothing falls back
+   * to the whole corpus. `string[]` so an older build cannot reject a new tag —
+   * and with it every habit in the same push.
    */
   dailyTags: string[];
 };
@@ -220,11 +193,9 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /**
- * Settings sync as a single last-write-wins blob rather than per field. A
- * conflict means one person edited two devices between syncs, and the losing
- * edit is a toggle they can flip back — every field left in here is a decision
- * about *behaviour*, which should be the same everywhere the account is signed
- * in. Appearance was the exception that made the blob wrong, and it left.
+ * One last-write-wins blob rather than per field: a conflict costs one person a
+ * toggle they can flip back, and every field left here decides behaviour, which
+ * should be the same everywhere. Appearance was the exception, and it left.
  */
 export type SyncedSettings = {
   value: Settings;
@@ -238,9 +209,8 @@ export function entryKey(habitId: string, date: DayKey): string {
 }
 
 /**
- * Backup file format. v1 predates sync and its metadata; `normaliseHabit` fills
- * that in. Bumping the version rather than silently widening v1 keeps a v2 file
- * out of an old build that would drop the new fields on the next write.
+ * Backup file format. v1 predates sync metadata, which `normaliseHabit` fills
+ * in; the bump keeps a v2 file out of a build that would drop the new fields.
  */
 export type ExportBundle = {
   version: 2;
@@ -264,9 +234,8 @@ export type AnyExportBundle =
     };
 
 /**
- * Fill in sync metadata a v1 backup could not have carried. `updatedAt` falls
- * back to the creation day rather than "now", so an old backup's stale habits
- * cannot outrank edits already on the server.
+ * Fill in metadata a v1 backup could not carry. `updatedAt` falls back to the
+ * creation day, not now, so stale habits cannot outrank server edits.
  */
 export function normaliseHabit(habit: LegacyHabit): Habit {
   if (habit.updatedAt !== undefined) {

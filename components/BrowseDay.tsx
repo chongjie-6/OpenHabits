@@ -3,12 +3,9 @@
 import { createContext, useContext, useState } from "react";
 
 /**
- * The day Today is browsing, as an offset from today (§6.8).
- *
- * An offset rather than a DayKey so the page still rolls over at midnight: a
- * stored date would keep showing yesterday once `useToday` moves on. Held above
- * the page's slots because the week strip and the habit list sit in different
- * ones, and a skin may reorder those in CSS.
+ * The browsed day as an offset from today (§6.8), not a DayKey, so the page
+ * still rolls over at midnight. Held above the page's slots, the strip and the
+ * list sitting in different ones that a skin may reorder.
  */
 type BrowseDay = {
   offset: number;

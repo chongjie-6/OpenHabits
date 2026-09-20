@@ -1,15 +1,9 @@
 /**
- * The client store — every mutation the app has. See ROADMAP.md phase 1.
- *
- * `lib/store.ts` is the file most able to lose a year of habits and had no
- * tests at all: `importBundle` in both modes, `applyPulled`, `adoptAccount` and
- * `resetEverything` all rewrite the whole snapshot, and three of them clear
- * IndexedDB on the way past.
- *
- * It is driven through its exported functions rather than through React. The
- * store is a module-level object plus `useSyncExternalStore`, and the hooks add
- * nothing a test of the *rules* wants — so each case re-imports the module for a
- * fresh, empty store and stands a fake in for `lib/db.ts`.
+ * The client store — every mutation the app has. `lib/store.ts` is the file
+ * most able to lose a year of habits: five of its functions rewrite the whole
+ * snapshot, and three clear IndexedDB on the way past. Driven through its
+ * exported functions rather than React, so each case re-imports the module for
+ * a fresh store and stands a fake in for `lib/db.ts`.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,10 +24,7 @@ const NO_SYNC: SyncMeta = {
   accountId: null,
 };
 
-/**
- * `vi.mock` is hoisted above the imports, so the state it closes over has to be
- * hoisted with it.
- */
+/** `vi.mock` is hoisted above the imports, so its state hoists with it. */
 const fake = vi.hoisted(() => ({
   snapshot: null as unknown,
   loadFails: false,

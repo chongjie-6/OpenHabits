@@ -13,16 +13,10 @@ import {
 } from "@/lib/types";
 
 /**
- * One form, used for both creating and editing a habit.
- *
- * Two forms over the same fields drift apart — the edit screen gains a cadence
- * option the add screen never got, and the two disagree about defaults.
- *
- * It carries no chrome of its own — no card, no heading. `HabitFormPanel` puts
- * it in one of two frames (§6.7), and the two props below are where those
- * frames differ. Both are absent in the sheet, which owns dismissal through
- * Escape, the backdrop and its close button, and which must not raise the
- * keyboard over itself the moment it opens.
+ * One form for creating and editing, because two over the same fields drift —
+ * the edit screen gains a cadence option the add screen never got. No chrome of
+ * its own: `HabitFormPanel` supplies one of two frames (§6.7), and the props
+ * below are where they differ, both absent in the sheet.
  */
 
 export const EMOJI = [

@@ -1,17 +1,11 @@
 /**
- * Row-level security, against real Postgres and — the part that matters — as a
- * role that is not the tables' owner. See DESIGN.md §13.15.
+ * Row-level security against real Postgres and — the part that matters — as a
+ * role that is not the tables' owner (§13.15). A superuser ignores every policy
+ * silently, so the other server tests would pass against a schema with `0006`
+ * reverted; this one creates an ordinary role and `SET ROLE`s into it.
  *
- * The other server tests run as PGlite's only role, which is a superuser, and a
- * superuser ignores every policy in the database without saying so. That makes
- * them a fair test of the queries and no test at all of the policies: they would
- * pass identically against a schema with the whole of `0006` reverted. So this
- * file creates an ordinary role, grants it what the app needs, `SET ROLE`s into
- * it, and only then starts asking questions.
- *
- * Which is also the deployment note in one line: point `DATABASE_URL` at a role
- * like this one. Connect as a superuser and everything below still passes while
- * the running app is protected by nothing.
+ * Which is the deployment note too: point `DATABASE_URL` at a role like this,
+ * or everything below passes while the running app is protected by nothing.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -126,10 +120,8 @@ function returned(result: unknown): unknown[] {
 }
 
 /**
- * The message Postgres refused with. Drizzle wraps a driver error in one whose
- * own message is the SQL it tried, so asserting on `toThrow` alone would pass
- * against a syntax error just as happily as against a policy — which, in a file
- * whose whole subject is statements that must fail, is worth the ten lines.
+ * Drizzle wraps a driver error in one whose message is the SQL it tried, so
+ * `toThrow` alone would pass against a syntax error as happily as a policy.
  */
 async function refusal(work: Promise<unknown>): Promise<string> {
   try {

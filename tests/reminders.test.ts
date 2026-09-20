@@ -1,11 +1,8 @@
 /**
- * The pure half of reminders: reading a wall clock in somebody else's timezone,
- * and turning what is outstanding into a notification.
- *
- * `civilInZone` carries the same weight `todayKey` does — it decides both when a
- * reminder fires and which day's habits it lists — so the cases here are the ones
- * that break a naive offset calculation: a zone ahead of UTC across the date
- * line, a zone behind it, a half-hour offset, and a DST transition.
+ * The pure half of reminders: a wall clock in somebody else's zone, and what is
+ * outstanding as a notification. `civilInZone` decides both when a reminder
+ * fires and which day it lists, so the cases here are the ones that break a
+ * naive offset — across the date line, behind UTC, half-hour, and a DST shift.
  */
 
 import { describe, expect, it } from "vitest";

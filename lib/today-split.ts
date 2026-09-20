@@ -1,14 +1,11 @@
 "use client";
 
 /**
- * Today's list, split into To do above Done. See DESIGN.md §6.9.
- *
- * The split itself is one filter. What needs a module is the delay: a row that
- * left for the Done section the instant it was ticked would move out from under
- * the thumb, taking the checkbox pop with it, and the next row would slide into
- * the place the thumb is about to press again. So a change holds every row where
- * it is on screen, and the hold is released only once ticking has paused for
- * `SETTLE_MS`. The state machine is pure so that can be tested without a DOM.
+ * Today's list, split into To do above Done. See DESIGN.md §6.9. The split is
+ * one filter; what needs a module is the delay, because a row leaving the
+ * instant it is ticked moves out from under the thumb and slides the next one
+ * into the place about to be pressed. So a change holds every row where it is
+ * until ticking has paused for `SETTLE_MS`. Pure, so it tests without a DOM.
  */
 
 import { useEffect, useState } from "react";
@@ -48,13 +45,10 @@ export function initialSplit(
 }
 
 /**
- * Returns `prev` itself when nothing changed — the hook calls this during
- * render and sets state only on a new object, so identity is what stops a loop.
- *
- * Another day, or the store finishing its load, is not a tick: nothing on
- * screen is under the thumb, so rows go straight to their sections. Any other
- * change renews the hold, including a counted habit stepping from 5 to 6 —
- * that press is still someone mid-way down the list.
+ * Returns `prev` itself when nothing changed: the hook calls this during render
+ * and sets state only on a new object, so identity is what stops a loop.
+ * Another day, or a finished load, is not a tick — nothing is under the thumb,
+ * so rows go straight to their sections. Anything else renews the hold.
  */
 export function nextSplit(
   prev: SplitState,

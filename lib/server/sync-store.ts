@@ -1,17 +1,11 @@
 import "server-only";
 
 /**
- * The server half of sync. See DESIGN.md §13.
- *
- * The merge rule is deliberately not written in SQL. `ON CONFLICT … WHERE
- * excluded.updated_at > habits.updated_at` works right up to the tiebreaker,
- * which compares record content — reproducing that in SQL means the rule exists
- * twice, in two languages, and convergence depends on them agreeing exactly.
- * They would drift, and the symptom is two devices disagreeing forever.
- *
- * So the decision is made by the same `wins()` the client uses.
- * Read-modify-write is safe here because of `lockUser`, and the rows read are
- * bounded by the size of the push.
+ * The server half of sync. See DESIGN.md §13. The merge rule is deliberately
+ * not SQL: `ON CONFLICT` works right up to the content tiebreaker, and a rule
+ * expressed twice in two languages drifts — the symptom being two devices
+ * disagreeing forever. So the same `wins()` the client uses decides here too,
+ * which `lockUser` makes safe to read-modify-write.
  */
 
 import { and, eq, gt, inArray, isNotNull, lt, sql } from "drizzle-orm";
@@ -35,8 +29,7 @@ import { asUser, type Tx } from "./scope";
 const NEXT_SEQ = sql`nextval('hapi_sync_seq')`;
 
 /**
- * Raised when the client's stated account is not the authenticated one. A
- * distinct type so the route can answer 409 rather than 500 — the client needs
+ * A distinct type so the route can answer 409 rather than 500: the client needs
  * telling that its local data belongs to someone else.
  */
 export class AccountMismatchError extends Error {
@@ -51,15 +44,13 @@ export async function runSync(
   user: SyncUser,
   push: SyncPush,
 ): Promise<SyncPull> {
-  // Before the transaction opens: nothing to roll back, and no reason to take a
-  // lock for a request that cannot proceed.
+  // Before the transaction: no reason to take a lock for a doomed request.
   if (push.accountId !== null && push.accountId !== user.id) {
     throw new AccountMismatchError(user.id);
   }
 
-  // `asUser` rather than `db.transaction`: every statement below is under the
-  // row-level security policies in `schema.ts`, and outside a scope they match
-  // nothing. See DESIGN.md §13.15.
+  // `asUser` rather than `db.transaction`: outside a scope the RLS policies in
+  // `schema.ts` match nothing. See §13.15.
   return asUser(db, user.id, async (tx) => {
     await lockUser(tx, user.id);
     await ensureUser(tx, user);
@@ -71,24 +62,18 @@ export async function runSync(
 }
 
 /**
- * Serialise one account's sync transactions, which is what makes `seq` a usable
- * cursor. Sequence values are handed out when a statement runs, but rows become
- * visible when their transaction commits — so two concurrent syncs can commit in
- * the opposite order to their assignment, and a client pulling in the gap saves
- * the higher seq and steps permanently over the lower one.
- *
- * Held only for the transaction, released on commit or rollback. `hashtext`
- * because the lock key must be a bigint; a collision between two accounts costs
- * a brief serialisation and nothing else.
+ * What makes `seq` a usable cursor: sequence values are assigned when a
+ * statement runs but visible only on commit, so without this two syncs can
+ * commit out of order and a client pulling in the gap steps over the lower one.
+ * `hashtext` because the key must be a bigint; a collision costs only latency.
  */
 async function lockUser(tx: Tx, userId: string): Promise<void> {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
 }
 
 /**
- * `settings` and `habits` both reference `users`, so the row has to exist before
- * a first sync can write anything. `DO NOTHING` rather than an email update,
- * which would make every sync a write for a column sync never reads.
+ * `settings` and `habits` reference `users`, so the row must exist first.
+ * `DO NOTHING`, or every sync becomes a write for a column sync never reads.
  */
 async function ensureUser(tx: Tx, user: SyncUser): Promise<void> {
   await tx
@@ -98,19 +83,10 @@ async function ensureUser(tx: Tx, user: SyncUser): Promise<void> {
 }
 
 /**
- * Drop tombstones old enough that no device could still need telling. See
- * `TOMBSTONE_TTL_MS`, which is also what the client collects against.
- *
- * Inside the sync transaction rather than on a cron: the work is bounded by one
- * account's habit count — tens of rows — the advisory lock is already held, and
- * an account nobody syncs is an account whose tombstones cost nothing. It buys
- * no new failure mode either, because a delete here is invisible to `pull`:
- * every device whose cursor predates the tombstone has already been told, and a
- * device starting from zero has no copy to contradict.
- *
- * Ordered after `applyPush` deliberately. A push carrying a very old tombstone
- * writes it and this immediately collects it, which is correct — the sender is
- * the only device that still had it.
+ * See `TOMBSTONE_TTL_MS`, which is what the client collects against too. Inside
+ * the sync transaction rather than on a cron: the work is tens of rows, the
+ * lock is already held, and a delete here is invisible to `pull`. After
+ * `applyPush`, so a very old tombstone arriving is written and then collected.
  */
 async function collectTombstones(tx: Tx, userId: string): Promise<void> {
   await tx
@@ -132,8 +108,8 @@ async function applyPush(
   const tombstoned = await pushHabits(tx, userId, push.habits);
   await pushEntries(tx, userId, push.entries, tombstoned.live);
 
-  // After the pushed entries have been considered, so a peer still pushing a
-  // deleted habit's entries cannot reinstate them.
+  // After the pushed entries, so a peer pushing a deleted habit's entries
+  // cannot reinstate them.
   if (tombstoned.newlyDeleted.length > 0) {
     await tx
       .delete(entries)
@@ -149,7 +125,7 @@ async function applyPush(
 }
 
 type HabitState = {
-  /** Ids that exist and are not tombstoned — the only ones entries may attach to. */
+  /** Live ids: the only ones entries may attach to. */
   live: Set<string>;
   /** Ids whose tombstone was written by this request. */
   newlyDeleted: string[];
@@ -160,8 +136,8 @@ async function pushHabits(
   userId: string,
   incoming: Habit[],
 ): Promise<HabitState> {
-  // Every habit on the account, not just the pushed ones: `pushEntries` needs to
-  // know about habits this device has never sent. A handful of rows either way.
+  // Every habit, not just the pushed ones: `pushEntries` needs the ones this
+  // device has never sent.
   const current = await tx
     .select()
     .from(habits)
@@ -214,8 +190,7 @@ async function pushHabits(
           archivedAt: sql`excluded.archived_at`,
           updatedAt: sql`excluded.updated_at`,
           deletedAt: sql`excluded.deleted_at`,
-          // A new cursor position on every change is what makes other devices
-          // notice the row.
+          // A new cursor position is what makes other devices notice the row.
           seq: NEXT_SEQ,
         },
       });
@@ -233,9 +208,8 @@ async function pushEntries(
   incoming: Entry[],
   live: Set<string>,
 ): Promise<void> {
-  // Dropped rather than stored. The foreign key in `schema.ts` would reject the
-  // orphans anyway, but as an error that fails the whole request — and one stale
-  // row must not wedge a device's sync permanently.
+  // Dropped rather than stored: the foreign key would reject them as an error
+  // that fails the whole request, wedging that device's sync.
   const candidates = incoming.filter((e) => live.has(e.habitId));
   if (candidates.length === 0) return;
 
@@ -250,9 +224,8 @@ async function pushEntries(
     .where(
       and(
         eq(entries.userId, userId),
-        // Row-value IN, so exactly the pushed keys are read. An `IN` on ids
-        // crossed with an `IN` on dates reads the rectangle between them, which
-        // on a long history is most of the table.
+        // Row-value IN, so exactly the pushed keys are read: ids crossed with
+        // dates reads the rectangle between them, most of a long history.
         sql`(${entries.habitId}, ${entries.date}) in (${keys})`,
       ),
     );
@@ -352,9 +325,8 @@ async function pull(tx: Tx, userId: string, since: number): Promise<SyncPull> {
   return {
     seq: cursor,
     accountId: userId,
-    // Withheld, not dropped — the next request starts at `cursor` and receives
-    // them. Handing over a row under a cursor below it is a lie the client
-    // cannot detect.
+    // Withheld, not dropped: the next request starts at `cursor` and receives
+    // them, where a row under a lower cursor is a lie the client cannot detect.
     habits: habitRows.filter((r) => r.seq <= cursor).map(toHabit),
     entries: entryRows.filter((r) => r.seq <= cursor).map(toEntry),
     settings:
@@ -367,11 +339,9 @@ async function pull(tx: Tx, userId: string, since: number): Promise<SyncPull> {
 }
 
 /**
- * The cursor to report, given that any collection may have been truncated. It
- * cannot simply be the highest seq seen: habits cut short at 900 while entries
- * ran on to 4000 would report 4000 and step over every habit between them. The
- * safe answer is the lowest point up to which *every* collection is complete —
- * which, with nothing truncated, is the highest seq observed.
+ * The lowest point up to which *every* collection is complete. Not the highest
+ * seq seen: habits cut short at 900 beside entries running to 4000 would report
+ * 4000 and step over every habit between them.
  */
 function resumePoint(
   since: number,
@@ -400,8 +370,8 @@ export function toHabit(row: typeof habits.$inferSelect): Habit {
     id: row.id,
     name: row.name,
     emoji: row.emoji,
-    // Validated on the way in by `parseSyncPush`. The column is text so a new
-    // palette entry does not need a migration to land.
+    // Validated by `parseSyncPush`; the column is text so a new palette entry
+    // needs no migration.
     color: row.color as HabitColor,
     cadence: row.cadence,
     target: row.target,

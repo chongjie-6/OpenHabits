@@ -1,9 +1,7 @@
 /**
- * The asset cache sweep in `public/sw.js`. See DESIGN.md §8.2.
- *
- * The worker is a plain script, so it runs here in a VM context against an
- * in-memory `caches` — enough to reach its top-level functions and its fetch
- * listener without a browser.
+ * The asset cache sweep in `public/sw.js` (§8.2). The worker is a plain script,
+ * so it runs in a VM context against an in-memory `caches` — enough to reach
+ * its top-level functions and its fetch listener without a browser.
  */
 
 import { readFileSync } from "node:fs";

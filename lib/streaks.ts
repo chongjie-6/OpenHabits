@@ -1,9 +1,7 @@
 /**
- * Streak maths. See DESIGN.md §3.1.
- *
- * Rest days (nothing scheduled) are stepped over — they neither extend nor break
- * a streak — and the current day is forgiven while still in progress, because
- * opening the app at 9am should not show a streak as already broken.
+ * Streak maths. See DESIGN.md §3.1. Rest days are stepped over, neither
+ * extending nor breaking a streak, and the current day is forgiven while still
+ * in progress: opening the app at 9am must not show a streak as broken.
  */
 
 import type { DayStat } from "./history";

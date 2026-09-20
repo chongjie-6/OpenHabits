@@ -1,13 +1,8 @@
 /**
- * The signed-in hint. See DESIGN.md §13.6 and ROADMAP.md phase 1.
- *
- * The hint carries no authority — it is a localStorage flag anyone can set, and
- * setting it buys only permission to make a request the server may answer 401.
- * What *enforces* that is the 401 path in `lib/sync/client.ts` clearing it, so
- * these test the two halves together: the flag, and the thing that takes it away.
- *
- * `better-auth/react` is mocked out. `createAuthClient()` runs at module scope
- * and reaches for a browser; none of it is under test here.
+ * The signed-in hint (§13.6). It carries no authority — setting it buys only a
+ * request the server may 401 — and what enforces that is the 401 path clearing
+ * it, so these test both halves together. `better-auth/react` is mocked out:
+ * `createAuthClient()` runs at module scope and reaches for a browser.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";

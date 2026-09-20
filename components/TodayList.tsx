@@ -34,13 +34,9 @@ import type { DayKey } from "@/lib/types";
 const STREAK_WINDOW = 365;
 
 /**
- * Per-habit streaks are scanned over a much shorter window than the aggregate.
- *
- * The aggregate history is one pass over 365 days; per-habit it would be one
- * pass per habit, so the same window would multiply the Today render by the
- * number of habits. 90 days is far more than the badge beside a row can show
- * and keeps the work bounded — a longer per-habit streak still reads correctly
- * on the habit's own screen, which is where the year lives.
+ * Shorter than the aggregate window, which is one pass where this is one per
+ * habit. 90 days is more than the badge can show; the habit's own screen is
+ * where a longer streak reads correctly.
  */
 const HABIT_STREAK_WINDOW = 90;
 
@@ -80,13 +76,9 @@ export function TodayList() {
   const day = today === null ? null : addDays(today, offset);
 
   /**
-   * Anchored on `today`, never on the day being browsed. The streak, the heat
-   * strip and the per-habit trails are claims about the present: recomputing
-   * them as the user swipes would show a streak that was never true, and a day
-   * in the future would score every day between here and there as missed.
-   *
-   * Keeping them in their own memo is also what makes a swipe cheap — the day's
-   * states are one pass, where this is a year of them.
+   * Anchored on `today`, never on the browsed day: these are claims about the
+   * present, and a day in the future would score everything between as missed.
+   * Its own memo is also what makes a swipe cheap — a year against one pass.
    */
   const summary = useMemo(() => {
     if (!hydrated || !today) return null;
@@ -99,7 +91,7 @@ export function TodayList() {
       settings.weekStartsOn,
     );
 
-    // Only the two skins that show per-habit history pay for computing it.
+    // Only the skins that show per-habit history pay for computing it.
     const perHabit = new Map<string, PerHabit>();
     if (skin !== "classic") {
       for (const habit of habits) {
@@ -138,10 +130,8 @@ export function TodayList() {
   const sectionRef = useRef<HTMLElement>(null);
   const onFocus = useFocusFollowsHabit(sectionRef);
 
-  // Gate every data-dependent subtree on hydration: a checked box that renders
-  // unchecked for 200ms reads as data loss. See DESIGN.md §7.1. It is also what
-  // makes `useSkin` safe here — it reports `classic` until mount, and nothing it
-  // decides is rendered before that.
+  // Gated on hydration (§7.1): a checked box rendering unchecked for 200ms
+  // reads as data loss. It is also what makes `useSkin` safe here.
   if (!summary || !states || !scheduled || !day || !today) return <Skeleton />;
 
   const { streaks, recent, strip, perHabit } = summary;
@@ -249,14 +239,10 @@ export function TodayList() {
 }
 
 /**
- * Moving a row between To do and Done remounts its button, and a removed element
- * drops keyboard focus to `<body>` (§6.9). This puts focus back on the same
- * habit in its new section — but only when the focused button is gone, because
- * a click on blank space also leaves focus on `<body>` and must not be answered
- * by jumping back to a row.
- *
- * The inline editor's wrapper carries the habit id for the same reason: closing
- * it removes the focused field, and focus belongs on the row that comes back.
+ * Moving a row between To do and Done remounts its button, dropping focus to
+ * `<body>` (§6.9) — so focus goes back to the same habit, but only when the
+ * button is gone, since a click on blank space lands on `<body>` too. The
+ * inline editor's wrapper carries the habit id for the same reason.
  */
 function useFocusFollowsHabit(container: React.RefObject<HTMLElement | null>) {
   const last = useRef<HTMLElement | null>(null);
@@ -282,10 +268,7 @@ function useFocusFollowsHabit(container: React.RefObject<HTMLElement | null>) {
   };
 }
 
-/**
- * Kept apart from the week strip, whose buttons are pressed in quick
- * succession.
- */
+/** Kept apart from the week strip, whose buttons are pressed in quick succession. */
 function EditToggle({
   editMode,
   onEditMode,
@@ -385,10 +368,9 @@ function Header({
 }
 
 /**
- * `grid` promotes the contribution grid onto Today. Deliberately not the
- * `Heatmap` component: this one is a read-only summary that has to stay short,
- * where that one is the interactive year and transposes to a tall column on a
- * phone. Tapping it goes to the screen that does the real thing.
+ * `grid` promotes the contribution grid onto Today — not the `Heatmap`
+ * component, which is the interactive year and goes tall on a phone. This one
+ * is a short read-only summary, and tapping it opens the real thing.
  */
 function HeatStrip({ stats, rate }: { stats: DayStat[]; rate: number }) {
   const scored = stats.filter((s) => s.level !== "rest").length;

@@ -3,28 +3,16 @@ import "server-only";
 /**
  * Metering for the endpoints. See DESIGN.md §13.17.
  *
- * **This module fails open, and it is the only one here that does.** Every other
- * gate on the server side refuses when it cannot answer — `/api/cron/reminders`
- * with no secret, `resolveUser` on a thrown session lookup, an RLS policy that
- * is not true. A limiter is the opposite case: its store being unreachable is
- * not evidence of abuse, and turning a Redis outage into a site-wide 429 would
- * hand an attacker the outage as a denial of service. So a timeout or an error
- * is a request allowed, and the timeout is short enough that the failure costs
- * latency rather than a hung handler.
- *
- * The limiters are built at module scope because `ephemeralCache` — on by
- * default — is only worth anything when it outlives the request: an
- * already-blocked identifier is then answered without touching Redis at all.
+ * **This module fails open, and it is the only gate here that does.** An
+ * unreachable store is not evidence of abuse, and a Redis outage that 429s the
+ * site hands an attacker the outage as a denial of service. The limiters are
+ * built at module scope so `ephemeralCache` outlives the request.
  */
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { getRedis, redisConfigured } from "./redis";
 
-/**
- * Every key this app writes lives under one prefix, so the Redis database can be
- * shared with the mail envelopes (and anything later) without either being able
- * to name the other's keys.
- */
+/** One prefix, so the database can be shared with the mail envelopes safely. */
 const PREFIX = "openhabits:rl";
 
 /** Long enough for a REST round trip to Upstash, short enough that failing open
@@ -59,11 +47,8 @@ function build(): Limiters {
   return {
     tiers: {
       /**
-       * 300 a minute is far above anything the app does: a sync round trip is
-       * one request, the shell is static and served from the CDN, and the
-       * reminder heartbeat fires on app start. The number is chosen so nobody
-       * using the app ever meets it, which is what makes it safe to put in
-       * front of everything.
+       * Far above anything the app does — chosen so nobody using it ever meets
+       * the limit, which is what makes it safe in front of everything.
        */
       global: new Ratelimit({
         ...shared,
@@ -71,10 +56,7 @@ function build(): Limiters {
         limiter: window(300, "60 s"),
       }),
 
-      /**
-       * The tightest tier, because these paths spend a resource that is not
-       * ours: an SMTP quota, and somebody else's inbox.
-       */
+      /** The tightest tier: these paths spend an SMTP quota and someone else's inbox. */
       mail: new Ratelimit({
         ...shared,
         prefix: `${PREFIX}:mail`,
@@ -89,10 +71,8 @@ function build(): Limiters {
       }),
 
       /**
-       * Well above the client's real cadence — it syncs on change, on focus and
-       * on reconnect, not on a timer. What this bounds is the cost of the
-       * account-wide advisory lock and a full-history pull being asked for in a
-       * loop.
+       * Well above the client's cadence; what it bounds is the account-wide
+       * advisory lock and a full-history pull asked for in a loop.
        */
       sync: new Ratelimit({
         ...shared,
@@ -108,10 +88,8 @@ function build(): Limiters {
     },
 
     /**
-     * The second half of the mail tier, and the half that matters. Three a
-     * minute per IP is trivially defeated by rotating them, and the thing worth
-     * preventing is not load but one address being mailed over and over — so the
-     * budget that follows the *address* is a day long.
+     * The half that matters: a per-IP budget is defeated by rotating IPs, and
+     * what is worth preventing is one address being mailed over and over.
      */
     mailDaily: new Ratelimit({
       ...shared,
@@ -138,16 +116,9 @@ export function rateLimitConfigured(): boolean {
 }
 
 /**
- * The caller's address as the platform reports it. `NextRequest.ip` was removed
- * in Next 15, and reading these headers is what replaced it.
- *
- * `x-forwarded-for` is a chain the client can prepend to, so only the *first*
- * entry is worth anything — and only because Vercel's proxy overwrites the
- * header rather than appending to it. Behind a proxy that appends, this is the
- * function to revisit.
- *
- * Pure, so it is testable with no store — the same reason `base-url.ts` takes
- * its environment as a parameter.
+ * The caller's address; `NextRequest.ip` was removed in Next 15. Only the first
+ * `x-forwarded-for` entry counts, and only because Vercel's proxy overwrites
+ * the header — behind a proxy that appends, revisit this.
  */
 export function clientIp(headers: Headers): string | null {
   const forwarded = headers.get("x-forwarded-for");
@@ -173,14 +144,9 @@ const CREDENTIAL_PATHS = new Set([
 ]);
 
 /**
- * Which tier an `/api/auth/…` path falls into, or `null` for the rest of the
- * catch-all — session reads, sign-out, callbacks — which the global tier covers
- * and which cost nothing in particular.
- *
- * Matched on the tail rather than the whole path, because the catch-all's own
- * prefix is not what distinguishes them. Pure, so `tests/server/ratelimit.test.ts`
- * can pin the mapping without a store: splitting it out is what keeps the
- * interesting decision testable while the store stays untestable.
+ * Which tier an `/api/auth/…` path falls into; `null` for the rest, which the
+ * global tier covers. Matched on the tail, and kept pure so the mapping is
+ * testable without a store.
  */
 export function authTier(pathname: string): Tier | null {
   const tail = pathname.replace(/^\/api\/auth\//, "").replace(/\/+$/, "");
@@ -190,12 +156,9 @@ export function authTier(pathname: string): Tier | null {
 }
 
 /**
- * Whether the global tier applies to a path. `/api/email` and
- * `/api/cron/reminders` are excluded: both authenticate their caller by
- * signature or shared secret, both are called by a machine on a schedule the app
- * does not control, and a limiter in front of either can only ever refuse a
- * legitimate request. `proxy.ts`'s matcher says the same thing in a form Next
- * can read; this is the copy that is testable, and they have to agree.
+ * The single statement of which endpoints are excluded: both are
+ * machine-authenticated on a schedule the app does not control, so a limiter
+ * could only refuse a legitimate request. `proxy.ts`'s matcher must agree.
  */
 export function metered(pathname: string): boolean {
   if (!pathname.startsWith("/api/")) return false;
@@ -206,18 +169,12 @@ export type Verdict = { ok: true } | { ok: false; retryAfter: number };
 
 const ALLOWED: Verdict = { ok: true };
 
-/**
- * Seconds until the window has room again, rounded up and floored at one: a
- * `Retry-After: 0` invites the retry it is meant to delay.
- */
+/** Floored at one: a `Retry-After: 0` invites the retry it is meant to delay. */
 function secondsUntil(reset: number): number {
   return Math.max(1, Math.ceil((reset - Date.now()) / 1000));
 }
 
-/**
- * Allows the request when metering is off, when the identifier is unknown, or
- * when the store cannot answer. See the fail-open note at the top of the file.
- */
+/** Allows the request when metering is off, unattributable, or unanswerable. */
 export async function check(
   tier: Tier,
   identifier: string | null,
@@ -234,12 +191,9 @@ export async function check(
 }
 
 /**
- * The mail tier, both halves. The per-minute budget follows the caller and the
- * daily one follows the address, and either can refuse — someone rotating IPs
- * meets the second, a stuck client meets the first.
- *
- * `address` is optional because the body it comes from may not have parsed, and
- * an unparseable body is Better Auth's to answer for rather than this module's.
+ * Both halves: the per-minute budget follows the caller, the daily one the
+ * address, and either can refuse. `address` is optional because the body it
+ * comes from may not have parsed, which is Better Auth's to answer for.
  */
 export async function checkMail(
   ip: string | null,
@@ -262,11 +216,7 @@ export async function checkMail(
   }
 }
 
-/**
- * 429 with a `Retry-After`, and prose in the body like every other refusal this
- * server makes. `no-store` for the reason the rest of `/api` sets it — a cached
- * 429 would outlive the window it describes.
- */
+/** `no-store` because a cached 429 would outlive the window it describes. */
 export function tooMany(message: string, seconds: number): Response {
   return Response.json(
     { error: "rate-limited", message },

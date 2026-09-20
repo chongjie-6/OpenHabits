@@ -3,20 +3,12 @@
 import { dismiss, runUndo, useUndoOffer } from "@/lib/undo";
 
 /**
- * The standing undo offer, if there is one. See DESIGN.md §7.4.
- *
- * Mounted in the root layout rather than beside whatever raised it, because the
- * action that needs undoing is usually the last thing done on a screen before
- * leaving it — deleting a habit navigates away from the habit. A bar owned by
- * that screen would unmount with it, taking the only way back.
- *
- * It sits above the tab bar and inside the same safe area, so it never covers
- * navigation on a phone: the offer expires, and a user who wants to ignore it
- * should not have to.
- *
- * `role="status"` rather than `alert`: this is the outcome of something the
- * user just did, and an assertive live region would interrupt the screen reader
- * mid-sentence to say so.
+ * The standing undo offer, if there is one. See DESIGN.md §7.4. Mounted in the
+ * root layout, because the action worth undoing is usually the last thing done
+ * on a screen before leaving it — a bar owned by that screen would unmount with
+ * it, taking the only way back. It sits above the tab bar, so ignoring the
+ * offer costs nothing, and `role="status"` rather than `alert`, since this is
+ * the outcome of something the user just did.
  */
 export function UndoBar() {
   const offer = useUndoOffer();
@@ -25,8 +17,8 @@ export function UndoBar() {
   return (
     <div
       role="status"
-      // Keyed on the offer so a second one restarts the entrance rather than
-      // silently swapping its text.
+      // Keyed on the offer, so a second one restarts the entrance rather than
+      // swapping its text.
       key={offer.id}
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+4.5rem)]"
     >

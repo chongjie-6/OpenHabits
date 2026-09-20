@@ -1,9 +1,6 @@
 /**
- * Integration tests for the server half of sync, against real Postgres.
- *
- * PGlite is Postgres compiled to WebAssembly, so this exercises the actual
- * planner, constraints and `nextval`. The delicate parts of `sync-store.ts` are
- * all SQL-level — a sequence inside `ON CONFLICT DO UPDATE`, a row-value `IN`, a
+ * The server half of sync against real Postgres. The delicate parts are all
+ * SQL-level — a sequence inside `ON CONFLICT DO UPDATE`, a row-value `IN`, a
  * composite foreign key, an advisory lock — and a test double would check none
  * of them. Each test gets its own in-memory database.
  */
@@ -30,8 +27,7 @@ const MIGRATIONS_DIR = fileURLToPath(new URL("../../drizzle", import.meta.url));
 
 /**
  * Every committed migration in order, not a pinned filename: a test naming one
- * file keeps passing against the original schema after the next migration lands,
- * which is precisely when it needs to fail.
+ * file keeps passing against the original schema after the next one lands.
  */
 function migrations(): string[] {
   return readdirSync(MIGRATIONS_DIR)
@@ -59,10 +55,9 @@ beforeEach(async () => {
 });
 
 /**
- * A deletion recent enough to survive `collectTombstones`, which runs on every
- * sync and drops anything older than `TOMBSTONE_TTL_MS`. The other stamps in
- * this file are small synthetic numbers, which as epoch ms are 1970 — fine for
- * ordering, and six months past the collector's cutoff.
+ * Recent enough to survive `collectTombstones`. The other stamps here are small
+ * synthetic numbers, which as epoch ms are 1970 — fine for ordering, and long
+ * past the collector's cutoff.
  */
 const RECENT = Date.now();
 
@@ -117,11 +112,9 @@ function sync(user: SyncUser, over: Partial<SyncPush> = {}): Promise<SyncPull> {
 
 describe("the migrations themselves", () => {
   it("leaves Better Auth's tables in the auth schema and ours in public", async () => {
-    // §13.8 #9. `ALTER TABLE … SET SCHEMA` is hand-written in
-    // 0005 because drizzle-kit resolves a schema move by dropping and
-    // recreating, which on these tables means every identity and session on the
-    // deployment. Asserting the *outcome* rather than the SQL: a future
-    // migration that quietly puts one back in `public` fails here.
+    // §13.8 #9. `ALTER TABLE … SET SCHEMA` is hand-written in 0005, drizzle-kit
+    // resolving a schema move by dropping and recreating. Asserting the
+    // outcome, so a migration that puts one back in `public` fails here.
     type Placement = { table_schema: string; table_name: string };
     // `db` is the pglite driver cast to the production one (see `beforeEach`), so
     // the static type of `execute` is not the shape this actually returns.

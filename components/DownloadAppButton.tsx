@@ -3,12 +3,10 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 /**
- * The app's "Add to Home Screen" affordance — see DESIGN.md §8.4.
- *
- * Intercepts `beforeinstallprompt`, reversing an earlier decision not to. The
- * two-tier experience that argued against it is handled rather than avoided:
- * Chromium gets the browser's own prompt, every other engine — iOS Safari above
- * all — gets a sheet worded for the browser it is actually running in.
+ * The "Add to Home Screen" affordance (§8.4). Intercepts
+ * `beforeinstallprompt`, reversing an earlier decision: the two-tier experience
+ * is handled rather than avoided, with Chromium getting the browser's prompt
+ * and every other engine a sheet worded for the browser it is running in.
  */
 
 interface BeforeInstallPromptEvent extends Event {
@@ -18,8 +16,8 @@ interface BeforeInstallPromptEvent extends Event {
 
 const DISPLAY_MODE = "(display-mode: standalone)";
 
-// `beforeinstallprompt` fires once, early, and only on Chromium — usually before
-// React has hydrated. Caught at module scope so a late mount still has it.
+// It fires once, early, usually before React has hydrated — so it is caught at
+// module scope, where a late mount still has it.
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 const listeners = new Set<() => void>();
@@ -134,8 +132,8 @@ const DEFAULT_CLASS =
   "h-11 w-full rounded-control bg-accent text-[14px] font-semibold text-accent-fg";
 
 function useInstallState(): InstallState {
-  // The server snapshot claims "already installed", so nothing install-related
-  // is in the prerendered HTML: it only ever appears, never disappears.
+  // The server snapshot claims "already installed", so the button only ever
+  // appears and never disappears out of cached HTML.
   return useSyncExternalStore(subscribe, getSnapshot, () => "hidden");
 }
 
@@ -241,9 +239,8 @@ export function DownloadAppButton({ className = "" }: { className?: string }) {
 }
 
 /**
- * The Settings-screen presentation: why installing is worth it, plus the
- * button. Gated on the same state as the button so the card is never left
- * wrapped around a component that rendered null.
+ * The Settings-screen presentation, gated on the same state as the button so
+ * the card is never wrapped around a component that rendered null.
  */
 export function InstallCard() {
   const state = useInstallState();

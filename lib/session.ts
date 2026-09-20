@@ -1,22 +1,12 @@
 "use client";
 
 /**
- * The client's view of who is signed in. See DESIGN.md §13.6.
- *
- * Two things that look redundant and are not: Better Auth's session
- * (authoritative, costs a request) and a local hint (instant, occasionally
- * wrong). `lib/sync/client.ts` needs the answer synchronously and offline to
- * decide whether to attempt a round trip at all; awaiting a session fetch would
- * put a request in front of sync on every load, for people who never signed in
- * included.
- *
- * The hint carries no authority — it is a localStorage flag anyone can set, and
- * setting it grants only permission to make a request the server answers 401.
- * `resolveUser` decides. A stale hint self-corrects on that 401; a missing one
- * costs a delayed first sync.
- *
- * The server snapshot reports *signed out* (§8.4): account UI may appear after
- * hydration, but must never be baked into cached HTML and then vanish.
+ * The client's view of who is signed in. See DESIGN.md §13.6. Two answers that
+ * look redundant and are not: Better Auth's session, authoritative and a
+ * request away, and a local hint, instant and occasionally wrong, which sync
+ * needs synchronously and offline. The hint carries **no authority** — it only
+ * buys permission to make a request the server may 401, and that path clears
+ * it. The server snapshot reports signed out (§8.4).
  */
 
 import { useEffect, useSyncExternalStore } from "react";
@@ -25,8 +15,7 @@ import { createAuthClient } from "better-auth/react";
 /** No `baseURL`: hardcoding one would break every deploy preview. */
 export const authClient = createAuthClient();
 
-/** Pre-rebrand key, kept so signed-in devices do not lose the hint and skip
- *  a sync until the next sign-in. */
+/** Pre-rebrand key, kept: losing the hint costs a device its sync until it signs in again. */
 const HINT_KEY = "hapi:signed-in";
 
 const listeners = new Set<() => void>();
@@ -37,8 +26,7 @@ function emit(): void {
 
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
-  // `storage` fires in *other* tabs, which a local emit cannot cover: sign out
-  // on one tab, and the others should stop syncing.
+  // `storage` fires in *other* tabs: sign out in one, the rest stop syncing.
   const onStorage = (event: StorageEvent) => {
     if (event.key === HINT_KEY) listener();
   };
@@ -52,8 +40,7 @@ function subscribe(listener: () => void): () => void {
 
 /**
  * Whether this browser believes it has a session. Wrapped because Safari in
- * private mode throws on `localStorage` rather than returning null, and a thrown
- * getter would take down the whole app for an optional feature.
+ * private mode throws on `localStorage` rather than returning null.
  */
 export function signedIn(): boolean {
   try {
@@ -87,14 +74,9 @@ export function useSignedIn(): boolean {
 }
 
 /**
- * Keep the local hint honest against what the server says. Mounted once, beside
- * `useSync()`. Repairs a hint left behind by a session that expired while the tab
- * was closed, and sets one where the cookie is valid but localStorage was
- * cleared.
- *
- * In an effect rather than during render: `setHint` notifies
- * `useSyncExternalStore` subscribers, and doing that from a render pass is an
- * update-during-render of some other component.
+ * Keeps the hint honest against the server: repairs one left by a session that
+ * expired while the tab was closed, and sets one where the cookie outlived a
+ * cleared localStorage. In an effect, since `setHint` notifies subscribers.
  */
 export function useSessionSync(): void {
   const { data, isPending } = authClient.useSession();

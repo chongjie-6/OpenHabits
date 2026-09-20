@@ -17,52 +17,32 @@ import { useHorizontalDrag } from "@/lib/use-drag";
 import { useToday } from "@/lib/use-today";
 
 /**
- * The browsed day's week, one circle per day; pressing one browses to it.
+ * The browsed day's week, one circle per day. It follows the browsed day rather
+ * than today, and its own arrows and drag move a whole week where the list's
+ * swipe moves a day — the two sit in different slots, so no gesture is
+ * contested. The range above the circles is there because a gesture can change
+ * the week without the user meaning to look.
  *
- * It follows the browsed day rather than today, so stepping past Sunday with the
- * arrows or a swipe turns the strip over to the next week with it.
+ * It is the one element that takes the touch axes from the browser: nothing
+ * inside it scrolls sideways, so §6.8's objection does not reach it, and
+ * without the claim a downward drift cancels the pointer. `pinch-zoom` rather
+ * than `pan-x pinch-zoom`, since `pan-x` is taken as soon as a gesture is
+ * plainly horizontal — which is every drag this row exists for.
  *
- * Its own arrows and drag move a whole week, where the list's swipe moves a day.
- * The two never compete for a gesture: the strip sits in a different slot from
- * the list, so a gesture lands on one or the other. Moving by seven keeps the
- * weekday.
- *
- * The range above the circles is there because a gesture can change the week
- * without the user meaning to look. "This week" goes to today rather than to
- * the same weekday, matching the list's "Today"; the row is always rendered so
- * the button appearing does not move the page.
- *
- * It is the one element that takes the touch axes away from the browser.
- * Nothing inside it scrolls sideways, so the objection in DESIGN.md §6.8 does
- * not reach it, and without the claim a thumb drifting downwards turns the
- * touch into a page scroll, which cancels the pointer and loses the gesture
- * before it can be read. The price is that the strip cannot be dragged to
- * scroll the page.
- *
- * `pinch-zoom` and not `pan-x pinch-zoom`: `pan-x` says the browser may pan
- * horizontally here, and it takes that permission as soon as the gesture is
- * plainly horizontal — cancelling the pointer mid-drag even with nothing to
- * pan, which is every drag this row exists for. Zoom is left alone because it
- * is nobody's navigation gesture.
- *
- * It is also the one surface that follows the finger (`lib/use-drag.ts`), and
- * the one that accepts a mouse drag, for the reasons stated there. A drag
- * carries the weeks on either side in with it: they are mounted only while one
- * is in progress, sit outside the clip where nothing can reach them, and are
- * what the row is dragged *towards* — an abandoned drag springs back, a
+ * It is also the one surface that follows the finger (`lib/use-drag.ts`) and
+ * accepts a mouse drag. A drag carries the neighbouring weeks in with it,
+ * mounted only while one is in progress; an abandoned drag springs back, a
  * committed one slides the neighbour into place and only then changes the day.
- *
- * A week that turns over any other way — the arrows, a circle, the list's own
- * swipe crossing a boundary — still arrives with the fade-and-slide, and its
- * direction comes from comparing the weeks rather than from any handler.
+ * A week that turns over any other way still gets the fade-and-slide, its
+ * direction taken from comparing the weeks rather than from a handler.
  */
 export function WeekStrip() {
   const { hydrated, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
   const { offset, setOffset } = useBrowseDay();
 
-  // A committed drag animates the neighbour into place first and moves the day
-  // when that finishes, so the week never changes under a row still in motion.
+  // A committed drag animates first and moves the day when that finishes, so
+  // the week never changes under a row in motion.
   const [settling, setSettling] = useState<"next" | "prev" | null>(null);
   const drag = useHorizontalDrag((direction) =>
     setSettling(direction === "left" ? "next" : "prev"),
@@ -73,29 +53,25 @@ export function WeekStrip() {
       ? startOfWeek(addDays(today, offset), settings.weekStartsOn)
       : null;
 
-  // Adjusted during render rather than from an effect, so the arriving week is
-  // never painted once in its resting place before it slides. A `DayKey` sorts
-  // as a date, which is what decides the direction.
+  // During render rather than in an effect, or the arriving week is painted
+  // once at rest before it slides. A `DayKey` sorts as a date.
   const [shown, setShown] = useState(start);
   const [turn, setTurn] = useState<"next" | "prev" | null>(null);
   if (shown !== start) {
-    // A settled drag has already shown the week arriving; playing the slide on
-    // top of it would move the same row twice. Anything else — an arrow, a
-    // circle, the list crossing a boundary — still gets it.
+    // A settled drag has already shown the week arriving; anything else — an
+    // arrow, a circle, the list crossing a boundary — still gets the slide.
     setTurn(
       settling || !shown || !start ? null : start > shown ? "next" : "prev",
     );
     setShown(start);
-    // Whatever changed the week ended the settle, including a press on a circle
-    // landing mid-slide: the row is remounted at rest and the transition that
-    // would have finished it never fires.
+    // Whatever changed the week ended the settle: the row is remounted at rest
+    // and the transition that would have finished it never fires.
     setSettling(null);
   }
 
-  // A drag takes the animation class off the row to move it by hand, and
-  // putting a class back restarts its animation — so a week turned over by the
-  // list, then dragged and let go of, would replay a slide it already played.
-  // Spending the turn when the drag claims the row is what stops that.
+  // Putting the animation class back restarts it, so a week turned over by the
+  // list and then dragged would replay a slide it already played. Spending the
+  // turn when the drag claims the row is what stops that.
   if (drag.dragging && turn !== null) setTurn(null);
 
   // Same height as the real strip, so hydration does not push the page down.
@@ -114,8 +90,8 @@ export function WeekStrip() {
   const thisWeek = start === startOfWeek(today, settings.weekStartsOn);
 
   const moving = drag.dragging || settling !== null;
-  // A week away is one row width plus the gutter, which is the `pr-2`/`pl-2`
-  // holding the neighbours off the row on screen. The two are the same 0.5rem.
+  // A week away is one row width plus the gutter — the same 0.5rem as the
+  // `pr-2`/`pl-2` holding the neighbours off the row on screen.
   const transform = drag.dragging
     ? `translateX(${drag.dx}px)`
     : settling === "next"
@@ -128,8 +104,8 @@ export function WeekStrip() {
     <nav
       aria-label="Week"
       className="touch-pinch-zoom select-none"
-      // A new gesture during the settle would replace the transform the
-      // transition is running, and the week would never change hands.
+      // A new gesture would replace the transform mid-transition, and the week
+      // would never change hands.
       {...(settling ? {} : drag.handlers)}
     >
       <div className="flex h-6 items-center justify-between gap-3">

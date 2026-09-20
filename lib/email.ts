@@ -10,10 +10,9 @@ export function mailerConfigured(): boolean {
 }
 
 /**
- * The From header. Gmail rewrites this to the authenticated account unless the
- * address is a verified "Send mail as" alias, so only the display name is
- * reliably ours on a default deployment — which is why the fallback names the
- * app around SMTP_USER rather than inventing an address the relay would drop.
+ * Gmail rewrites this to the authenticated account unless the address is a
+ * verified alias, so the fallback names the app around `SMTP_USER` rather than
+ * inventing an address the relay would drop.
  */
 function from(): string {
   // `||`, not `??`: `MAIL_FROM=` with nothing after it is `""`, not unset.
@@ -37,11 +36,9 @@ function client(): nodemailer.Transporter {
       pass,
     },
     /**
-     * Bounded on purpose. Nodemailer's defaults leave a stalled relay to the
-     * platform's own request timeout, which is how a slow Gmail becomes a slow
-     * sign-up — and on the queued path (§13.16) a hang is strictly worse than a
-     * failure, because a failure is retried and a hang burns the invocation.
-     * Ten seconds is several times a healthy round trip.
+     * Nodemailer's defaults leave a stalled relay to the platform's own
+     * timeout, which is how a slow Gmail becomes a slow sign-up — and on the
+     * queued path a hang is worse than a failure, which would be retried.
      */
     connectionTimeout: 10_000,
     greetingTimeout: 10_000,
@@ -62,8 +59,7 @@ async function sendMessage(
     throw new Error(`${subject}: send failed`, { cause });
   }
 
-  // No address in the message: every caller logs this error, and the rest of
-  // the server keeps identifying details out of its logs.
+  // No address in the message: every caller logs this error.
   if (info.rejected?.length) {
     throw new Error(`${subject}: rejected by the server for the recipient`);
   }

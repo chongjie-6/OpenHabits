@@ -1,10 +1,7 @@
 /**
- * The decidable half of `lib/server/email-queue.ts`: whether this deployment
- * has a queue at all, and whether an envelope read back out of Redis is one
- * worth mailing. See DESIGN.md §13.16.
- *
- * Neither needs QStash or a store, which is why both take their environment as
- * a parameter — the same arrangement as `base-url.ts`.
+ * The decidable half of `lib/server/email-queue.ts` (§13.16): whether there is
+ * a queue at all, and whether an envelope read back is worth mailing. Neither
+ * needs QStash or a store, which is why both take their environment.
  */
 
 import { describe, expect, it } from "vitest";
@@ -50,11 +47,8 @@ describe("queueConfigured", () => {
   });
 
   /**
-   * The clause worth a test of its own. QStash delivers by making a request from
-   * its own network, so a laptop is unreachable and a real token on one would
-   * enqueue messages that fail their way into the DLQ while no mail arrives.
-   * Answering "not configured" sends inline instead, which is what a developer
-   * wants anyway.
+   * The clause worth a test of its own: QStash requests from its own network,
+   * so a real token on a laptop would fill the DLQ while no mail arrived.
    */
   it("is off on localhost, where QStash cannot call back", () => {
     const local = { ...configured, SITE_URL: "http://localhost:3000" };

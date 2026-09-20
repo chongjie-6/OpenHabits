@@ -21,11 +21,9 @@ import type { DailyMode, DayKey } from "@/lib/types";
 type Tab = "saved" | "all";
 
 /**
- * The collection follows `dailyMode` rather than fixing on the quotes: showing
- * a shelf of quotes to someone whose Today card is a fun fact would be a second
- * app. The mode switch is repeated here because this is where you are while
- * deciding you would rather read the other one, and both corpora share one
- * favourites list, so nothing is lost by switching.
+ * The collection follows `dailyMode`: a shelf of quotes shown to someone whose
+ * Today card is a fun fact would be a second app. The switch is repeated here
+ * because this is where you decide, and one favourites list spans both.
  */
 export default function CollectionPage() {
   const { hydrated, settings } = useOpenHabits();
@@ -41,9 +39,8 @@ export default function CollectionPage() {
 
   const deckTags = settings.dailyTags;
 
-  // Every item's next appearance, in one pass over a full deck cycle. Narrowed
-  // by the same tags the card uses, so an item the filter excludes shows no
-  // date rather than a day it will never land on.
+  // Narrowed by the same tags the card uses, so an excluded item shows no date
+  // rather than a day it will never land on.
   const schedule = useMemo(
     () =>
       today ? scheduleFor(today, mode, deckTags) : new Map<string, DayKey>(),

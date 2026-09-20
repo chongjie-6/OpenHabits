@@ -1,11 +1,9 @@
 "use client";
 
 /**
- * The client half of sync. See DESIGN.md §13.
- *
- * Runs beside the app, not inside it: nothing in the UI awaits a sync, and every
- * mutation still lands in IndexedDB first. That is what keeps the §10 tick budget
- * intact and the app usable offline, signed out, or with no database at all.
+ * The client half of sync. See DESIGN.md §13. Runs beside the app, not inside
+ * it: nothing in the UI awaits a sync and every mutation lands in IndexedDB
+ * first, which is what keeps the app usable offline and signed out.
  */
 
 import { useEffect } from "react";
@@ -21,20 +19,16 @@ import {
 } from "./protocol";
 
 /**
- * Ceiling on round trips per `syncNow()` call. A finite history always terminates
- * well inside this; the cap exists for the bug that leaves `more` stuck true. A
- * sync that gives up is repairable, a hot loop on someone's phone is not.
+ * For the bug that leaves `more` stuck true. A sync that gives up is
+ * repairable, a hot loop on someone's phone is not.
  */
 const MAX_ROUND_TRIPS = 50;
 
 let inFlight: Promise<void> | null = null;
 
 /**
- * Sync until the device and the server agree, or until something stops us.
- *
  * Single-flight: two overlapping syncs would each read the cursor before the
- * other wrote it, and the second to finish would save the older one —
- * reprocessing a payload harmlessly, but forever.
+ * other wrote it, and the second to finish would save the older one.
  */
 export function syncNow(): Promise<void> {
   inFlight ??= run().finally(() => {
@@ -45,15 +39,14 @@ export function syncNow(): Promise<void> {
 
 async function run(): Promise<void> {
   if (!syncEnabled()) {
-    // Guarded here as well as in `useSync`, so a direct `syncNow()` cannot post
-    // for a signed-out device just because it skipped the hook.
+    // Guarded here too, so a direct `syncNow()` cannot post for a signed-out
+    // device just because it skipped the hook.
     store.setSyncStatus({ kind: "off" });
     return;
   }
 
   if (offline) {
-    // Not an error: offline is the expected state for a PWA, and `useSync`
-    // calls back the moment connectivity returns.
+    // Not an error: `useSync` calls back the moment connectivity returns.
     return;
   }
 
@@ -92,8 +85,8 @@ async function roundTrip(): Promise<Outcome> {
   const meta = store.syncMeta();
   const before = store.localSnapshot();
 
-  // Nothing is pushed until the account is known: a device that has never synced
-  // pulls first, which cannot put local data anywhere it should not go.
+  // A device that has never synced pulls first, which cannot put local data
+  // anywhere it should not go.
   const pending =
     meta.accountId === null
       ? { habits: [], entries: [], settings: null, complete: false }
@@ -122,21 +115,20 @@ async function roundTrip(): Promise<Outcome> {
   warnOnClockSkew(pull.serverNow);
 
   if (meta.accountId !== null && pull.accountId !== meta.accountId) {
-    // The 409 path should have caught this, but applying a payload from the
-    // wrong account is the one outcome worth an extra check.
+    // The 409 path should have caught this; applying another account's payload
+    // is worth the extra check.
     store.adoptAccount(pull.accountId);
     return { kind: "retry" };
   }
 
-  // Re-read rather than reusing `before`: the user may have ticked a habit while
-  // the request was in flight, and merging into a stale snapshot would drop it.
+  // Re-read rather than reusing `before`: a tick landing mid-request would be
+  // dropped by merging into a stale snapshot.
   const merged = mergeIncoming(store.localSnapshot(), pull);
 
   store.applyPulled(merged, {
     cursor: pull.seq,
-    // Advanced past everything sent, rejected records included: their winning
-    // version arrives in this same response. Orphans the server dropped move
-    // past it too, or retrying them forever would wedge this device's sync.
+    // Past everything sent, rejected records included: the winning version is
+    // in this same response, and retrying dropped orphans would wedge sync.
     pushedThrough: watermarkAfterPush(pending, meta.pushedThrough),
     lastSyncAt: Date.now(),
     accountId: pull.accountId,
@@ -152,26 +144,21 @@ async function handleError(response: Response): Promise<Outcome> {
 
   switch (response.status) {
     case 401:
-      // Clearing the hint is what makes `syncEnabled()` safe to trust: a session
-      // that expired while the tab was closed would otherwise retry on every
-      // foreground and online event for as long as the app stayed open.
+      // Clearing the hint is what makes `syncEnabled()` safe to trust: an
+      // expired session would otherwise retry on every foreground event.
       markSignedOut();
       return { kind: "stop", status: { kind: "off" } };
 
     case 409:
-      // Someone else is signed in here: the previous account's copy is cleared
-      // rather than merged or uploaded.
+      // Someone else is signed in here: cleared, never merged or uploaded.
       store.adoptAccount(null);
       return { kind: "retry" };
 
     case 429:
       /**
-       * Metered, not refused (§13.17). Deliberately not the 401 path: the
-       * session is fine and clearing the hint would sign a device out for being
-       * busy. Deliberately not `retry` either — that goes round the loop
-       * immediately, which is the one thing a rate limit is asking us not to do.
-       * So this run stops and `useSync` calls back on the next change, focus or
-       * reconnect, by which time the window has moved.
+       * Metered, not refused (§13.17). Not the 401 path, which would sign a
+       * device out for being busy, and not `retry`, which loops immediately —
+       * the run stops and `useSync` calls back once the window has moved.
        */
       return {
         kind: "stop",
@@ -186,8 +173,7 @@ async function handleError(response: Response): Promise<Outcome> {
 
     case 400:
     case 413:
-      // The server rejects this payload every time, so retrying only burns
-      // battery. A bug in the client, not a condition to wait out.
+      // Rejected every time, so retrying only burns battery: a client bug.
       console.error(
         "openhabits: server rejected the sync payload",
         body?.message,
@@ -209,9 +195,8 @@ async function handleError(response: Response): Promise<Outcome> {
 }
 
 /**
- * A device clock far enough out to break merge ordering. The damage is invisible
- * — an hour behind, every edit here loses and the user sees changes revert — and
- * only the OS can fix it, so this logs rather than acts.
+ * Skew far enough out to break merge ordering: an hour behind, every edit here
+ * loses. Only the OS can fix it, so this logs rather than acts.
  */
 function warnOnClockSkew(serverNow: number): void {
   const skew = Math.abs(Date.now() - serverNow);
@@ -224,58 +209,42 @@ function warnOnClockSkew(serverNow: number): void {
 }
 
 /**
- * The framework's answer to "is this device offline", mirrored where `run()` can
- * read it synchronously. See DESIGN.md §13.14.
- *
- * `useOffline` is a hook and `syncNow()` is callable from anywhere, so the value
- * cannot be read at the point it is needed; `useSync` keeps this in step.
- * Defaults to online, which is the honest answer before anything has mounted —
- * and the worst case is one request that fails and is retried.
+ * Mirrored where `run()` can read it synchronously (§13.14), since `useOffline`
+ * is a hook and `syncNow()` is callable from anywhere. Defaults to online: the
+ * worst case is one request that fails and is retried.
  */
 let offline = false;
 
-/**
- * How often a foregrounded app checks in, in ms. Long, deliberately: the triggers
- * that matter are the event-driven ones below, and this only covers an app left
- * open and visible for hours.
- */
+/** Long on purpose: the triggers that matter are the event-driven ones below. */
 const POLL_MS = 5 * 60 * 1000;
 
 /**
- * Whether this device should attempt to sync at all — per device rather than per
- * build, so one deployment serves signed-in and signed-out visitors and only the
- * former make requests. Only a hint: the server still decides, and a device that
- * lies to itself here gets a 401 and is switched off by `handleError`.
+ * Only a hint, per device rather than per build: the server still decides, and
+ * a device that lies to itself here gets a 401 and is switched off.
  */
 function syncEnabled(): boolean {
   return signedIn();
 }
 
 /**
- * Mount once, high in the tree, alongside `useHydrate`.
- *
- * Deliberately not on every mutation — a habit tick would fire a request per tap,
- * and the merge is designed to arrive late rather than often.
+ * Mount once, high in the tree, alongside `useHydrate`. Not on every mutation:
+ * the merge is designed to arrive late rather than often.
  */
 export function useSync(): void {
   const { hydrated } = store.useOpenHabits();
-  // Subscribed rather than read, so signing in starts sync on the spot and
-  // signing out in another tab tears the listeners down in this one.
+  // Subscribed rather than read, so another tab signing out tears this one down.
   const enabled = useSignedIn();
   /**
-   * Replaces the `online` event and the `navigator.onLine` guard, both of which
-   * believed a device on wifi behind a captive portal was connected. This polls
-   * the origin instead, so the answer means "can reach the server". It is a
-   * dependency rather than a listener: coming back online re-runs the effect,
-   * whose first act is a sync.
+   * Polls the origin, unlike `navigator.onLine`, which believes a captive
+   * portal is a connection. A dependency rather than a listener: coming back
+   * online re-runs the effect, whose first act is a sync.
    */
   const isOffline = useOffline();
 
   useEffect(() => {
     offline = isOffline;
     if (!enabled) return;
-    // Syncing before hydration would push an empty snapshot as though the
-    // device had no habits, and read the cursor as 0 with a real one on disk.
+    // Syncing before hydration pushes an empty snapshot and a cursor of 0.
     if (!hydrated) return;
 
     void syncNow();

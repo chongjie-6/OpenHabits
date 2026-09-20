@@ -1,14 +1,8 @@
 /**
- * WCAG 2.1 contrast. See DESIGN.md §6.6.
- *
- * The shipped skins were measured once, by hand, at author time — the note at
- * the top of `app/globals.css` is that measurement written down. A custom
- * palette has no author to measure it, so the same arithmetic has to run while
- * the user is typing.
- *
- * Deliberately WCAG 2.1 rather than APCA: the bar the rest of the codebase is
- * held to is 4.5:1 AA, and a second, differently-scaled number beside it would
- * make the two impossible to compare.
+ * WCAG 2.1 contrast. See DESIGN.md §6.6. The shipped skins were measured by
+ * hand at author time; a custom palette has no author, so the same arithmetic
+ * runs while the user types. 2.1 rather than APCA, because the rest of the
+ * codebase is held to 4.5:1 and two scales cannot be compared.
  */
 
 import { parseHex, type Rgb } from "./oklch";

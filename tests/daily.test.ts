@@ -1,10 +1,7 @@
 /**
- * The daily card's corpus and the tag filter over it — `lib/daily.ts`.
- *
- * `tests/quotes.test.ts` and `tests/facts.test.ts` already cover each corpus
- * against the deck. What is new here is the seam `Settings.dailyTags` opens: one
- * flat list of tags applied to two corpora that share no vocabulary, where the
- * failure that matters is a filter leaving the card with nothing to show.
+ * The daily card's corpus and the tag filter over it. What is new beyond the
+ * per-corpus tests is the seam `Settings.dailyTags` opens: one flat list over
+ * two vocabularies, where the failure that matters is an empty card.
  */
 
 import { describe, expect, it } from "vitest";

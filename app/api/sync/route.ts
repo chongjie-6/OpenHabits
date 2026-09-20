@@ -1,13 +1,8 @@
 /**
- * POST /api/sync — the only server endpoint in the app. See DESIGN.md §13.
- *
- * Push and pull in one round trip: a push that committed beside a pull that did
- * not would leave the client's cursor and the server's contents describing
- * different worlds.
- *
- * Deliberately the *only* endpoint — no `GET /habits`, no per-record write route,
- * no server rendering of user data. IndexedDB remains the source of truth (§7.1)
- * and this is a replication channel between copies of it.
+ * POST /api/sync — the only endpoint that touches replicated data. See
+ * DESIGN.md §13. Push and pull in one round trip, or the client's cursor and
+ * the server's contents describe different worlds. No `GET /habits`, no
+ * per-record write: IndexedDB is the source of truth and this replicates it.
  */
 
 import { resolveUser } from "@/lib/server/auth";
@@ -22,10 +17,8 @@ import { parseSyncPush } from "@/lib/sync/validate";
 export const runtime = "nodejs";
 
 /**
- * Roughly `MAX_ROWS_PER_REQUEST` records at a generous size each. Checked before
- * the body is read, so an oversized request is refused rather than buffered —
- * `request.json()` on an unbounded body is the cheapest denial of service there
- * is.
+ * Checked before the body is read, so an oversized request is refused rather
+ * than buffered — `request.json()` on an unbounded body is free to attack.
  */
 const MAX_BODY_BYTES = 2_000_000;
 
@@ -38,7 +31,7 @@ function error(status: number, code: SyncErrorCode, message: string): Response {
 
 export async function POST(request: Request): Promise<Response> {
   if (!syncConfigured()) {
-    // The client treats this as "sync is off" rather than retrying forever.
+    // The client reads this as "sync is off" rather than retrying forever.
     return error(
       503,
       "server-error",
@@ -61,11 +54,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   /**
-   * Keyed by account, and placed here for that reason — after the session is
-   * known, and still before the body is read. Two devices on one account share
-   * the budget, which is the right unit: what this bounds is the account-wide
-   * advisory lock and a full-history pull, and both are costs per account rather
-   * than per caller. See DESIGN.md §13.17.
+   * Keyed by account, hence the placement: after the session is known and
+   * before the body is read. The account is the right unit, since what this
+   * bounds — the advisory lock, a full-history pull — is charged to it.
    */
   const metered = await check("sync", user.id);
   if (!metered.ok) {
@@ -76,8 +67,8 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  // Bounded again while reading: the header check above trusts what was
-  // declared, and a chunked request declares nothing.
+  // Bounded again while reading: the header above is only what was declared,
+  // and a chunked request declares nothing.
   const body = await readJson(request, MAX_BODY_BYTES);
   if (body === undefined) {
     return error(400, "malformed", "Body is not valid JSON, or is too large.");
@@ -93,8 +84,8 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
     if (cause instanceof AccountMismatchError) {
-      // News rather than an error: the client is holding someone else's data
-      // and needs to hand the device over. Nothing was written.
+      // News rather than an error: the client holds someone else's data and
+      // needs to hand the device over. Nothing was written.
       return error(
         409,
         "account-mismatch",
@@ -102,8 +93,7 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
-    // Logged in full, reported in outline: a driver error can quote the SQL it
-    // failed on, and that SQL contains row values.
+    // In outline: a driver error can quote the SQL, and that SQL holds row values.
     console.error("openhabits: sync failed", cause);
     return error(
       500,

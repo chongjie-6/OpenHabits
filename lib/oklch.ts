@@ -1,19 +1,10 @@
 /**
- * sRGB ↔ OKLCh, and gamut mapping. See DESIGN.md §6.6.
- *
- * A custom palette is derived from one seed colour, which means holding a hue
- * steady while moving lightness until a contrast target is met. sRGB has no
- * axis that does that — its "lightness" drags hue and saturation with it — so
- * the maths happens in OKLab and comes back as hex.
- *
- * CSS can do the same thing inline (`oklch(from … l c h)`, which is what
- * `lib/colors.ts` uses for habit accents) but only the browser can evaluate it.
- * A palette has to be measured for contrast before it is applied, and stored as
- * plain hex so the pre-paint script in `lib/theme.ts` can write it without a
- * parser. Hence the duplication: CSS for one live value, this for whole
- * palettes.
- *
- * Conversion coefficients are Björn Ottosson's OKLab definition.
+ * sRGB ↔ OKLCh, and gamut mapping. See DESIGN.md §6.6. Deriving a palette means
+ * holding a hue steady while moving lightness to a contrast target, and sRGB
+ * has no axis that does it. CSS can (`oklch(from …)`, as `lib/colors.ts` uses),
+ * but only the browser evaluates that, where a palette must be measured before
+ * it is applied and stored as hex the pre-paint script can write without a
+ * parser. Coefficients are Björn Ottosson's OKLab definition.
  */
 
 export type Rgb = { r: number; g: number; b: number };
@@ -70,8 +61,8 @@ export function rgbToOklch(rgb: Rgb): Oklch {
   const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
 
   const c = Math.sqrt(A * A + B * B);
-  // A neutral has no meaningful hue; reporting 0 keeps it stable through a
-  // round trip instead of letting float noise pick an angle.
+  // A neutral has no hue; 0 keeps it stable through a round trip rather than
+  // letting float noise pick an angle.
   const h = c < 1e-6 ? 0 : ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
   return { l: L, c, h };
 }
@@ -99,10 +90,8 @@ function inGamut({ r, g, b }: Rgb): boolean {
 }
 
 /**
- * Pull chroma down until the colour fits sRGB, keeping lightness and hue.
- *
- * Clamping the channels instead — the obvious shortcut — shifts the hue,
- * which is the one thing the caller asked to hold fixed.
+ * Chroma down until the colour fits sRGB, holding lightness and hue. Clamping
+ * the channels instead shifts the hue, which is what the caller asked to hold.
  */
 export function clipChroma(colour: Oklch): Rgb {
   const direct = oklchToRgb(colour);

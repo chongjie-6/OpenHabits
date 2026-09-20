@@ -1,16 +1,9 @@
 /**
- * The link-preview card. See DESIGN.md §8.6.
- *
- * Deliberately the same picture the verification email paints (see
- * `lib/email-templates/verification.ts`): a contribution grid with one square lit, on the
- * light ground, in the accent green. Those two surfaces are the only places
- * OpenHabits is seen by someone who has not installed it, and they should not
- * look like two different products.
- *
- * Rendered once at build time — this route is static like every other, so no
- * request ever pays for it. No emoji anywhere in the markup: `ImageResponse`
- * resolves emoji against a CDN, and a build that reaches the network is a build
- * that can fail offline.
+ * The link-preview card. See DESIGN.md §8.6. Deliberately the same picture the
+ * verification email paints: those two surfaces are the only places OpenHabits
+ * is seen by someone who has not installed it. Rendered once at build time, and
+ * no emoji anywhere — `ImageResponse` resolves those against a CDN, and a build
+ * that reaches the network is a build that can fail offline.
  */
 
 import { ImageResponse } from "next/og";
@@ -27,8 +20,7 @@ const CELL_LIT = "#30a14e";
 
 const COLUMNS = 21;
 const ROWS = 7;
-/** The lit squares, as `row,column`. A plausible fortnight rather than a
- *  pattern — a regular one reads as a loading skeleton. */
+/** A plausible fortnight: a regular pattern reads as a loading skeleton. */
 const LIT = new Set([
   "0,2",
   "1,2",

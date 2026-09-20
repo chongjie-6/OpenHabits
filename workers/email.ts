@@ -2,15 +2,9 @@ import "server-only";
 
 /**
  * The mail queue's worker: what `POST /api/email` does. See DESIGN.md §13.16.
- *
- * Its shape is the one `/api/cron/reminders` already established: fail closed
- * with no secret, authenticate the caller, do bounded work, and report a status
- * the scheduler can act on. What differs is what a failure means — QStash
- * retries a non-2xx, so a 500 here is a request to try again rather than an
- * incident.
- *
- * It carries no user data in the sync sense and needs no session. The body is an
- * envelope id and nothing else: the link itself never travelled through QStash.
+ * Shaped like `/api/cron/reminders` — fail closed with no secret, authenticate,
+ * do bounded work — but a failure means something else here, since QStash
+ * retries a non-2xx. The body is an envelope id: no link ever travels in it.
  */
 
 import { Receiver } from "@upstash/qstash";
@@ -23,8 +17,7 @@ const NO_STORE = { "Cache-Control": "no-store" };
 /** The body is `{ "id": "<uuid>" }`; anything near this size is not ours. */
 const MAX_BODY_BYTES = 4 * 1024;
 
-/** A `randomUUID`, which is what `enqueueEmail` mints. Length-capped and
- * character-checked because it is concatenated into a Redis key. */
+/** Checked, because it is concatenated into a Redis key. */
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -41,13 +34,9 @@ function receiver(): Receiver | null {
 
 export async function handleEmailJob(request: Request): Promise<Response> {
   /**
-   * Unset is not "no authentication needed" — this worker mails a link to an
-   * address its own body names, so with no way to tell who is asking it refuses
-   * to run at all. The same reading of a missing secret as the cron route's.
-   *
-   * `Receiver` directly rather than `verifySignatureAppRouter`, so this gate is
-   * the first thing that happens and the failure modes below stay as legible as
-   * the other four routes'.
+   * Unset is not "no authentication needed": this worker mails a link to an
+   * address its own body names. `Receiver` directly rather than
+   * `verifySignatureAppRouter`, so the gate is the first thing that happens.
    */
   const verifier = receiver();
   if (!verifier) {
@@ -60,13 +49,12 @@ export async function handleEmailJob(request: Request): Promise<Response> {
   const signature = request.headers.get("upstash-signature");
   if (!signature) return json(401, { error: "Unauthorised." });
 
-  // Read before the signature can be checked, so bounded: until `verify`
-  // passes, whoever sent this is anyone.
+  // Read before the signature is checked, so bounded: until `verify` passes,
+  // whoever sent this is anyone.
   const raw = await readText(request, MAX_BODY_BYTES);
   if (raw === null) return json(413, { error: "Body too large." });
   try {
-    // `url` is passed so the signature is bound to this endpoint: a message
-    // signed for somewhere else is not one to act on here.
+    // `url` binds the signature to this endpoint.
     const valid = await verifier.verify({
       signature,
       body: raw,
@@ -92,32 +80,28 @@ export async function handleEmailJob(request: Request): Promise<Response> {
     job = await dequeueEmail(id);
   } catch (cause) {
     console.error("[openhabits] mail envelope read failed", cause);
-    // The store, not the job. Worth a retry.
+    // The store, not the job: worth a retry.
     return json(500, { error: "Envelope store unavailable." });
   }
 
   /**
-   * 200, not an error, and this is the branch that keeps a delivered mail out of
-   * the DLQ. A missing envelope means one of two harmless things: a retry after
-   * a send whose response was lost, or a job whose hour ran out — and in the
-   * second case the token in it had expired too, so there was nothing left to
-   * deliver. Answering non-2xx here would retry both to exhaustion.
+   * 200, and the branch that keeps a delivered mail out of the DLQ. A missing
+   * envelope is either a retry after a lost response or a job whose hour ran
+   * out — in which case its token had expired too.
    */
   if (!job) return json(200, { done: true, envelope: "gone" });
 
   try {
     await sendEmail(job);
   } catch (cause) {
-    // Logged in full, reported in outline — and the envelope is deliberately
-    // left in place so the retry has something to read.
+    // The envelope is left in place so the retry has something to read.
     console.error(`[openhabits] queued ${job.kind} email failed`, cause);
     return json(500, { error: "Send failed." });
   }
 
-  // Only now. Until this line a retry is still possible, which is the whole
-  // reason `dequeueEmail` reads rather than claims. Past it the mail has gone,
-  // so a failed delete is logged and still answered 200 — a 500 here would have
-  // QStash deliver the same mail again. The envelope's TTL tidies up after it.
+  // Only now: until this line a retry is still possible, which is why
+  // `dequeueEmail` reads rather than claims. Past it the mail has gone, so a
+  // failed delete still answers 200 and the envelope's TTL tidies up.
   try {
     await completeEmail(id);
   } catch (cause) {

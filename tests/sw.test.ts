@@ -1,10 +1,7 @@
 /**
- * The one piece of build coupling `public/sw.js` carries. See DESIGN.md §8.2.
- *
- * The worker precaches a hand-written list of routes, and a route missing from
- * it is invisible until someone opens the app on a plane: the tab renders
- * online, so nothing in review or in CI notices. Reading `app/` back is what
- * keeps the list honest.
+ * The one piece of build coupling `public/sw.js` carries (§8.2). A route
+ * missing from its hand-written list is invisible until someone opens the app
+ * on a plane, so reading `app/` back is what keeps the list honest.
  */
 
 import { readdirSync, readFileSync } from "node:fs";

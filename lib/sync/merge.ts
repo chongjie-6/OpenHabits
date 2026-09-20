@@ -1,8 +1,6 @@
 /**
- * Merging a pulled payload into local state, and choosing what to push.
- *
- * Pure and free of both IndexedDB and Postgres, so the rules can be tested
- * directly. The store and driver layers do the writing.
+ * Merging a pulled payload into local state, and choosing what to push. Pure
+ * and free of both IndexedDB and Postgres, so the rules can be tested directly.
  */
 
 import { entryKey, type Entry, type Habit, type Settings } from "../types";
@@ -30,9 +28,8 @@ export type Incoming = {
 export type MergeResult = {
   snapshot: LocalSnapshot;
   /**
-   * The subset of the merge that has to reach IndexedDB. Writing only changed
-   * rows keeps a routine sync from rewriting the user's whole history, which on
-   * a large account is the difference between a frame and a stall.
+   * Only what has to reach IndexedDB: rewriting a whole history on a routine
+   * sync is the difference between a frame and a stall.
    */
   changedHabits: Habit[];
   changedEntries: Entry[];
@@ -42,10 +39,9 @@ export type MergeResult = {
 };
 
 /**
- * Apply a pulled payload under last-write-wins. Habits merge before entries, so a
- * tombstone arriving alongside its habit's entries is already known when those
- * entries are considered — otherwise the history is reinstated and pushed back
- * up, resurrecting the habit.
+ * Last-write-wins. Habits merge before entries, so a tombstone arriving beside
+ * its habit's entries is known before they are considered — otherwise the
+ * history is reinstated, pushed back up, and the habit resurrects.
  */
 export function mergeIncoming(
   local: LocalSnapshot,
@@ -62,9 +58,8 @@ export function mergeIncoming(
     habits.set(habit.id, habit);
     changedHabits.push(habit);
 
-    // Here rather than in the entry loop, so it also happens on a payload
-    // carrying the tombstone alone — the common case, since the deleting device
-    // has already dropped the entries and has none to send.
+    // Here rather than in the entry loop, so a payload carrying the tombstone
+    // alone — the common case — purges too.
     if (habit.deletedAt !== null && existing?.deletedAt == null) {
       purgedHabitIds.push(habit.id);
     }
@@ -109,16 +104,10 @@ export function mergeIncoming(
 }
 
 /**
- * Choose the local records to send.
- *
- * `pushedThrough` is the highest `updatedAt` the server has accepted. Anything
- * later is a local edit — or a pulled record whose stamp sits past the watermark,
- * which is re-sent wastefully but harmlessly. Avoiding that would mean a dirty
- * flag per row: a second source of truth that can drift.
- *
- * Note what is *not* here: no renumbering of `habit.order`. A device that
- * renumbers on every merge produces an edit on every merge, and two of them would
- * trade order rewrites forever with the user touching nothing.
+ * Anything past `pushedThrough` — a local edit, or a pulled record re-sent
+ * wastefully but harmlessly, where the alternative is a per-row dirty flag that
+ * can drift. Note what is *not* here: no renumbering of `habit.order`, or two
+ * devices trade order rewrites forever with the user touching nothing.
  */
 export function collectPush(
   local: LocalSnapshot,
@@ -142,11 +131,9 @@ export function collectPush(
     local.settings.updatedAt > pushedThrough ? local.settings : null;
 
   /**
-   * One cutoff for every collection, the push-side twin of the server's
-   * `resumePoint` (§13.5). The watermark is a single number, so truncating each
-   * collection on its own lets a newer habit or settings stamp carry it past
-   * entries that were never sent — a first sync of a long history would upload
-   * 500 days and silently skip the rest.
+   * One cutoff for every collection, the push-side twin of `resumePoint`
+   * (§13.5): the watermark is one number, so cutting each collection alone lets
+   * a newer stamp carry it past entries that were never sent.
    */
   const cutoff = Math.min(cutAt(habits, limit), cutAt(entries, limit));
   if (cutoff === Infinity) return { habits, entries, settings, complete: true };
@@ -162,15 +149,10 @@ export function collectPush(
 }
 
 /**
- * The highest stamp through which `rows` (sorted oldest-first) fits in one
- * request: just below the first row that does not fit, so a run of equal stamps
- * is never split — the watermark would land on that stamp and step over the half
- * left behind.
- *
- * When more than `limit` rows share the oldest pending stamp no cut avoids a
- * split, and the tie is broken the way it always was: the first `limit` go and
- * the rest are stepped over. Only `restore` of a habit with a very long history
- * stamps that many rows alike.
+ * The highest stamp through which `rows` fits in one request, just below the
+ * first that does not — so a run of equal stamps is never split and stepped
+ * over. Past `limit` rows sharing the oldest stamp no cut avoids that, and the
+ * first `limit` go.
  */
 function cutAt(rows: { updatedAt: number }[], limit: number): number {
   if (rows.length <= limit) return Infinity;
@@ -179,9 +161,8 @@ function cutAt(rows: { updatedAt: number }[], limit: number): number {
 }
 
 /**
- * The newest stamp actually sent, not `Date.now()`: the clock would skip any edit
- * made while the request was in flight, leaving its stamp below the new watermark
- * and never selected again.
+ * The newest stamp actually sent, not `Date.now()`, which would step over an
+ * edit made while the request was in flight and never select it again.
  */
 export function watermarkAfterPush(
   sent: {

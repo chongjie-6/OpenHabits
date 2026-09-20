@@ -4,16 +4,10 @@ import { HabitForm, type HabitFormValues } from "@/components/HabitForm";
 import { Sheet } from "@/components/Sheet";
 
 /**
- * The habit form in its two presentations — DESIGN.md §6.7.
- *
- * Touch gets a bottom sheet. A pointer keeps the inline card the form has
- * always had: a sheet clamped to the bottom edge of a 1400px window is a phone
- * idiom in the wrong room, and on a desktop there is no scroll position to
- * protect — the page has the height to grow into.
- *
- * The caller decides which and passes the answer down rather than each of us
- * asking, because it has to know anyway: the inline form takes the place of
- * whatever opened it, and the sheet floats over it.
+ * The habit form in its two presentations (§6.7). Touch gets a bottom sheet; a
+ * pointer keeps the inline card, a sheet clamped to a 1400px window being a
+ * phone idiom in the wrong room. The caller decides and passes the answer down,
+ * since it has to know anyway: the inline form takes the place of its opener.
  */
 export function HabitFormPanel({
   sheet,
@@ -40,8 +34,8 @@ export function HabitFormPanel({
 }) {
   if (!sheet) {
     if (!open) return null;
-    // Unmounted between edits, so it resets on its own and has no use for
-    // `instance`. Cancel is the only way out here: no backdrop, no Escape.
+    // Unmounted between edits, so it resets on its own. Cancel is the only way
+    // out here: no backdrop, no Escape.
     return (
       <div className={`surface-card bg-surface p-4 ${className}`}>
         <HabitForm

@@ -1,17 +1,8 @@
 /**
- * Deterministic daily selection. See DESIGN.md §5.1.
- *
- * The requirement is "feels chosen": no repeat until the corpus is exhausted,
- * identical output on every device, no server call. `hash(date) % N` fails the
- * first — the birthday problem puts a duplicate within a few weeks — so the
- * corpus is a deck reshuffled once per full pass.
- *
- * The sequence is a pure function of the date, so nothing is persisted,
- * reinstalling does not disturb it, and the archive view is free.
- *
- * Generic over the corpus because there are two of them (§5.3): quotes and
- * facts run the same deck independently, and a device switching between them
- * lands mid-sequence in the other rather than restarting it.
+ * Deterministic daily selection. See DESIGN.md §5.1. `hash(date) % N` repeats
+ * within weeks by the birthday problem, so the corpus is a deck reshuffled once
+ * per pass — a pure function of the date, so nothing is persisted and the
+ * archive view is free. Generic over the corpus, there being two (§5.3).
  */
 
 import { addDays, daysBetween } from "./dates";
@@ -57,16 +48,10 @@ function seedForCycle(cycle: number): number {
 export const seamWindow = (size: number) => Math.max(1, Math.floor(size / 8));
 
 /**
- * The shuffled deck for one cycle, with the seam repaired.
- *
- * A per-cycle shuffle says nothing about the *join* between passes: an item near
- * the end of one cycle can land near the start of the next. So anything shown in
- * the closing `k` days of the previous cycle is pushed out of the opening `k`
- * positions of this one.
- *
- * Swap targets come from `[k, size - k)` and never touch the final `k` slots,
- * which is what lets the previous cycle's tail be read off its raw shuffle
- * instead of recursing back through every cycle that ever was.
+ * A per-cycle shuffle says nothing about the *join* between passes, so anything
+ * shown in the closing `k` days of the last cycle is pushed out of this one's
+ * opening `k`. Swap targets avoid the final `k` slots, which is what lets the
+ * previous tail be read off its raw shuffle rather than recursing.
  */
 function deckForCycle<T extends DeckItem>(
   deck: readonly T[],
@@ -94,10 +79,7 @@ function deckForCycle<T extends DeckItem>(
   return shuffled;
 }
 
-/**
- * The item for a given day. Every item appears exactly once per pass, and none
- * twice inside any window of `seamWindow(size)` days.
- */
+/** Once per pass, and never twice inside a `seamWindow(size)` window. */
 export function itemForDay<T extends DeckItem>(
   day: DayKey,
   deck: readonly T[],
@@ -114,12 +96,9 @@ export function itemForDay<T extends DeckItem>(
 }
 
 /**
- * When each item next comes up, as `id → DayKey` of its first appearance.
- *
- * Scans **two** cycles. `from` is almost always mid-cycle, so a single-cycle
- * window is the tail of one shuffle plus the head of the next — two orderings
- * that overlap arbitrarily, leaving some items unreached. Two cycles must
- * contain one whole aligned cycle, and therefore every item.
+ * `id → DayKey` of each item's next appearance. Scans **two** cycles: `from` is
+ * mid-cycle, so one window is a tail plus a head that overlap arbitrarily,
+ * where two must contain a whole aligned cycle and therefore every item.
  */
 export function upcomingSchedule<T extends DeckItem>(
   from: DayKey,

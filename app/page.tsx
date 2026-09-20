@@ -6,15 +6,10 @@ import { TodayList } from "@/components/TodayList";
 import { WeekStrip } from "@/components/WeekStrip";
 
 /**
- * Today — DESIGN.md §5.
- *
- * The slots are a flex column so a skin can reorder them in CSS rather than in
- * React. The week strip carries no `order`, so it stays on top in every skin.
- * `grid` puts the habits first and the daily card at the foot of the page,
- * and doing that with `order` means it is already true at first paint: the
- * ordering hangs off `data-skin`, which the pre-paint script sets, so nothing
- * has to wait for hydration and nothing jumps. Reordering these in JS would put
- * the hero of the page behind the store's hydration gate for no reason.
+ * Today — DESIGN.md §5. The slots are a flex column so a skin reorders them in
+ * CSS rather than in React: the ordering hangs off `data-skin`, which the
+ * pre-paint script sets, so it is already true at first paint and nothing
+ * jumps. Doing it in JS would put the hero behind the hydration gate.
  */
 export default function TodayPage() {
   return (

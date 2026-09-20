@@ -6,9 +6,8 @@ import { useOpenHabits } from "@/lib/store";
 
 /**
  * The editor reads `localStorage` and the resolved theme, neither of which
- * exists at prerender — so it sits behind the store's hydration gate like every
- * other data-dependent subtree (§7.1). The store itself has nothing to do with
- * palettes; it is simply the app's one answer to "are we on the client yet".
+ * exists at prerender, so it sits behind the store's hydration gate (§7.1) —
+ * which here is only the app's answer to "are we on the client yet".
  */
 export default function ColoursPage() {
   const { hydrated } = useOpenHabits();

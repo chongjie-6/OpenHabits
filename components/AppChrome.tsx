@@ -15,30 +15,27 @@ import { watchPaletteMode } from "@/lib/use-palette";
  */
 export function Hydrator() {
   useHydrate();
-  // Order relative to `useSync` does not matter: a hint a render out of date
-  // costs at most a delayed first sync, and the server decides either way.
+  // Order against `useSync` does not matter: a stale hint costs a delayed
+  // first sync, and the server decides either way.
   useSessionSync();
   // Inert until hydration, and when signed out or the deployment has no
   // database.
   useSync();
 
-  // A custom palette carries a light half and a dark half, and an inline style
-  // cannot hold a media query — so the swap CSS does for free is done here.
-  // Inert when no palette is set.
+  // An inline style cannot hold a media query, so the swap CSS does for free
+  // happens here. Inert when no palette is set.
   useEffect(watchPaletteMode, []);
 
-  // Keeps this device out of the reminder sweep's dormant pile — see
-  // `SUBSCRIPTION_TTL_MS`. Makes no request for a browser with reminders off,
-  // which is why it can sit on the app-start path at all, and none while signed
-  // out, when the endpoint would only answer 401.
+  // Keeps this device out of the sweep's dormant pile (`SUBSCRIPTION_TTL_MS`).
+  // Silent for a browser with reminders off, which is why it can sit on the
+  // app-start path at all.
   const signedIn = useSignedIn();
   useEffect(() => {
     if (signedIn) void touchReminders();
   }, [signedIn]);
 
   useEffect(() => {
-    // Skipped in development: a caching worker turns every HMR update into a
-    // hunt for stale assets.
+    // Skipped in development: a caching worker turns HMR into a stale-asset hunt.
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
 

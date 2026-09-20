@@ -1,11 +1,8 @@
 "use client";
 
 /**
- * The React and DOM surface for custom palettes. See DESIGN.md §6.6.
- *
- * `lib/palette.ts` is the pure half — what a palette is, how one is derived,
- * what it measures. `lib/theme.ts` owns storage and the pre-paint script. This
- * file is what a component touches.
+ * The React and DOM surface for custom palettes (§6.6). `lib/palette.ts` is the
+ * pure half and `lib/theme.ts` owns storage; this is what a component touches.
  */
 
 import { useSyncExternalStore } from "react";
@@ -32,8 +29,8 @@ function emit(): void {
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
 
-  // `storage` fires in *other* tabs: change the palette in one and the rest
-  // should follow rather than sit on stale colours until reload.
+  // `storage` fires in *other* tabs, which would otherwise sit on stale
+  // colours until reload.
   const onStorage = (event: StorageEvent) => {
     if (event.key !== PALETTE_KEY) return;
     refreshPalette();
@@ -48,13 +45,9 @@ function subscribe(listener: () => void): () => void {
 }
 
 /**
- * The palette in force, or null when the skin's own colours are showing.
- *
- * Reports null on the server and through hydration, exactly as `useSkin` does,
- * so **every consumer must sit inside a subtree gated on `store.hydrated`**.
- * Token-level differences never need this hook: the pre-paint script has
- * already written the inline properties, so CSS has the real answer while this
- * still says null.
+ * Null when the skin's own colours show, and null through hydration like
+ * `useSkin` — so **every consumer sits inside a subtree gated on
+ * `store.hydrated`**. Token-level differences need CSS, not this hook.
  */
 export function usePalette(): Palette | null {
   return useSyncExternalStore(subscribe, currentPalette, () => null);
@@ -67,11 +60,8 @@ export function changePalette(palette: Palette | null): void {
 }
 
 /**
- * Follow the OS between light and dark.
- *
  * A palette carries both halves and an inline style cannot hold a media query,
- * so the swap that CSS does for free has to be done by hand. Mounted once, from
- * `Hydrator`.
+ * so the swap CSS does for free is done by hand here. Mounted once.
  */
 export function watchPaletteMode(): () => void {
   const query = window.matchMedia("(prefers-color-scheme: dark)");
@@ -81,16 +71,10 @@ export function watchPaletteMode(): () => void {
 }
 
 /**
- * Read the active skin's own colours out of the stylesheet, both modes.
- *
- * The starting point for "customise what I am already looking at". It works by
- * asking the browser rather than duplicating `app/globals.css` in TypeScript —
- * a second copy of three skins' worth of hexes would be wrong within a release.
- *
- * The inline properties are lifted and `data-theme` is driven to each mode in
- * turn to read the other half. Both are restored in a `finally`, and none of it
- * paints: the whole function runs inside one task, so the browser never gets a
- * frame in which the document is mid-flip.
+ * The starting point for "customise what I am looking at", asked of the browser
+ * rather than duplicating `globals.css` in TypeScript. The inline properties
+ * are lifted and `data-theme` driven to each mode in turn, both restored in a
+ * `finally`; it all runs in one task, so no frame catches the document mid-flip.
  */
 export function paletteFromSkin(): Palette {
   const root = document.documentElement;
@@ -122,9 +106,8 @@ function readSkinMode(root: HTMLElement, mode: Mode): Swatches {
   const computed = window.getComputedStyle(root);
   const raw = (token: string) => computed.getPropertyValue(token);
 
-  // The page colour is resolved first so everything else can fall back to it.
-  // `grid` sets `--quote-bg: transparent`, which is not a colour a swatch can
-  // hold; sitting on the page is what it looked like, so that is what it gets.
+  // Resolved first so everything else can fall back to it: `grid` sets
+  // `--quote-bg: transparent`, and sitting on the page is what that looked like.
   const background = toHex(raw("--background")) ?? LAST_RESORT[mode];
 
   const swatches = {} as Swatches;
@@ -135,13 +118,9 @@ function readSkinMode(root: HTMLElement, mode: Mode): Swatches {
 }
 
 /**
- * A computed custom property as `#rrggbb`, or null if it is not an opaque
- * colour.
- *
- * Custom properties are not parsed as colours by the engine — `getPropertyValue`
- * hands back whatever the stylesheet wrote, with `var()` substituted. So the
- * common case is already a hex, and anything else is handed to the one parser
- * that is guaranteed to agree with the renderer: the renderer.
+ * Custom properties are not parsed as colours, so `getPropertyValue` returns
+ * whatever the stylesheet wrote. The common case is already a hex; anything
+ * else goes to the one parser guaranteed to agree with the renderer.
  */
 function toHex(value: string): string | null {
   const trimmed = value.trim().toLowerCase();
@@ -173,8 +152,8 @@ function resolveColour(value: string): string | null {
   if (parts === undefined || parts.length < 3) return null;
 
   const [r, g, b, a] = parts.map(Number);
-  // `transparent` resolves to a fully transparent black, which as a swatch
-  // would read as "the user picked black". It did not pick anything.
+  // `transparent` resolves to a transparent black, which as a swatch would
+  // read as "the user picked black".
   if (a === 0) return null;
   if (computed === SENTINEL) return null;
 

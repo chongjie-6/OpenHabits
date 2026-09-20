@@ -15,11 +15,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * See the note in `app/week/layout.tsx` — `page.tsx` is a client component.
- *
- * The route stays `/quotes` now that the page shows facts too: it is a URL
- * people have bookmarked and the service worker has cached, and neither is
- * worth churning over a name.
+ * See `app/week/layout.tsx` — `page.tsx` is a client component. The route stays
+ * `/quotes` now it shows facts too: bookmarks and caches are not worth churning.
  */
 export default function QuotesLayout({ children }: LayoutProps<"/quotes">) {
   return children;

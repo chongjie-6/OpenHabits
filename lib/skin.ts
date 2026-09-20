@@ -1,31 +1,12 @@
 "use client";
 
 /**
- * The visual skin — a second, independent axis to `theme`. See DESIGN.md §6.5.
- *
- * `theme` answers "light or dark". `skin` answers "which design", and the two
- * compose: every skin has a light and a dark definition. Three ship —
- * `classic` (the original), `grid` (data-first) and `blocks` (a hard-edged
- * tile grid).
- *
- * **Device-local, deliberately.** Skin lives in `localStorage` alone and never
- * enters the synced settings blob. DESIGN.md §13.8 #1 already records `theme`
- * riding that blob as a wart — picking a look on a phone silently repaints a
- * laptop — and adding a second, louder look to the same blob would repeat the
- * mistake at three times the volume. The cost is that a skin is not in a backup
- * and a new device starts on `classic`; that is the intended trade.
- *
- * **The absent attribute is `classic`.** `data-skin` is only ever set for a
- * non-default skin, mirroring `data-theme`, so prerendered HTML carries no skin
- * attribute and the static build stays identical to what it was before skins
- * existed.
- *
- * `SKIN_KEY` itself is declared in `lib/theme.ts`, beside the theme key, because
- * the pre-paint script is the one thing that has to read both. It shares the
- * `hapi` prefix on purpose: it is not one of the four legacy names CLAUDE.md
- * protects — nothing has ever been stored under it — but a lone
- * `openhabits-skin` sitting beside `hapi-theme` in devtools reads as an
- * accident rather than a decision.
+ * The visual skin — which design, independent of light or dark. See DESIGN.md
+ * §6.5. **Device-local, deliberately**: it never enters the synced blob, so a
+ * look chosen on a phone cannot repaint a laptop (§13.8 #1), at the cost of a
+ * skin not being in a backup. **The absent attribute is `classic`**, mirroring
+ * `data-theme`, so prerendered HTML carries no skin attribute at all.
+ * `SKIN_KEY` lives in `lib/theme.ts`, beside the key the same script reads.
  */
 
 import { useSyncExternalStore } from "react";
@@ -59,8 +40,8 @@ function emit(): void {
 
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
-  // `storage` fires in *other* tabs: change the skin in one, and the rest
-  // should follow rather than sit on a stale layout until reload.
+  // `storage` fires in *other* tabs, which would otherwise sit on a stale
+  // layout until reload.
   const onStorage = (event: StorageEvent) => {
     if (event.key !== SKIN_KEY) return;
     applyAttribute(readSkin());
@@ -74,10 +55,7 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-/**
- * Wrapped because Safari in private mode throws on `localStorage` rather than
- * returning null, and an optional look is no reason to take the app down.
- */
+/** Wrapped: Safari in private mode throws on `localStorage` rather than returning null. */
 export function readSkin(): Skin {
   try {
     const stored = window.localStorage.getItem(SKIN_KEY);
@@ -92,10 +70,7 @@ function applyAttribute(skin: Skin): void {
   else document.documentElement.dataset.skin = skin;
 }
 
-/**
- * The only way to change skin. Sets the attribute the tokens hang off, mirrors
- * to storage for the pre-paint script, and notifies the layout switches.
- */
+/** The only way to change skin: attribute, storage mirror, and a notification. */
 export function applySkin(skin: Skin): void {
   if (typeof document === "undefined") return;
 
@@ -111,13 +86,10 @@ export function applySkin(skin: Skin): void {
 }
 
 /**
- * Reactive `readSkin()`. Reports `classic` on the server and through hydration,
- * so — exactly as with `useMediaQuery` — **every consumer must sit inside a
- * subtree that only renders once the store has hydrated**. Token-level
- * differences do not need this hook at all: `data-skin` is on the document
- * before first paint, so CSS has the real answer while this still says
- * `classic`. Reach for the hook only where the markup itself has to change
- * shape, and never in `BottomNav`, which renders un-gated.
+ * Reactive `readSkin()`, reporting `classic` through hydration — so **every
+ * consumer sits inside a subtree gated on hydration**. Token-level differences
+ * need CSS instead; reach for this only where the markup changes shape, and
+ * never in `BottomNav`, which renders un-gated.
  */
 export function useSkin(): Skin {
   return useSyncExternalStore(subscribe, readSkin, () => DEFAULT_SKIN);
