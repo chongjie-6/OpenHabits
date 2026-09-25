@@ -142,6 +142,18 @@ export type Fact = {
   tags: FactTag[];
 };
 
+/**
+ * A collectable found by finishing a good week (§5.5). `sprite` rows are pixel
+ * art: `.` is empty, every other character is a key of `colors`.
+ */
+export type Creature = {
+  id: string;
+  name: string;
+  blurb: string;
+  colors: Record<string, string>;
+  sprite: string[];
+};
+
 /** Which corpus the daily card draws from. See DESIGN.md §5.3. */
 export type DailyMode = "quotes" | "facts";
 

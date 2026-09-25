@@ -39,6 +39,7 @@ const ROUTES = [
   "/",
   "/week",
   "/stats",
+  "/dex",
   "/settings",
   "/settings/colours",
   "/quotes",

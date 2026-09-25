@@ -53,6 +53,7 @@ const TABS = [
   { href: "/", label: "Today", icon: TodayIcon },
   { href: "/week", label: "Week", icon: WeekIcon },
   { href: "/stats", label: "Stats", icon: StatsIcon },
+  { href: "/dex", label: "Dex", icon: DexIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 
@@ -133,6 +134,16 @@ function StatsIcon({ filled }: IconProps) {
       <rect x="3" y="11" width="5" height="5" rx="1" />
       <rect x="10" y="11" width="5" height="5" rx="1" />
       <rect x="3" y="18" width="5" height="3" rx="1" />
+    </svg>
+  );
+}
+
+function DexIcon({ filled }: IconProps) {
+  return (
+    <svg {...base(filled)}>
+      <path d="M12 3c-4 3-7 6-7 10a7 7 0 0 0 14 0c0-4-3-7-7-10Z" />
+      <circle cx="9.5" cy="13" r="1" />
+      <circle cx="14.5" cy="13" r="1" />
     </svg>
   );
 }
