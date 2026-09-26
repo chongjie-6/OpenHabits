@@ -935,6 +935,7 @@ data/quotes.ts            168 attributed quotes
 data/creatures/           one folder per line: forms, evolution levels, moves, D&D stats
 data/facts.ts             85 sourced fun facts
 scripts/generate-icons.mjs
+scripts/seed-test-account.mts  a verified account owning every line, for trying the dex
 public/sw.js
 ```
 
