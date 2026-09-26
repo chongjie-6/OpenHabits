@@ -177,6 +177,12 @@ describe("claimNews", () => {
     expect(claimNews(before, { ...before, gained: 0, found: [] })).toEqual([]);
   });
 
+  it("names a creature by the form it evolved into", () => {
+    const before = state(expForLevel(12) - 1);
+    const after = { ...state(expForLevel(12)), gained: 1, found: [] };
+    expect(claimNews(before, after)).toContain("Bloomkin reached Lv 12");
+  });
+
   it("names a move learned and a creature found", () => {
     const leafCount = LINES[0].moves[1];
     const before = state(expForLevel(leafCount.level) - 1);

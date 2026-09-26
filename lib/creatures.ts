@@ -122,7 +122,8 @@ export function claimNews(
     const now = after.creatures.find((c) => c.line === was.line);
     const line = lineOf(was.line);
     if (!now || !line) continue;
-    const name = formFor(line, was.exp).name;
+    // By the form it is now, which an evolution has just shown by name.
+    const name = formFor(line, now.exp).name;
     const [from, to] = [creatureLevel(was.exp), creatureLevel(now.exp)];
     if (to > from) news.push(`${name} reached Lv ${to}`);
     for (const move of movesAt(line, to).slice(movesAt(line, from).length))
