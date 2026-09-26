@@ -16,6 +16,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "@/lib/server/db";
+import { claimDay } from "@/lib/server/creatures";
 import { runReminderSweep } from "@/lib/server/reminders";
 import * as schema from "@/lib/server/schema";
 import { asServer, asUser } from "@/lib/server/scope";
@@ -96,6 +97,15 @@ beforeEach(async () => {
        values ($1, $2, 'p', 'a', 'Australia/Sydney')`,
       [`https://push.example/${user.id}`, user.id],
     );
+    await pglite.query(
+      `insert into creatures (user_id, line, exp, slot) values ($1, 'sproutle', 10, 0)`,
+      [user.id],
+    );
+    await pglite.query(
+      `insert into creature_days (user_id, day, completed, scheduled, exp_paid)
+       values ($1, '2026-08-31', 1, 1, 50)`,
+      [user.id],
+    );
   }
 
   await pglite.exec(`
@@ -162,6 +172,8 @@ describe("the role the app connects as", () => {
     // Enumerated rather than spot-checked: a new table added to `schema.ts`
     // without a policy fails here, which is the only moment anyone would notice.
     expect(tables.map((t) => t.relname)).toEqual([
+      "creature_days",
+      "creatures",
       "entries",
       "habits",
       "push_subscriptions",
@@ -183,6 +195,8 @@ describe("with no scope open", () => {
     expect(await rows(`select * from settings`)).toEqual([]);
     expect(await rows(`select * from users`)).toEqual([]);
     expect(await rows(`select * from push_subscriptions`)).toEqual([]);
+    expect(await rows(`select * from creatures`)).toEqual([]);
+    expect(await rows(`select * from creature_days`)).toEqual([]);
   });
 
   it("refuses to write", async () => {
@@ -209,11 +223,19 @@ describe("inside one account's scope", () => {
       settings: await tx.execute(
         sql`select value from settings where user_id = 'bob'`,
       ),
+      creatures: await tx.execute(
+        sql`select line from creatures where user_id = 'bob'`,
+      ),
+      creatureDays: await tx.execute(
+        sql`select day from creature_days where user_id = 'bob'`,
+      ),
     }));
 
     expect(returned(seen.habits)).toEqual([]);
     expect(returned(seen.entries)).toEqual([]);
     expect(returned(seen.settings)).toEqual([]);
+    expect(returned(seen.creatures)).toEqual([]);
+    expect(returned(seen.creatureDays)).toEqual([]);
   });
 
   it("sees an unfiltered query as its own rows only", async () => {
@@ -269,11 +291,13 @@ describe("the server scope", () => {
     expect(returned(seen.settings)).toHaveLength(2);
   });
 
-  it("reaches no habit, no entry and no account row", async () => {
+  it("reaches no habit, no entry, no creature and no account row", async () => {
     const seen = await asServer(db, async (tx) => ({
       habits: await tx.execute(sql`select id from habits`),
       entries: await tx.execute(sql`select date from entries`),
       users: await tx.execute(sql`select id from users`),
+      creatures: await tx.execute(sql`select line from creatures`),
+      creatureDays: await tx.execute(sql`select day from creature_days`),
     }));
 
     // The point of the scope existing at all: it answers "which devices are
@@ -281,6 +305,8 @@ describe("the server scope", () => {
     expect(returned(seen.habits)).toEqual([]);
     expect(returned(seen.entries)).toEqual([]);
     expect(returned(seen.users)).toEqual([]);
+    expect(returned(seen.creatures)).toEqual([]);
+    expect(returned(seen.creatureDays)).toEqual([]);
   });
 
   it("cannot write a preference, only read one", async () => {
@@ -313,6 +339,18 @@ describe("the paths that run in production", () => {
       "bobs-new-one",
     ]);
     expect(pull.entries.every((e) => e.habitId.startsWith("bob"))).toBe(true);
+  });
+
+  it("pays a claim to its own account's party only", async () => {
+    await claimDay(db, ALICE, "2026-09-01", Date.parse("2026-09-01T12:00:00Z"));
+    await pglite.exec(`reset role`);
+    const exp = await rows(
+      `select user_id, exp from creatures order by user_id`,
+    );
+    expect(exp).toEqual([
+      { user_id: "alice", exp: 60 },
+      { user_id: "bob", exp: 10 },
+    ]);
   });
 
   it("still delivers a reminder, which needs both scopes in one pass", async () => {

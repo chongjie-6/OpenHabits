@@ -1,7 +1,7 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "pebblit",
     name: "Pebblit",
@@ -96,5 +96,38 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "pebblit",
+  forms,
+  evolvesAt: [16, 34],
+  moves: [
+    {
+      level: 1,
+      name: "Do It Twice",
+      text: "Does everything twice, just to be sure.",
+    },
+    {
+      level: 8,
+      name: "Skip Stone",
+      text: "Bounces across a bad day without sinking.",
+    },
+    {
+      level: 17,
+      name: "Balance Act",
+      text: "Keeps a pebble on its head. Drops it. Tries again.",
+    },
+    {
+      level: 26,
+      name: "Stack Up",
+      text: "Adds one more stone. The pile has never fallen.",
+    },
+    {
+      level: 36,
+      name: "Cairn Keep",
+      text: "Holds every stone a traveller ever left on it.",
+    },
+  ],
+};
 
 export default line;

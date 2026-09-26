@@ -65,7 +65,7 @@ function isStamp(value: unknown): value is number {
  * Checked for existence, not shape: the round trip rejects '2026-02-30', which
  * `Date` would roll forward to March 2nd.
  */
-function isDayKey(value: unknown): value is string {
+export function isDayKey(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))
     return false;
   const date = new Date(`${value}T00:00:00Z`);

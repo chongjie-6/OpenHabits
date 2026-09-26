@@ -1,7 +1,7 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "sproutle",
     name: "Sproutle",
@@ -106,5 +106,38 @@ const line: Creature[] = [
     rig: { fx: { fruit: [[17, 6, "r"]] } },
   },
 ];
+
+const line: Line = {
+  id: "sproutle",
+  forms,
+  evolvesAt: [12, 28],
+  moves: [
+    {
+      level: 1,
+      name: "Morning Dew",
+      text: "Catches the first drop of the day on its leaf and keeps it.",
+    },
+    {
+      level: 7,
+      name: "Leaf Count",
+      text: "Counts its leaves out loud. There is always one more than yesterday.",
+    },
+    {
+      level: 14,
+      name: "Self-Water",
+      text: "Tips its own bloom over its roots. Nobody had to remind it.",
+    },
+    {
+      level: 22,
+      name: "Deep Roots",
+      text: "Holds fast through a bad week. The roots were growing the whole time.",
+    },
+    {
+      level: 32,
+      name: "Harvest Gift",
+      text: "Drops a ripe fruit for whoever showed up today.",
+    },
+  ],
+};
 
 export default line;

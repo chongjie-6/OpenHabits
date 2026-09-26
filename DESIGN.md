@@ -5,7 +5,7 @@ A local-first PWA that pairs a **daily quote from someone worth quoting** with a
 - **Status:** phases 0–6 built and passing; §11 has what remains. Sync (§13) runs: the auth seam is filled (§13.6) and an account is created from the Settings screen.
 - **Stack:** Next.js 16.3.1 (App Router), React 19.2, Tailwind CSS v4, TypeScript 5, Vitest
 - **Sync stack:** Postgres + Drizzle, Better Auth for identity, PGlite for tests (§13)
-- **Last updated:** 2026-09-05
+- **Last updated:** 2026-09-26
 
 > Sections marked **Revised during build** record where implementation contradicted the plan. They are kept rather than overwritten — the reasoning that turned out to be wrong is usually the reasoning most worth having on the record.
 
@@ -372,6 +372,12 @@ Two tests guard the corpus: ids are unique, and no two entries share the same op
 Every finished week in which at least `QUALIFYING_RATE` (80%) of scheduled habit-days were done discovers the next creature in `data/creatures/`, in the order `index.ts` lists them. Each evolution line has a folder of its own, base form first, and a creature's position is its dex number, shown on its card whether or not it has been found. The week in progress never counts, since it isn't over yet, and a week with nothing scheduled neither counts nor breaks anything.
 
 **Derived, never persisted**, like streaks: `/dex` rebuilds the history from the first habit and counts. So nothing syncs and every device agrees. The cost is that deleting a habit deletes its entries, which can un-qualify a week and take a creature back. Archiving doesn't do this. If that ever matters, persist a discovery map in `Settings`.
+
+> **Reversed: creatures are raised, and the server keeps them.** Each creature now has exp and a level, each line evolves at levels of its own and learns moves on the way, and a party of five (a buddy and four more) is who earns. Because what a creature earns should be checked rather than claimed, all of it is **stored, and written only by the server** (§13.18), which makes it an account feature: signed out, `/dex` shows silhouettes and a note to sign in. Discoveries made under the weekly rule were derived from history that can be backdated, so nothing was carried over; everyone starts by choosing Sproutle, Emberpup or Drizzlet.
+>
+> The rules live once, in `lib/creatures.ts`, and client and server both import them. **A day pays the party** 20, 35 or 50 exp at 60%, 80% and 100% of what was scheduled, and only the party: a creature resting in the box earns nothing. Total exp for level `L` is `6·(L−1)²`, capped at 50. **Only exp is stored**; level, form and the moves known are derived from it, like every other derived value here. Every `DISCOVERY_DAYS` (7) days at `QUALIFYING_RATE` finds the next line not yet owned, in `LINES` order. Each folder in `data/creatures/` now exports a `Line` (forms, `evolvesAt`, moves) and Tangling's exports eight two-form lines; `CREATURES` is still their forms flattened, so no dex number moved.
+>
+> **An evolution plays once per device**, like Cogling's flags: `lib/party.ts` keeps the stage each creature was last shown at and queues an evolution when the server's answer is higher, and a creature never seen on a device is recorded as it stands, because arriving evolved is not evolving. `components/Evolution.tsx` is one sequence dressed per creature: the two forms swap as white silhouettes on `step-end` steps that speed up, sparks fly in the new form's own colours, a flash, then the reveal, idling. Reduced motion starts at the reveal. Moves are flavour, each acting out something the line's blurbs already say; nothing uses one.
 
 **Cogling's line is the one exception**: three forms sharing dex #000, outside the weekly order. Cogling is found by opening settings; Blockog and Latticog by having settings open in the blocks or grid skin, which switching there does. An act leaves no history to derive from, so `lib/creatures.ts:findCogling` sets a localStorage flag per form whenever `/settings` renders in a skin. The flags are device-local like the skins that find them and do not sync, so each device finds the line on its own.
 
@@ -833,6 +839,9 @@ app/
   quotes/layout.tsx       route Metadata only
   settings/page.tsx
   settings/layout.tsx     route Metadata only
+  dex/page.tsx            starter picker, party, box, dex, creature sheet (§5.5)
+  dex/idle.ts             every line's idle stylesheet, imported from TS
+  evolution.css           the evolution sequence's keyframes
   globals.css             tokens, ramps, @theme mapping, safe-area utilities
 
 components/
@@ -848,6 +857,10 @@ components/
   Heatmap.tsx             SVG, delegated events, both orientations, legend
   DownloadAppButton.tsx   install prompt, per-browser instructions sheet, InstallCard
   ReminderCard.tsx        the six honest states of a reminder switch (§8.5)
+  Sprite.tsx              a creature from its pixel map, idling when rigged
+  Buddy.tsx               Today's buddy, and the name/level/exp plate
+  Evolution.tsx           plays the head of the evolution queue (§5.5)
+  CreatureNews.tsx        what a claim earned
 
 lib/
   types.ts                domain types + DEFAULT_SETTINGS + Synced metadata
@@ -865,6 +878,8 @@ lib/
   theme.ts                pre-paint script + localStorage mirror
   session.ts              the auth client + the local signed-in hint (§13.6)
   reminders.ts            subscribe/unsubscribe, and why a switch is not offered
+  creatures.ts            the rules creatures grow by, shared with the server
+  party.ts                the last server answer, claims, evolutions noticed
   email.ts                nodemailer SMTP transport, built per send (§13.9)
   email-templates/        one pure module per mail: tables, inline styles, no images
     index.ts              the kind → template table every send path reads
@@ -893,6 +908,7 @@ lib/
     sync-store.ts         push/pull inside one locked transaction
     push.ts               VAPID + web-push, kept apart so the sweep is testable
     reminders.ts          who is due, in their own timezone, claimed once (§8.5)
+    creatures.ts          claims, starters and parties; the only writer (§13.18)
     redis.ts              the Upstash handle; lazy, like db.ts (§13.17)
     email-queue.ts        mail handed to QStash instead of awaited (§13.16)
     ratelimit.ts          the tiers, and the one gate here that fails open (§13.17)
@@ -900,6 +916,7 @@ lib/
 app/api/sync/route.ts     replication — the only endpoint touching user data
 app/api/auth/[...all]/    sign-up, sign-in, sign-out, session
 app/api/reminders/        push subscriptions — a device fact, never replicated
+app/api/creatures/        creature state, written by the server alone (§13.18)
 app/api/cron/reminders/   the hourly sweep; fails closed without CRON_SECRET
 app/api/email/            the mail queue's entry point; segment config only
 proxy.ts                  the global rate limit tier, matched on /api (§13.17)
@@ -910,6 +927,7 @@ workers/wrangler.jsonc    its schedule; wrangler bundles reminders.ts alone
 
 drizzle/                  generated, reviewed, committed migrations
 data/quotes.ts            168 attributed quotes
+data/creatures/           one folder per line: forms, evolution levels, moves
 data/facts.ts             85 sourced fun facts
 scripts/generate-icons.mjs
 public/sw.js
@@ -1497,7 +1515,7 @@ Nothing was rate limited, and one endpoint made that worse than it sounds.
 
 **One generous tier in front of everything, and tight tiers where the cost is.** The global tier lives in `proxy.ts` — Next 16's rename of `middleware.ts`; it runs on the Node runtime and a `runtime` export there throws rather than being ignored. 300 requests a minute per IP, chosen so that nobody using the app ever meets it, which is what makes it safe to put in front of every endpoint at once.
 
-The matcher is `/api/:path*` and that is the point of it. Every route in this app but five prerenders to static HTML a CDN serves; a proxy with no matcher would put a function invocation in front of all of it and a Redis command in front of every stylesheet. Scoped to `/api`, it runs only where there was already going to be a function.
+The matcher is `/api/:path*` and that is the point of it. Every route in this app but six prerenders to static HTML a CDN serves; a proxy with no matcher would put a function invocation in front of all of it and a Redis command in front of every stylesheet. Scoped to `/api`, it runs only where there was already going to be a function.
 
 | Tier                    | Key                | Budget            | What it bounds                      |
 | ----------------------- | ------------------ | ----------------- | ----------------------------------- |
@@ -1506,6 +1524,7 @@ The matcher is `/api/:path*` and that is the point of it. Every route in this ap
 | Credential paths        | IP                 | 10 / min          | Password-hash verifies; brute force |
 | `POST /api/sync`        | account            | 60 / min          | The advisory lock and a full pull   |
 | `POST /api/reminders`   | account            | 30 / min          | The subscription upsert             |
+| `/api/creatures`        | account            | 30 / min          | Claims, which take sync's lock      |
 
 **The mail tier is keyed twice, and the second key is the one that matters.** Three a minute per IP is trivially defeated by rotating them. What is worth preventing is not load but one address being mailed over and over, so the budget that follows the _address_ is a day long. Reading it means cloning the request body; the original still reaches Better Auth unread, and a body that does not parse is Better Auth's to answer for rather than the limiter's.
 
@@ -1516,3 +1535,17 @@ The matcher is `/api/:path*` and that is the point of it. Every route in this ap
 **429 is not 401, and the client has to keep them apart.** `lib/sync/client.ts` handles the two very differently and deliberately: the 401 path clears the signed-in hint, which is what makes `syncEnabled()` trustworthy, and doing that on a 429 would sign a device out for being busy. Nor is it the `retry` path, which goes round the loop immediately — the one thing a rate limit is asking us not to do. So a 429 stops that run with a message saying so, and `useSync` calls back on the next change, focus or reconnect, by which time the window has moved. `rate-limited` is a `SyncErrorCode` for this reason: it is the only code in that union about the request's _rate_ rather than its content, and so the only one worth trying again unchanged.
 
 **Analytics are on.** The limiters report to the Upstash dashboard, which is the only place a refusal is visible — the alternative is discovering the tiers are wrong from a user who cannot sign in.
+
+### 13.18 Creatures are the server's to write
+
+Everything else the server holds is a replica of something a device wrote first. Creature state is not: a client asks for a change (claim this day, choose this starter, seat this party) and `lib/server/creatures.ts` decides it. The client never sends an amount, a level or a find, which is the whole of what makes exp and unlocks "validated". Hence a route of its own rather than more fields on `/api/sync`: this is not replicated data, and folding it into a last-write-wins protocol would let any device write it.
+
+**Two tables, both owner-only under RLS with `FORCE`**, hand-appended to the generated `0008` as `0006` did, and neither with a server bypass. `creatures` is one row per owned line, keyed `(user_id, line)`, holding `exp` and a `slot` (0 the buddy, 1–4 the party, null the box) under `unique (user_id, slot)`, which Postgres's distinct NULLs make exactly right: each seat holds one, the box holds any number. `creature_days` holds the best each claimed day reached and what it has paid, keyed `(user_id, day)`.
+
+**A claim reads the day from the server's own copy.** It runs `habitsForDay` through `sync-store.ts:dayStates`, the loader the reminder sweep uses too, over the synced habits and the entries from the week's start, since a weekly habit's rest depends on the days before. The device's reading of its day decides only _when_ to ask: `lib/party.ts` claims when today reaches a payout tier the server has not paid, once the ticks pause and after forcing a sync, because sync otherwise polls every five minutes and the server pays from what it holds. Most ticks therefore cost no request, and nothing below 60% ever does.
+
+**Only today can be claimed, and today is checked without the client's timezone**, which it could choose. A day is accepted if it is the civil date somewhere on Earth: no earlier than UTC−12's, held back six more hours for the latest `dayStartHour`, and no later than UTC+14's. At most two dates pass at any moment, so a missed week cannot be backfilled; the ceiling is a day claimed about a day late. **A day pays once, and only upward**: a re-claim pays the difference between tiers if the rate rose and nothing if it did not, and un-ticking afterwards takes nothing back. Replayed or concurrent claims are harmless because every write takes the same `pg_advisory_xact_lock` sync does, which also means a claim never reads half a sync.
+
+**What it cannot check** is whether a ticked habit happened, and no server could. It bounds the rate instead: one day's pay per day, from data that had to be synced before that day ended everywhere.
+
+**Signing out forgets.** `lib/party.ts` caches the last answer in localStorage under the account id, so a borrowed phone never shows the previous person's party and the dex still draws offline, and a real sign-out removes it along with the habits. It watches for the transition rather than the state, because hydration reports signed out on every load.

@@ -1,4 +1,4 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const colors = {
@@ -12,7 +12,7 @@ const colors = {
   d: "#33354a",
 };
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "spurling",
     name: "Spurling",
@@ -129,5 +129,38 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "spurling",
+  forms,
+  evolvesAt: [17, 35],
+  moves: [
+    {
+      level: 1,
+      name: "Spine Snap",
+      text: "Breaks a spine on the day's first problem.",
+    },
+    {
+      level: 7,
+      name: "Grow Back",
+      text: "Regrows overnight, a little harder than before.",
+    },
+    {
+      level: 18,
+      name: "Quill Volley",
+      text: "Throws every spine it has at the problem in front of it.",
+    },
+    {
+      level: 27,
+      name: "Hardened",
+      text: "Nothing breaks it the same way twice.",
+    },
+    {
+      level: 37,
+      name: "Black Thorn",
+      text: "Throws itself at the day with every spine it ever lost.",
+    },
+  ],
+};
 
 export default line;

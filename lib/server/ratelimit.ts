@@ -29,7 +29,9 @@ export type Tier =
   /** `POST /api/sync`, keyed by account. */
   | "sync"
   /** `POST /api/reminders`, keyed by account. */
-  | "reminders";
+  | "reminders"
+  /** `/api/creatures`, keyed by account. */
+  | "creatures";
 
 type Limiters = { tiers: Record<Tier, Ratelimit>; mailDaily: Ratelimit };
 
@@ -83,6 +85,13 @@ function build(): Limiters {
       reminders: new Ratelimit({
         ...shared,
         prefix: `${PREFIX}:rem`,
+        limiter: window(30, "60 s"),
+      }),
+
+      /** A claim takes sync's lock, so it is bounded like one. */
+      creatures: new Ratelimit({
+        ...shared,
+        prefix: `${PREFIX}:creatures`,
         limiter: window(30, "60 s"),
       }),
     },

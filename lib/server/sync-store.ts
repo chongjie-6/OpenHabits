@@ -8,7 +8,20 @@ import "server-only";
  * which `lockUser` makes safe to read-modify-write.
  */
 
-import { and, eq, gt, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  sql,
+} from "drizzle-orm";
+import { startOfWeek } from "../dates";
+import { habitsForDay, type HabitDayState } from "../history";
 import {
   fingerprintEntry,
   fingerprintHabit,
@@ -19,7 +32,13 @@ import {
   type SyncPull,
   type SyncPush,
 } from "../sync/protocol";
-import type { Entry, Habit, HabitColor } from "../types";
+import {
+  entryKey,
+  type DayKey,
+  type Entry,
+  type Habit,
+  type HabitColor,
+} from "../types";
 import type { SyncUser } from "./auth-types";
 import type { Db } from "./db";
 import { entries, habits, settings, users } from "./schema";
@@ -66,8 +85,9 @@ export async function runSync(
  * statement runs but visible only on commit, so without this two syncs can
  * commit out of order and a client pulling in the gap steps over the lower one.
  * `hashtext` because the key must be a bigint; a collision costs only latency.
+ * `creatures.ts` takes it too, so a claim reads a whole sync and pays once.
  */
-async function lockUser(tx: Tx, userId: string): Promise<void> {
+export async function lockUser(tx: Tx, userId: string): Promise<void> {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
 }
 
@@ -75,7 +95,7 @@ async function lockUser(tx: Tx, userId: string): Promise<void> {
  * `settings` and `habits` reference `users`, so the row must exist first.
  * `DO NOTHING`, or every sync becomes a write for a column sync never reads.
  */
-async function ensureUser(tx: Tx, user: SyncUser): Promise<void> {
+export async function ensureUser(tx: Tx, user: SyncUser): Promise<void> {
   await tx
     .insert(users)
     .values({ id: user.id, email: user.email })
@@ -390,4 +410,42 @@ export function toEntry(row: typeof entries.$inferSelect): Entry {
     count: row.count,
     updatedAt: row.updatedAt,
   };
+}
+
+/**
+ * The day as the server's copy of it reads, in the user's habit order. Entries
+ * come from the week start: a weekly habit rests once its quota is met, which
+ * `habitsForDay` can only know from the days already elapsed.
+ */
+export async function dayStates(
+  tx: Tx,
+  userId: string,
+  day: DayKey,
+  weekStartsOn: 0 | 1,
+): Promise<HabitDayState[]> {
+  const [habitRows, entryRows] = await Promise.all([
+    tx
+      .select()
+      .from(habits)
+      .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)))
+      .orderBy(habits.order),
+    tx
+      .select()
+      .from(entries)
+      .where(
+        and(
+          eq(entries.userId, userId),
+          gte(entries.date, startOfWeek(day, weekStartsOn)),
+          lte(entries.date, day),
+        ),
+      ),
+  ]);
+
+  const byKey = new Map<string, Entry>();
+  for (const row of entryRows) {
+    const entry = toEntry(row);
+    byKey.set(entryKey(entry.habitId, entry.date), entry);
+  }
+
+  return habitsForDay(habitRows.map(toHabit), byKey, day, weekStartsOn);
 }

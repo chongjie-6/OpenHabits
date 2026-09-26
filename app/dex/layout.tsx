@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 const DESCRIPTION =
-  "Every good week discovers a new creature. See who you have found, and how this week is going.";
+  "Raise a party of creatures on the days you finish your habits. See how they are growing, and who is left to find.";
 
 export const metadata: Metadata = {
   title: "Creatures",

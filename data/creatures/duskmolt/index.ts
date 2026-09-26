@@ -1,7 +1,7 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "duskmolt",
     name: "Duskmolt",
@@ -79,5 +79,38 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "duskmolt",
+  forms,
+  evolvesAt: [22],
+  moves: [
+    {
+      level: 1,
+      name: "Shed Scale",
+      text: "Drops one dark scale for a good day.",
+    },
+    {
+      level: 8,
+      name: "Gold Beneath",
+      text: "Shows a glint of what it is turning into.",
+    },
+    {
+      level: 15,
+      name: "Dusk Flutter",
+      text: "Flies out when everything else is heading home.",
+    },
+    {
+      level: 23,
+      name: "First Light",
+      text: "Sheds its last dark scale and gives off light instead.",
+    },
+    {
+      level: 34,
+      name: "Dawnbreak",
+      text: "Makes morning come a little earlier for everyone.",
+    },
+  ],
+};
 
 export default line;

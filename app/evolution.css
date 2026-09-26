@@ -1,0 +1,118 @@
+/**
+ * The evolution sequence (§5.5): the two forms swap as silhouettes, faster and
+ * faster, until a flash leaves the new one standing. Held with `step-end` like
+ * the idle loops, so the art stays on its grid. The stage is dark in every skin
+ * and theme, because a white silhouette is the whole effect.
+ */
+
+[data-slot="evolution"] {
+  background: #16121c;
+  color: #ffffff;
+  border-radius: 1rem;
+}
+
+[data-slot="evolution"]::backdrop {
+  background: rgb(0 0 0 / 0.75);
+}
+
+[data-evolve="old"] {
+  animation: evolve-old 3.2s step-end forwards;
+}
+
+[data-evolve="new"] {
+  opacity: 0;
+  animation: evolve-new 3.2s step-end forwards;
+}
+
+@keyframes evolve-old {
+  0%,
+  30%,
+  52%,
+  67%,
+  78%,
+  86%,
+  92%,
+  96% {
+    opacity: 1;
+  }
+  16%,
+  42%,
+  60%,
+  73%,
+  82%,
+  89%,
+  94%,
+  98%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes evolve-new {
+  0%,
+  30%,
+  52%,
+  67%,
+  78%,
+  86%,
+  92%,
+  96% {
+    opacity: 0;
+  }
+  16%,
+  42%,
+  60%,
+  73%,
+  82%,
+  89%,
+  94%,
+  98%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Sparks in the creature's own colours, flung out on whole-pixel steps. */
+[data-spark] {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  opacity: 0;
+  animation: evolve-spark 1.6s steps(4, end) infinite;
+}
+
+@keyframes evolve-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy));
+  }
+}
+
+[data-evolve="flash"] {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  border-radius: inherit;
+  animation: evolve-flash 0.45s step-end forwards;
+}
+
+@keyframes evolve-flash {
+  0% {
+    opacity: 0.6;
+  }
+  33% {
+    opacity: 1;
+  }
+  66% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}

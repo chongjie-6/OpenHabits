@@ -1,7 +1,7 @@
-import type { Creature, Pixel } from "@/lib/types";
+import type { Creature, Line, Pixel } from "@/lib/types";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "drizzlet",
     name: "Drizzlet",
@@ -113,5 +113,34 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "drizzlet",
+  forms,
+  evolvesAt: [13, 29],
+  moves: [
+    {
+      level: 1,
+      name: "One Drop",
+      text: "Falls exactly once a day, and makes it count.",
+    },
+    {
+      level: 6,
+      name: "Puddle Up",
+      text: "Gathers yesterday's drops into something you can stand in.",
+    },
+    {
+      level: 14,
+      name: "Ripple Out",
+      text: "Each ripple goes a little further than the last.",
+    },
+    {
+      level: 21,
+      name: "Keep Every Drop",
+      text: "Nothing it catches is ever spilled.",
+    },
+    { level: 31, name: "Still Water", text: "Goes so calm that fish move in." },
+  ],
+};
 
 export default line;

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrowseDayProvider } from "@/components/BrowseDay";
+import { Buddy } from "@/components/Buddy";
 import { InstallCard } from "@/components/DownloadAppButton";
 import { DailyCard } from "@/components/DailyCard";
 import { TodayList } from "@/components/TodayList";
@@ -33,6 +34,10 @@ export default function TodayPage() {
 
         <div data-slot="habits">
           <TodayList />
+        </div>
+
+        <div data-slot="buddy" className="mt-6 empty:hidden">
+          <Buddy />
         </div>
 
         {/* Renders nothing once the app is installed, so the tab's main job

@@ -1,7 +1,7 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "mossback",
     name: "Mossback",
@@ -84,5 +84,34 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "mossback",
+  forms,
+  evolvesAt: [20],
+  moves: [
+    {
+      level: 1,
+      name: "Keep Still",
+      text: "Stays exactly where it said it would be.",
+    },
+    {
+      level: 8,
+      name: "Moss Coat",
+      text: "Grows a coat of moss by not fidgeting.",
+    },
+    { level: 16, name: "Slow March", text: "Arrives late to nothing, ever." },
+    {
+      level: 22,
+      name: "Shell Garden",
+      text: "Lets a small garden take root on its back.",
+    },
+    {
+      level: 34,
+      name: "Old Growth",
+      text: "Keeps still for a season and blooms for the next.",
+    },
+  ],
+};
 
 export default line;

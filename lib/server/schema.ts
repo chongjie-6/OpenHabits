@@ -10,6 +10,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  check,
   foreignKey,
   index,
   integer,
@@ -18,8 +19,10 @@ import {
   pgSequence,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
 import type { Cadence, Settings } from "../types";
 
@@ -204,6 +207,60 @@ export const pushSubscriptions = pgTable(
       for: "all",
       using: server(),
       withCheck: server(),
+    }),
+  ],
+).enableRLS();
+
+/**
+ * One row per line an account owns (§13.18). Written only by
+ * `lib/server/creatures.ts`, never by a client, which is the whole of what
+ * "validated" means here. Only `exp` is stored; level, form and moves derive from it.
+ */
+export const creatures = pgTable(
+  "creatures",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    line: text("line").notNull(),
+    exp: integer("exp").notNull().default(0),
+    /** 0 is the buddy, 1–4 the rest of the party, null the box. */
+    slot: smallint("slot"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.line] }),
+    // NULLs are distinct, so the box is unbounded and each seat holds one.
+    unique("creatures_user_slot_key").on(t.userId, t.slot),
+    check("creatures_slot_check", sql`${t.slot} between 0 and 4`),
+    pgPolicy("creatures_owner", {
+      for: "all",
+      using: owner(),
+      withCheck: owner(),
+    }),
+  ],
+).enableRLS();
+
+/**
+ * The best each claimed day reached, and what it has paid so far. What makes a
+ * claim pay once, and what good days are counted from.
+ */
+export const creatureDays = pgTable(
+  "creature_days",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+    completed: integer("completed").notNull(),
+    scheduled: integer("scheduled").notNull(),
+    expPaid: integer("exp_paid").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.day] }),
+    pgPolicy("creature_days_owner", {
+      for: "all",
+      using: owner(),
+      withCheck: owner(),
     }),
   ],
 ).enableRLS();

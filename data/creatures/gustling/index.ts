@@ -1,7 +1,7 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "gustling",
     name: "Gustling",
@@ -83,5 +83,34 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "gustling",
+  forms,
+  evolvesAt: [14],
+  moves: [
+    {
+      level: 1,
+      name: "First Breeze",
+      text: "Catches the day's first wind before anyone is up.",
+    },
+    { level: 7, name: "Tailwind", text: "Pushes you the last few steps home." },
+    {
+      level: 15,
+      name: "Updraft",
+      text: "Rises on whatever the day throws at it.",
+    },
+    {
+      level: 24,
+      name: "Make Weather",
+      text: "Stops waiting for a breeze and starts one.",
+    },
+    {
+      level: 35,
+      name: "Home Before Dark",
+      text: "However far it goes, it is back by nightfall.",
+    },
+  ],
+};
 
 export default line;

@@ -160,6 +160,17 @@ export type Creature = {
   rig?: { parts?: Record<string, PixelBox>; fx?: Record<string, Pixel[]> };
 };
 
+/** Learned at `level` and shown on the creature's sheet; nothing uses one (§5.5). */
+export type Move = { name: string; level: number; text: string };
+
+/** Base form first, evolving at each of `evolvesAt` in turn. `id` is the base form's. */
+export type Line = {
+  id: string;
+  forms: Creature[];
+  evolvesAt: number[];
+  moves: Move[];
+};
+
 /** `[x, y, width, height]` in sprite pixels. */
 export type PixelBox = [x: number, y: number, w: number, h: number];
 

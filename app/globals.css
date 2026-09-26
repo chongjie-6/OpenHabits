@@ -622,6 +622,11 @@ body {
   margin-top: 0;
 }
 
+/* The buddy follows the habits whose ticks it grows on. */
+:root[data-skin="grid"] [data-slot="buddy"] {
+  order: 1;
+}
+
 :root[data-skin="grid"] [data-slot="daily"] {
   order: 2;
   margin-top: 2rem;

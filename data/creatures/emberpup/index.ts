@@ -1,7 +1,7 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "emberpup",
     name: "Emberpup",
@@ -119,5 +119,38 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "emberpup",
+  forms,
+  evolvesAt: [14, 30],
+  moves: [
+    {
+      level: 1,
+      name: "Warm Tail",
+      text: "Wags a tail that glows one shade warmer for every day of the streak.",
+    },
+    {
+      level: 6,
+      name: "Kindle",
+      text: "Breathes on a cold start until it catches.",
+    },
+    {
+      level: 15,
+      name: "Steady Flame",
+      text: "Gutters some days, and never two in a row.",
+    },
+    {
+      level: 24,
+      name: "Hearth Guard",
+      text: "Curls round the fire so the streak lasts the night.",
+    },
+    {
+      level: 33,
+      name: "Dawn Roar",
+      text: "Roars the sun up. It has not been late once.",
+    },
+  ],
+};
 
 export default line;

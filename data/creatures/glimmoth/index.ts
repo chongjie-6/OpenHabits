@@ -1,7 +1,7 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "glimmoth",
     name: "Glimmoth",
@@ -79,5 +79,38 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "glimmoth",
+  forms,
+  evolvesAt: [18],
+  moves: [
+    {
+      level: 1,
+      name: "Glimmer",
+      text: "Lights up after a finished day, and only then.",
+    },
+    {
+      level: 7,
+      name: "Moth to It",
+      text: "Finds the one lamp still on and keeps it company.",
+    },
+    {
+      level: 14,
+      name: "Lantern Hold",
+      text: "Stores a finished day in its lantern for later.",
+    },
+    {
+      level: 19,
+      name: "Night Light",
+      text: "Lights the way back for a day that nearly got away.",
+    },
+    {
+      level: 30,
+      name: "Never Out",
+      text: "Has kept so many finished days that it cannot go dark.",
+    },
+  ],
+};
 
 export default line;

@@ -1,7 +1,7 @@
-import type { Creature, Pixel } from "@/lib/types";
+import type { Creature, Line, Pixel } from "@/lib/types";
 import { OUTLINE, SHINE } from "../pixels";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "frostnib",
     name: "Frostnib",
@@ -84,5 +84,38 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "frostnib",
+  forms,
+  evolvesAt: [16],
+  moves: [
+    {
+      level: 1,
+      name: "Cold Plunge",
+      text: "Jumps in first and never complains.",
+    },
+    {
+      level: 7,
+      name: "Shiver Off",
+      text: "Shakes the cold off and says it feels great.",
+    },
+    {
+      level: 13,
+      name: "Ice Break",
+      text: "Cracks the ice when the pond freezes over, and swims anyway.",
+    },
+    {
+      level: 20,
+      name: "Rime Beak",
+      text: "Cuts through any excuse that has frozen solid.",
+    },
+    {
+      level: 31,
+      name: "Morning Swim",
+      text: "Has not missed one in a year, ice or no ice.",
+    },
+  ],
+};
 
 export default line;

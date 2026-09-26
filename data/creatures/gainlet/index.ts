@@ -1,4 +1,4 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const SKIN = {
@@ -12,7 +12,7 @@ const SKIN = {
 };
 const IRON = { p: "#6b7089", s: "#a9aec2" };
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "gainlet",
     name: "Gainlet",
@@ -106,5 +106,34 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "gainlet",
+  forms,
+  evolvesAt: [18, 36],
+  moves: [
+    {
+      level: 1,
+      name: "Puddle Flex",
+      text: "Flexes at its reflection. Nothing there yet.",
+    },
+    {
+      level: 6,
+      name: "One More Rep",
+      text: "Always finds one more in the tank.",
+    },
+    {
+      level: 19,
+      name: "Rep Croak",
+      text: "Croaks once per rep. Has never lost count.",
+    },
+    { level: 28, name: "Leg Day", text: "Never skips it." },
+    {
+      level: 38,
+      name: "Seven-Day Split",
+      text: "Never skips the other six either.",
+    },
+  ],
+};
 
 export default line;

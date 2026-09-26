@@ -6,6 +6,20 @@ All notable changes to OpenHabits are listed here. The format follows
 
 ## [Unreleased]
 
+### Creatures
+
+- Creatures are raised now, not only found. Pick Sproutle, Emberpup or Drizzlet
+  to start, and your **party** — a buddy and four more — earns exp on every day
+  you finish at least 60% of your habits: 20, 35 or 50 exp at 60%, 80% and 100%.
+  Creatures resting outside the party earn nothing.
+- Each line evolves at levels of its own and learns moves as it grows, with an
+  evolution sequence the first time each device sees it happen.
+- Every seven days at 80% or better finds the next creature.
+- Your buddy sits on Today, under the habits it grows on.
+- Exp and finds are worked out and stored by the server, from your synced
+  habits, and only today can be claimed — so creatures need an account.
+  Creatures found under the old weekly rule do not carry over.
+
 ### Self-hosting
 
 - `docker compose up` runs the app with its own Postgres and migrations, as an

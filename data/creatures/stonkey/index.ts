@@ -1,10 +1,10 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const FUR = { o: OUTLINE, w: SHINE, e: OUTLINE, b: "#d4974f", l: "#f8ddb0" };
 const GEAR = { g: "#f4c23f", r: "#d8453a", t: "#f0913a" };
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "stonkey",
     name: "Stonkey",
@@ -93,5 +93,38 @@ const line: Creature[] = [
     },
   },
 ];
+
+const line: Line = {
+  id: "stonkey",
+  forms,
+  evolvesAt: [15, 32],
+  moves: [
+    {
+      level: 1,
+      name: "Peek Out",
+      text: "Lifts the lid to check before coming out.",
+    },
+    {
+      level: 6,
+      name: "Thousand Sunrises",
+      text: "Waits it out. It has done this before.",
+    },
+    {
+      level: 16,
+      name: "Staff Grow",
+      text: "Its staff gets a little longer every day it trains.",
+    },
+    {
+      level: 25,
+      name: "Measure Up",
+      text: "Checks the staff against yesterday's. It is longer.",
+    },
+    {
+      level: 34,
+      name: "Cloud Leap",
+      text: "One somersault, a hundred thousand li, and back by breakfast.",
+    },
+  ],
+};
 
 export default line;

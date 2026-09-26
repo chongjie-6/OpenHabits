@@ -1,4 +1,4 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line, Move } from "@/lib/types";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 /**
@@ -8,7 +8,7 @@ import { OUTLINE, SHINE, pixelsAt } from "../pixels";
  */
 const STAR = "#f2c14e";
 
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "tangling",
     name: "Tangling",
@@ -705,4 +705,213 @@ const line: Creature[] = [
   },
 ];
 
-export default line;
+/** A guardian and its evolved form, which `forms` lists side by side. */
+function pair(id: string, evolvesAt: number, moves: Move[]): Line {
+  const at = forms.findIndex((form) => form.id === id);
+  return { id, forms: forms.slice(at, at + 2), evolvesAt: [evolvesAt], moves };
+}
+
+const lines: Line[] = [
+  pair("tangling", 20, [
+    {
+      level: 1,
+      name: "Vine Snare",
+      text: "Catches 'tomorrow' before it gets away.",
+    },
+    {
+      level: 8,
+      name: "Thorn Reading",
+      text: "Reads today's plan off the thorns of its vine.",
+    },
+    {
+      level: 16,
+      name: "Next Line",
+      text: "Says your excuse a second before you do.",
+    },
+    {
+      level: 21,
+      name: "Sun Ripple",
+      text: "Runs sunlight down its vines into whatever they hold.",
+    },
+    {
+      level: 32,
+      name: "Noon Pulse",
+      text: "Sends a pulse of daylight through every excuse at once.",
+    },
+  ]),
+  pair("jabbit", 22, [
+    {
+      level: 1,
+      name: "Quick Jab",
+      text: "Lands a jab before you finish blinking.",
+    },
+    {
+      level: 8,
+      name: "Hundred Jabs",
+      text: "Then lands the other ninety-nine.",
+    },
+    {
+      level: 15,
+      name: "Sharp Eye",
+      text: "Spots the one thing that needed doing and does it.",
+    },
+    {
+      level: 23,
+      name: "Still Moment",
+      text: "Holds the world still for a few seconds of its own.",
+    },
+    {
+      level: 33,
+      name: "Done Already",
+      text: "When time moves again, the habit is done.",
+    },
+  ]),
+  pair("mendle", 21, [
+    {
+      level: 1,
+      name: "Patch Up",
+      text: "Mends one thing that broke yesterday.",
+    },
+    {
+      level: 8,
+      name: "Stitch Back",
+      text: "Puts a missed day back where it fits.",
+    },
+    {
+      level: 15,
+      name: "Pieces Home",
+      text: "Sends every broken piece flying back into place.",
+    },
+    {
+      level: 22,
+      name: "Hair Check",
+      text: "Checks its hair. Say nothing about the hair.",
+    },
+    {
+      level: 34,
+      name: "Good as New",
+      text: "Leaves whatever it touches as it was before it broke.",
+    },
+  ]),
+  pair("quickling", 23, [
+    {
+      level: 1,
+      name: "Leaf to Wing",
+      text: "Turns a dull leaf into a butterfly.",
+    },
+    {
+      level: 8,
+      name: "Life Spark",
+      text: "Gives whatever it touches a pulse of its own.",
+    },
+    {
+      level: 16,
+      name: "Dream Big",
+      text: "Has a dream, and works on it every day.",
+    },
+    {
+      level: 24,
+      name: "Back to Zero",
+      text: "Sends an excuse back to where it started.",
+    },
+    {
+      level: 35,
+      name: "No Arrival",
+      text: "An excuse sent its way keeps setting out and never gets there.",
+    },
+  ]),
+  pair("threadle", 24, [
+    {
+      level: 1,
+      name: "Loose Thread",
+      text: "Comes a little undone on a hard day.",
+    },
+    {
+      level: 8,
+      name: "Tie Tight",
+      text: "Ties itself back together tighter than before.",
+    },
+    {
+      level: 16,
+      name: "String Line",
+      text: "Pays out a thread to find its way back tomorrow.",
+    },
+    {
+      level: 25,
+      name: "Day Net",
+      text: "Unwinds into a net and catches the whole day.",
+    },
+    {
+      level: 36,
+      name: "Walk Free",
+      text: "Winds back up and does as it pleases.",
+    },
+  ]),
+  pair("whorlet", 25, [
+    {
+      level: 1,
+      name: "Spiral Shell",
+      text: "Adds a turn to its shell, a little wider than the last.",
+    },
+    {
+      level: 8,
+      name: "Nail Spin",
+      text: "Spins something small until it goes further than it should.",
+    },
+    {
+      level: 16,
+      name: "Golden Turn",
+      text: "Finds the one angle that makes the turn work.",
+    },
+    {
+      level: 26,
+      name: "Endless Spin",
+      text: "Sets something turning that never stops.",
+    },
+    { level: 37, name: "Thank You", text: "Never forgets to say it." },
+  ]),
+  pair("burblet", 26, [
+    { level: 1, name: "Bubble Up", text: "Wraps a bad habit in a bubble." },
+    {
+      level: 8,
+      name: "Plunder",
+      text: "Takes one bad habit a day and does not give it back.",
+    },
+    {
+      level: 16,
+      name: "Float Away",
+      text: "Lets the bubble drift off with whatever is inside.",
+    },
+    {
+      level: 27,
+      name: "Thin Bubble",
+      text: "Blows a bubble so thin it isn't really there.",
+    },
+    { level: 38, name: "Who Am I", text: "Still wonders. Keeps going anyway." },
+  ]),
+  pair("pelter", 27, [
+    {
+      level: 1,
+      name: "Heavy Drop",
+      text: "A single raindrop that lands like a stone.",
+    },
+    {
+      level: 8,
+      name: "Press In",
+      text: "Pushes a habit into place and holds it there.",
+    },
+    {
+      level: 16,
+      name: "Downpour",
+      text: "Rains hard enough that nothing moves until it stops.",
+    },
+    {
+      level: 28,
+      name: "Exact Aim",
+      text: "Every drop lands exactly where it means to.",
+    },
+    { level: 39, name: "Stay Pressed", text: "What it presses stays pressed." },
+  ]),
+];
+
+export default lines;

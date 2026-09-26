@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCreatureClaims } from "@/lib/party";
 import { touchReminders } from "@/lib/reminders";
 import { useSignedIn, useSessionSync } from "@/lib/session";
 import { useHydrate } from "@/lib/store";
@@ -21,6 +22,8 @@ export function Hydrator() {
   // Inert until hydration, and when signed out or the deployment has no
   // database.
   useSync();
+  // Beside sync, which each claim runs first: the server pays from what it holds.
+  useCreatureClaims();
 
   // An inline style cannot hold a media query, so the swap CSS does for free
   // happens here. Inert when no palette is set.
