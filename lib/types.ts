@@ -160,8 +160,49 @@ export type Creature = {
   rig?: { parts?: Record<string, PixelBox>; fx?: Record<string, Pixel[]> };
 };
 
-/** Learned at `level` and shown on the creature's sheet; nothing uses one (§5.5). */
-export type Move = { name: string; level: number; text: string };
+/** D&D's six ability scores, which the stat block on a creature's sheet borrows (§5.5). */
+export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
+
+/** D&D's eighteen skills; `lib/creatures.ts:SKILLS` says which ability each rolls with. */
+export type Skill =
+  | "Acrobatics"
+  | "Animal Handling"
+  | "Arcana"
+  | "Athletics"
+  | "Deception"
+  | "History"
+  | "Insight"
+  | "Intimidation"
+  | "Investigation"
+  | "Medicine"
+  | "Nature"
+  | "Perception"
+  | "Performance"
+  | "Persuasion"
+  | "Religion"
+  | "Sleight of Hand"
+  | "Stealth"
+  | "Survival";
+
+/**
+ * Learned at `level` and written up like a D&D stat-block entry; nothing rolls
+ * one (§5.5). The numbers shown — to hit, DC, what is added to the dice — are
+ * derived from `ability` at the creature's level, never stored.
+ */
+export type Move = {
+  name: string;
+  level: number;
+  text: string;
+  /** What using it costs in D&D's action economy. A trait is always on. */
+  use: "action" | "bonus" | "reaction" | "trait";
+  ability: Ability;
+  /** An attack roll against armour class, or the saving throw a target makes. */
+  against?: "ac" | Ability;
+  /** Dice and what they deal, e.g. `"1d6 fire"`; the ability modifier is added. */
+  dice?: string;
+  /** Omitted: at will. */
+  uses?: "1/Day" | "3/Day" | "Recharge 5–6";
+};
 
 /** Base form first, evolving at each of `evolvesAt` in turn. `id` is the base form's. */
 export type Line = {
@@ -169,6 +210,13 @@ export type Line = {
   forms: Creature[];
   evolvesAt: number[];
   moves: Move[];
+  /** D&D's creature type and alignment, for the stat block's first line. */
+  kind: string;
+  alignment: string;
+  /** At level 1: D&D's standard array, arranged to suit the line. */
+  abilities: Record<Ability, number>;
+  /** Proficient skills; each bonus derives from the level. */
+  skills: Skill[];
 };
 
 /** `[x, y, width, height]` in sprite pixels. */

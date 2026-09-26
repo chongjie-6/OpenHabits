@@ -3,20 +3,29 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
+  ABILITIES,
+  abilityScores,
   claimNews,
   COGLINGS,
   creatureLevel,
   CREATURES,
   expForLevel,
+  expToEvolve,
   findCogling,
   isFound,
   LINES,
   MAX_LEVEL,
+  moveRoll,
   movesAt,
   noticeEvolutions,
   payout,
+  proficiency,
+  signed,
+  SKILLS,
   stageAt,
   STARTERS,
+  statBlock,
+  swapSeats,
 } from "@/lib/creatures";
 
 const DEX = [...COGLINGS, ...CREATURES];
@@ -130,6 +139,116 @@ describe("the lines", () => {
   it("never share a move name", () => {
     const names = LINES.flatMap((line) => line.moves.map((m) => m.name));
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("each arrange D&D's standard array, with known skills", () => {
+    for (const line of LINES) {
+      expect(
+        ABILITIES.map((a) => line.abilities[a]).sort((a, b) => b - a),
+        line.id,
+      ).toEqual([15, 14, 13, 12, 10, 8]);
+      expect(line.skills.length, line.id).toBeGreaterThan(0);
+      expect(new Set(line.skills).size, line.id).toBe(line.skills.length);
+      for (const skill of line.skills) expect(SKILLS).toHaveProperty(skill);
+    }
+  });
+
+  it("write every move as a stat-block entry that can be printed", () => {
+    for (const move of LINES.flatMap((line) => line.moves)) {
+      expect(ABILITIES, move.name).toContain(move.ability);
+      if (move.against && move.against !== "ac")
+        expect(ABILITIES, move.name).toContain(move.against);
+      if (move.dice)
+        expect(move.dice, move.name).toMatch(/^[1-9]\d?d(4|6|8|10|12) \S/);
+      // A trait is always on, so it has nothing to roll or to spend.
+      if (move.use === "trait")
+        expect([move.against, move.dice, move.uses], move.name).toEqual([
+          undefined,
+          undefined,
+          undefined,
+        ]);
+    }
+  });
+});
+
+describe("the stat block", () => {
+  const emberpup = LINES.find((line) => line.id === "emberpup")!;
+  const kindle = emberpup.moves.find((m) => m.name === "Kindle")!;
+  const dawnRoar = emberpup.moves.find((m) => m.name === "Dawn Roar")!;
+
+  it("follows D&D's proficiency bonus, stretched over fifty levels", () => {
+    expect([1, 10, 11, 21, 31, 41, 50].map(proficiency)).toEqual([
+      2, 2, 3, 4, 5, 6, 6,
+    ]);
+  });
+
+  it("improves the two best scores every eight levels, to 20 at most", () => {
+    expect(abilityScores(emberpup, 1)).toEqual(emberpup.abilities);
+    expect(abilityScores(emberpup, 8)).toMatchObject({ cha: 16, dex: 15 });
+    expect(abilityScores(emberpup, 8).str).toBe(emberpup.abilities.str);
+    for (const line of LINES) {
+      const top = abilityScores(line, MAX_LEVEL);
+      expect(Math.max(...Object.values(top)), line.id).toBe(20);
+    }
+  });
+
+  it("derives armour, hit points and skills from the scores", () => {
+    const block = statBlock(emberpup, 0);
+    expect(block).toMatchObject({
+      size: "Small",
+      level: 1,
+      armorClass: 12,
+      hitPoints: 5,
+      skills: [
+        { skill: "Athletics", bonus: 3 },
+        { skill: "Intimidation", bonus: 4 },
+        { skill: "Perception", bonus: 2 },
+      ],
+    });
+    expect(statBlock(emberpup, expForLevel(30)).size).toBe("Large");
+  });
+
+  it("prints a move's roll with the modifier added to its dice", () => {
+    expect(moveRoll(kindle, statBlock(emberpup, 0))).toBe(
+      "+4 to hit · 1d10 + 2 fire",
+    );
+    expect(moveRoll(dawnRoar, statBlock(emberpup, expForLevel(33)))).toBe(
+      "DC 17 Wis save · 4d6 + 4 radiant",
+    );
+    const traits = emberpup.moves.filter((m) => m.use === "trait");
+    expect(moveRoll(traits[0], statBlock(emberpup, 0))).toBe("");
+  });
+
+  it("prints a negative modifier with a true minus sign", () => {
+    expect(signed(-1)).toBe("−1");
+    const move = { ...kindle, ability: "int" as const };
+    expect(moveRoll(move, statBlock(emberpup, 0))).toBe(
+      "+1 to hit · 1d10 − 1 fire",
+    );
+  });
+});
+
+describe("swapSeats", () => {
+  const party = ["a", "b", "c"];
+
+  it("sends the one swapped out to the box when the other was resting", () => {
+    expect(swapSeats(party, "z", "b")).toEqual(["a", "z", "c"]);
+  });
+
+  it("trades seats when both are in the party, which is how a buddy changes", () => {
+    expect(swapSeats(party, "c", "a")).toEqual(["c", "b", "a"]);
+  });
+});
+
+describe("expToEvolve", () => {
+  const sproutle = LINES[0];
+
+  it("counts down to the next form, and stops after the last", () => {
+    expect(expToEvolve(sproutle, 0)).toBe(expForLevel(12));
+    expect(expToEvolve(sproutle, expForLevel(12))).toBe(
+      expForLevel(28) - expForLevel(12),
+    );
+    expect(expToEvolve(sproutle, expForLevel(28))).toBeNull();
   });
 });
 

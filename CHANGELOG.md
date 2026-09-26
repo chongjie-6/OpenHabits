@@ -16,6 +16,14 @@ All notable changes to OpenHabits are listed here. The format follows
   evolution sequence the first time each device sees it happen.
 - Every seven days at 80% or better finds the next creature.
 - Your buddy sits on Today, under the habits it grows on.
+- Swap creatures in and out of the party: a resting creature swaps in for the
+  party member you pick, a party member swaps out for anyone resting, and an
+  empty seat can be filled from the box with one tap.
+- A creature's sheet is a D&D-style stat block: ability scores, proficiency,
+  skills, armour class and hit points that grow with its level, and its moves
+  listed as traits, actions, bonus actions and reactions, with to-hit, save DCs
+  and dice.
+- A creature at the top level stops gaining exp.
 - Exp and finds are worked out and stored by the server, from your synced
   habits, and only today can be claimed — so creatures need an account.
   Creatures found under the old weekly rule do not carry over.

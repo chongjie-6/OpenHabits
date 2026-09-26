@@ -375,9 +375,13 @@ Every finished week in which at least `QUALIFYING_RATE` (80%) of scheduled habit
 
 > **Reversed: creatures are raised, and the server keeps them.** Each creature now has exp and a level, each line evolves at levels of its own and learns moves on the way, and a party of five (a buddy and four more) is who earns. Because what a creature earns should be checked rather than claimed, all of it is **stored, and written only by the server** (§13.18), which makes it an account feature: signed out, `/dex` shows silhouettes and a note to sign in. Discoveries made under the weekly rule were derived from history that can be backdated, so nothing was carried over; everyone starts by choosing Sproutle, Emberpup or Drizzlet.
 >
-> The rules live once, in `lib/creatures.ts`, and client and server both import them. **A day pays the party** 20, 35 or 50 exp at 60%, 80% and 100% of what was scheduled, and only the party: a creature resting in the box earns nothing. Total exp for level `L` is `6·(L−1)²`, capped at 50. **Only exp is stored**; level, form and the moves known are derived from it, like every other derived value here. Every `DISCOVERY_DAYS` (7) days at `QUALIFYING_RATE` finds the next line not yet owned, in `LINES` order. Each folder in `data/creatures/` now exports a `Line` (forms, `evolvesAt`, moves) and Tangling's exports eight two-form lines; `CREATURES` is still their forms flattened, so no dex number moved.
+> The rules live once, in `lib/creatures.ts`, and client and server both import them. **A day pays the party** 20, 35 or 50 exp at 60%, 80% and 100% of what was scheduled, and only the party: a creature resting in the box earns nothing. Total exp for level `L` is `6·(L−1)²`, capped at 50, and a creature's exp stops at that level's total rather than piling up behind a number that no longer moves. **Only exp is stored**; level, form and the moves known are derived from it, like every other derived value here. Every `DISCOVERY_DAYS` (7) days at `QUALIFYING_RATE` finds the next line not yet owned, in `LINES` order. Each folder in `data/creatures/` now exports a `Line` (forms, `evolvesAt`, moves) and Tangling's exports eight two-form lines; `CREATURES` is still their forms flattened, so no dex number moved.
 >
 > **An evolution plays once per device**, like Cogling's flags: `lib/party.ts` keeps the stage each creature was last shown at and queues an evolution when the server's answer is higher, and a creature never seen on a device is recorded as it stands, because arriving evolved is not evolving. `components/Evolution.tsx` is one sequence dressed per creature: the two forms swap as white silhouettes on `step-end` steps that speed up, sparks fly in the new form's own colours, a flash, then the reveal, idling. Reduced motion starts at the reveal. Moves are flavour, each acting out something the line's blurbs already say; nothing uses one.
+>
+> **Moves are written up as a D&D stat block** (`components/StatBlock.tsx`). Each line carries a creature type, an alignment, D&D's standard array (15, 14, 13, 12, 10, 8) arranged to suit it, and two or three of D&D's eighteen skills. Each move says what it costs in the action economy — an action, a bonus action, a reaction, or a trait that is always on, which is also how the sheet groups them — the ability it uses, and optionally an attack or a saving throw, dice, and a limit such as 1/Day or Recharge 5–6. Every number is derived from exp by `statBlock`, never stored: proficiency runs D&D's +2 to +6 over fifty levels instead of twenty, the line's two best scores gain 1 every eight levels up to D&D's cap of 20, size and hit die follow the form's sprite (a 12-, 16- or 20-pixel grid is Small d6, Medium d8 or Large d10, so evolving adds hit points), and armour class is 10 plus Dex. It is still flavour: nothing rolls, and there are no battles.
+>
+> **The party is edited by swapping.** A resting creature joins, or becomes the buddy, while a seat is free; once the party is full it swaps in for a member the player picks, who goes to rest. A party member swaps out for anyone resting, trades seats with the buddy to become it, or rests, and tapping an empty seat offers everyone resting. `swapSeats` is the one rule behind both kinds of swap, and the server still takes only the whole new lineup (§13.18).
 
 **Cogling's line is the one exception**: three forms sharing dex #000, outside the weekly order. Cogling is found by opening settings; Blockog and Latticog by having settings open in the blocks or grid skin, which switching there does. An act leaves no history to derive from, so `lib/creatures.ts:findCogling` sets a localStorage flag per form whenever `/settings` renders in a skin. The flags are device-local like the skins that find them and do not sync, so each device finds the line on its own.
 
@@ -860,6 +864,7 @@ components/
   Sprite.tsx              a creature from its pixel map, idling when rigged
   Buddy.tsx               Today's buddy, and the name/level/exp plate
   Evolution.tsx           plays the head of the evolution queue (§5.5)
+  StatBlock.tsx           a creature's sheet as a D&D stat block (§5.5)
   CreatureNews.tsx        what a claim earned
 
 lib/
@@ -927,7 +932,7 @@ workers/wrangler.jsonc    its schedule; wrangler bundles reminders.ts alone
 
 drizzle/                  generated, reviewed, committed migrations
 data/quotes.ts            168 attributed quotes
-data/creatures/           one folder per line: forms, evolution levels, moves
+data/creatures/           one folder per line: forms, evolution levels, moves, D&D stats
 data/facts.ts             85 sourced fun facts
 scripts/generate-icons.mjs
 public/sw.js

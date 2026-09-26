@@ -10,10 +10,12 @@ import "server-only";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import {
   DISCOVERY_DAYS,
+  expForLevel,
   isGoodDay,
   type ClaimResult,
   type CreatureState,
   LINES,
+  MAX_LEVEL,
   PARTY_SIZE,
   payout,
   STARTERS,
@@ -147,9 +149,12 @@ export async function claimDay(
         });
 
       if (gained > 0) {
+        // Capped at the top level, so a finished creature stops counting.
         await tx
           .update(creatures)
-          .set({ exp: sql`${creatures.exp} + ${gained}` })
+          .set({
+            exp: sql`least(${creatures.exp} + ${gained}, ${expForLevel(MAX_LEVEL)})`,
+          })
           .where(and(eq(creatures.userId, user.id), isNotNull(creatures.slot)));
       }
     }

@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
-import { DISCOVERY_DAYS, LINES } from "@/lib/creatures";
+import { DISCOVERY_DAYS, expForLevel, LINES, MAX_LEVEL } from "@/lib/creatures";
 import { addDays } from "@/lib/dates";
 import type { SyncUser } from "@/lib/server/auth-types";
 import {
@@ -24,6 +24,7 @@ import {
 } from "@/lib/server/creatures";
 import type { Db } from "@/lib/server/db";
 import * as schema from "@/lib/server/schema";
+import { asUser } from "@/lib/server/scope";
 import { runSync } from "@/lib/server/sync-store";
 import type { Entry, Habit } from "@/lib/types";
 
@@ -169,6 +170,16 @@ describe("claimDay", () => {
     await claim(ALICE, DAY, 10);
     expect((await claim(ALICE, DAY, 0)).gained).toBe(0);
     expect(await expOf(ALICE)).toEqual({ sproutle: 50 });
+  });
+
+  it("stops a creature's exp at the top level", async () => {
+    await chooseStarter(db, ALICE, "sproutle");
+    const cap = expForLevel(MAX_LEVEL);
+    await asUser(db, ALICE.id, (tx) =>
+      tx.update(schema.creatures).set({ exp: cap - 10 }),
+    );
+    expect((await claim(ALICE, DAY, 10)).gained).toBe(50);
+    expect(await expOf(ALICE)).toEqual({ sproutle: cap });
   });
 
   it("pays the party and not the box", async () => {
