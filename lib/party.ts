@@ -7,7 +7,8 @@
  * nothing here is the user's data, and none of it syncs.
  */
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useOffline } from "next/offline";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   claimNews,
   noticeEvolutions,
@@ -175,14 +176,23 @@ export async function refreshCreatures(): Promise<void> {
   }
 }
 
+let claiming = false;
+
 async function claim(day: DayKey): Promise<void> {
-  // Sync polls every five minutes, and the server pays from what it holds.
-  await syncNow();
-  const before = state;
-  const result = await post<ClaimResult>({ action: "claim", day });
-  if (typeof result === "string") return;
-  adopt(result);
-  tell(claimNews(before, result));
+  // A second would only be paid nothing, and would read a stale `before`.
+  if (claiming) return;
+  claiming = true;
+  try {
+    // Sync polls every five minutes, and the server pays from what it holds.
+    await syncNow();
+    const before = state;
+    const result = await post<ClaimResult>({ action: "claim", day });
+    if (typeof result === "string") return;
+    adopt(result);
+    tell(claimNews(before, result));
+  } finally {
+    claiming = false;
+  }
 }
 
 /** Null on success; otherwise the reason, for the screen that asked. */
@@ -261,10 +271,23 @@ export function useCreatureClaims(): void {
   const tier = stat ? payout(stat.completed, stat.scheduled) : 0;
   const paid = current?.lastDay?.day === today ? current.lastDay.expPaid : 0;
   const owed = signedIn && today !== null && tier > paid;
+  const isOffline = useOffline();
+  const [returns, setReturns] = useState(0);
+
+  // A claim that failed, or that the server paid short because a sync had not
+  // landed, leaves the tier owed and the effect's inputs unchanged. Coming
+  // back online or to the tab is the retry.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setReturns((n) => n + 1);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
   useEffect(() => {
-    if (!owed || !today) return;
+    if (!owed || !today || isOffline) return;
     const timer = setTimeout(() => void claim(today), CLAIM_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [owed, today, tier]);
+  }, [owed, today, tier, isOffline, returns]);
 }
