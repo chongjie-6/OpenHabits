@@ -5,7 +5,6 @@ import Link from "next/link";
 import { formOf, Nameplate } from "@/components/Buddy";
 import { Sheet } from "@/components/Sheet";
 import { Sprite } from "@/components/Sprite";
-import { StatBlock } from "@/components/StatBlock";
 import {
   COGLINGS,
   creatureLevel,
@@ -17,6 +16,7 @@ import {
   lineOf,
   LINES,
   LOWEST_PAYING_RATE,
+  movesAt,
   PARTY_SIZE,
   payout,
   QUALIFYING_RATE,
@@ -447,6 +447,8 @@ function CreatureSheet({
   const me = creature.line;
   const form = formFor(line, creature.exp);
   const level = creatureLevel(creature.exp);
+  const known = movesAt(line, level);
+  const next = line.moves[known.length];
   const evolvesAt = line.evolvesAt.find((at) => at > level);
   const toEvolve = expToEvolve(line, creature.exp);
   const inParty = creature.slot !== null;
@@ -481,6 +483,27 @@ function CreatureSheet({
               </p>
             )}
           </div>
+        </div>
+
+        <div>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+            Moves
+          </h3>
+          <ul className="mt-2 space-y-2">
+            {known.map((move) => (
+              <li key={move.name}>
+                <p className="text-[13px] font-medium">{move.name}</p>
+                <p className="text-[12px] leading-snug text-muted">
+                  {move.text}
+                </p>
+              </li>
+            ))}
+            {next && (
+              <li className="text-[12px] text-muted">
+                Learns {next.name} at Lv {next.level}.
+              </li>
+            )}
+          </ul>
         </div>
 
         <div className="space-y-3">
@@ -580,8 +603,6 @@ function CreatureSheet({
             </p>
           )}
         </div>
-
-        <StatBlock line={line} exp={creature.exp} />
       </div>
     </Sheet>
   );
