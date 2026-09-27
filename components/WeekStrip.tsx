@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useBrowseDay } from "@/components/BrowseDay";
 import {
   addDays,
@@ -11,6 +11,7 @@ import {
   startOfWeek,
   weekdayInitials,
 } from "@/lib/dates";
+import { buildHistory } from "@/lib/history";
 import { useOpenHabits } from "@/lib/store";
 import type { DayKey } from "@/lib/types";
 import { useHorizontalDrag } from "@/lib/use-drag";
@@ -37,7 +38,7 @@ import { useToday } from "@/lib/use-today";
  * direction taken from comparing the weeks rather than from a handler.
  */
 export function WeekStrip() {
-  const { hydrated, settings } = useOpenHabits();
+  const { hydrated, habits, entries, settings } = useOpenHabits();
   const today = useToday(settings.dayStartHour);
   const { offset, setOffset } = useBrowseDay();
 
@@ -68,6 +69,19 @@ export function WeekStrip() {
     // and the transition that would have finished it never fires.
     setSettling(null);
   }
+
+  // Spans the neighbouring weeks too, since a drag mounts them.
+  const complete = useMemo(() => {
+    if (!start) return new Set<DayKey>();
+    const stats = buildHistory(
+      habits,
+      entries,
+      addDays(start, -7),
+      addDays(start, 13),
+      settings.weekStartsOn,
+    );
+    return new Set(stats.filter((s) => s.level === 4).map((s) => s.date));
+  }, [habits, entries, start, settings.weekStartsOn]);
 
   // Putting the animation class back restarts it, so a week turned over by the
   // list and then dragged would replay a slide it already played. Spending the
@@ -164,6 +178,7 @@ export function WeekStrip() {
                     today={today}
                     day={day}
                     initials={initials}
+                    complete={complete}
                     onSelect={setOffset}
                   />
                 </div>
@@ -177,6 +192,7 @@ export function WeekStrip() {
                     today={today}
                     day={day}
                     initials={initials}
+                    complete={complete}
                     onSelect={setOffset}
                   />
                 </div>
@@ -188,6 +204,7 @@ export function WeekStrip() {
               today={today}
               day={day}
               initials={initials}
+              complete={complete}
               onSelect={setOffset}
             />
           </div>
@@ -205,6 +222,7 @@ function WeekRow({
   today,
   day,
   initials,
+  complete,
   onSelect,
   className = "",
 }: {
@@ -212,6 +230,7 @@ function WeekRow({
   today: DayKey;
   day: DayKey;
   initials: string[];
+  complete: Set<DayKey>;
   onSelect: (offset: number) => void;
   className?: string;
 }) {
@@ -221,12 +240,13 @@ function WeekRow({
         const key = addDays(start, i);
         const selected = key === day;
         const isToday = key === today;
+        const done = complete.has(key);
         return (
           <li key={key}>
             <button
               type="button"
               onClick={() => onSelect(daysBetween(today, key))}
-              aria-label={formatDayLong(key)}
+              aria-label={`${formatDayLong(key)}${done ? ", everything done" : ""}`}
               aria-pressed={selected}
               aria-current={isToday ? "date" : undefined}
               className="group flex w-full flex-col items-center gap-1"
@@ -244,9 +264,7 @@ function WeekRow({
                 className={`flex aspect-square w-full max-w-9 items-center justify-center rounded-full border font-mono text-[13px] tabular-nums transition-colors ${
                   selected
                     ? "border-accent bg-accent text-accent-fg"
-                    : isToday
-                      ? "border-accent text-foreground group-hover:bg-surface-2"
-                      : "border-border text-foreground group-hover:bg-surface-2"
+                    : `${isToday ? "border-accent" : done ? "border-done" : "border-border"} ${done ? "bg-done/25" : ""} text-foreground group-hover:bg-surface-2`
                 }`}
               >
                 {parseDayKey(key).d}

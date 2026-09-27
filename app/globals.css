@@ -394,6 +394,7 @@
   --color-quote-meta: var(--quote-meta);
   --color-ring: var(--ring);
   --color-danger: var(--danger);
+  --color-done: var(--hm-4);
 
   /* The utility names stay `font-sans` / `font-mono` / `font-serif`; only what
      they resolve to moves with the skin. `font-serif` on the quote means "the
