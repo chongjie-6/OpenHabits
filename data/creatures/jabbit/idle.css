@@ -1,0 +1,244 @@
+/* Jabbit: blinks, flattens its ears, and throws a rush too fast to count — the fist is in three places at once. */
+[data-creature="jabbit"] [data-px="w"] {
+  animation: idle-jabbit-blink 6s step-end infinite;
+}
+[data-creature="jabbit"] [data-part^="ear"] {
+  animation: idle-jabbit-ears 6s step-end infinite;
+}
+[data-creature="jabbit"] [data-part="fist"] {
+  animation: idle-jabbit-fist 6s step-end infinite;
+}
+[data-creature="jabbit"] [data-fx="jabA"] {
+  animation: idle-jabbit-jab-a 6s step-end infinite;
+}
+[data-creature="jabbit"] [data-fx="jabB"] {
+  animation: idle-jabbit-jab-b 6s step-end infinite;
+}
+@keyframes idle-jabbit-blink {
+  14% {
+    fill: var(--b);
+  }
+  17% {
+    fill: var(--w);
+  }
+}
+@keyframes idle-jabbit-ears {
+  40% {
+    transform: translateY(1px);
+  }
+  66% {
+    transform: none;
+  }
+}
+@keyframes idle-jabbit-fist {
+  44%,
+  48%,
+  52%,
+  56%,
+  60% {
+    transform: translateX(1px);
+  }
+  46%,
+  50%,
+  54%,
+  58%,
+  62% {
+    transform: none;
+  }
+}
+@keyframes idle-jabbit-jab-a {
+  45%,
+  49%,
+  53%,
+  57% {
+    opacity: 0.6;
+  }
+  47%,
+  51%,
+  55%,
+  59% {
+    opacity: 0;
+  }
+}
+@keyframes idle-jabbit-jab-b {
+  47%,
+  51%,
+  55%,
+  59% {
+    opacity: 0.6;
+  }
+  49%,
+  53%,
+  57%,
+  61% {
+    opacity: 0;
+  }
+}
+
+/* Stillhare: a raindrop falls and stops dead in the air, greyed; only its fist moves, in a rush too fast to count, and the drop bursts when time moves again. */
+[data-creature="stillhare"] [data-px="w"] {
+  animation: idle-stillhare-blink 7s step-end infinite;
+}
+[data-creature="stillhare"] [data-fx="drop"] {
+  animation: idle-stillhare-drop 7s step-end infinite;
+}
+[data-creature="stillhare"] [data-fx="drop"] [data-px="u"] {
+  animation: idle-stillhare-still 7s step-end infinite;
+}
+[data-creature="stillhare"] [data-part="fist"] {
+  animation: idle-stillhare-fist 7s step-end infinite;
+}
+[data-creature="stillhare"] [data-fx="burst"] {
+  animation: idle-stillhare-burst 7s step-end infinite;
+}
+[data-creature="stillhare"] [data-fx="jabA"] {
+  animation: idle-stillhare-jab-a 7s step-end infinite;
+}
+[data-creature="stillhare"] [data-fx="jabB"] {
+  animation: idle-stillhare-jab-b 7s step-end infinite;
+}
+@keyframes idle-stillhare-blink {
+  10% {
+    fill: var(--b);
+  }
+  13% {
+    fill: var(--w);
+  }
+}
+@keyframes idle-stillhare-drop {
+  18% {
+    opacity: 1;
+  }
+  21% {
+    transform: translateY(1px);
+  }
+  24% {
+    transform: translateY(2px);
+  }
+  27% {
+    transform: translateY(3px);
+  }
+  30% {
+    transform: translateY(4px);
+  }
+  33% {
+    transform: translateY(5px);
+  }
+  56% {
+    opacity: 0;
+    transform: none;
+  }
+}
+@keyframes idle-stillhare-still {
+  33% {
+    fill: var(--s);
+  }
+  56% {
+    fill: var(--u);
+  }
+}
+@keyframes idle-stillhare-fist {
+  36%,
+  40%,
+  44%,
+  48%,
+  52% {
+    transform: translateX(1px);
+  }
+  38%,
+  42%,
+  46%,
+  50%,
+  54% {
+    transform: none;
+  }
+}
+@keyframes idle-stillhare-jab-a {
+  37%,
+  41%,
+  45%,
+  49% {
+    opacity: 0.6;
+  }
+  39%,
+  43%,
+  47%,
+  51% {
+    opacity: 0;
+  }
+}
+@keyframes idle-stillhare-jab-b {
+  39%,
+  43%,
+  47%,
+  51% {
+    opacity: 0.6;
+  }
+  41%,
+  45%,
+  49%,
+  53% {
+    opacity: 0;
+  }
+}
+@keyframes idle-stillhare-burst {
+  56% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.5;
+  }
+  64% {
+    opacity: 0;
+  }
+}
+
+/* Tapped, it strikes the family's pose (tangling/idle.css) instead of hopping, and holds it. */
+[data-creature="jabbit"] [data-poked],
+[data-creature="stillhare"] [data-poked] {
+  animation: idle-tangling-strike 1.4s step-end;
+}
+[data-creature="jabbit"] [data-poked] [data-part="fist"] {
+  animation: idle-jabbit-pose 1.4s step-end;
+}
+[data-creature="jabbit"] [data-poked] [data-part="earL"] {
+  animation: idle-jabbit-pose-ear 1.4s step-end;
+}
+@keyframes idle-jabbit-pose {
+  12% {
+    transform: translate(-1px, -3px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-jabbit-pose-ear {
+  12% {
+    transform: translateY(2px);
+  }
+  92% {
+    transform: none;
+  }
+}
+[data-creature="stillhare"] [data-poked] [data-part="fist"] {
+  animation: idle-stillhare-pose 1.4s step-end;
+}
+[data-creature="stillhare"] [data-poked] [data-part="earL"] {
+  animation: idle-stillhare-pose-ear 1.4s step-end;
+}
+@keyframes idle-stillhare-pose {
+  12% {
+    transform: translateX(2px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-stillhare-pose-ear {
+  12% {
+    transform: translateY(1px);
+  }
+  92% {
+    transform: none;
+  }
+}

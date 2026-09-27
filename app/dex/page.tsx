@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formOf, Nameplate } from "@/components/Buddy";
 import { Sheet } from "@/components/Sheet";
 import { Sprite } from "@/components/Sprite";
+import { normal } from "@/data/creatures/elements";
 import {
   COGLINGS,
   creatureLevel,
@@ -48,6 +49,7 @@ const ELEMENT_COLORS: Record<CreatureElement, string> = {
   metal: "#9aa0ae",
   might: "#d8453a",
   spirit: "#a883d4",
+  normal: "#bdb6a8",
 };
 
 const SCALE = 6;
@@ -423,13 +425,17 @@ function Dex({ owned }: { owned: CreatureState | null }) {
 }
 
 function ChartSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const elements = Object.keys(STRONG_AGAINST) as CreatureElement[];
+  const elements = [
+    ...(Object.keys(STRONG_AGAINST) as CreatureElement[]),
+    normal,
+  ];
   const [picked, setPicked] = useState<CreatureElement>("fire");
 
   return (
     <Sheet open={open} onClose={onClose} title="Element chart">
       <p className="text-[12px] text-muted">
-        Each element is strong against two and weak to two.
+        Each element is strong against two and weak to two, except normal, which
+        is neither.
       </p>
       <ElementWheel picked={picked} onPick={setPicked} />
       <table className="mt-3 w-full border-separate border-spacing-y-1 text-left text-[12px]">
@@ -469,14 +475,26 @@ function ChartSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
                   </button>
                 </th>
                 {/* The first of each pair hugs its chip, so the spare width falls between the two groups. */}
-                {[...strong, ...weak].map((other, i) => (
-                  <td
-                    key={i}
-                    className={`py-2 pr-2 ${i % 2 === 0 ? "w-px border-l pl-3" : ""}`}
-                  >
-                    <Elements elements={[other]} quiet={quiet} />
-                  </td>
-                ))}
+                {[strong, weak].map((group, g) =>
+                  group.length === 0 ? (
+                    <td
+                      key={g}
+                      colSpan={2}
+                      className="border-l py-2 pl-3 pr-2 text-[11px] text-muted"
+                    >
+                      None
+                    </td>
+                  ) : (
+                    group.map((other, i) => (
+                      <td
+                        key={`${g}-${i}`}
+                        className={`py-2 pr-2 ${i === 0 ? "w-px border-l pl-3" : ""}`}
+                      >
+                        <Elements elements={[other]} quiet={quiet} />
+                      </td>
+                    ))
+                  ),
+                )}
               </tr>
             );
           })}
@@ -501,8 +519,9 @@ const WHEEL: CreatureElement[] = [
   "might",
 ];
 
-/** In the wheel's 0–100 box. */
+/** In the wheel's 0–100 box. Normal, which touches nothing, sits at the hub. */
 function wheelPoint(element: CreatureElement) {
+  if (element === normal) return { x: 50, y: 50 };
   const angle =
     -Math.PI / 2 + (WHEEL.indexOf(element) * 2 * Math.PI) / WHEEL.length;
   return { x: 50 + 38 * Math.cos(angle), y: 50 + 38 * Math.sin(angle) };
@@ -512,21 +531,30 @@ function wheelPoint(element: CreatureElement) {
 function arrow(from: CreatureElement, to: CreatureElement) {
   const a = wheelPoint(from);
   const b = wheelPoint(to);
-  // Bowed to the right of travel, so a mutual pair draws two curves, not one line.
-  const c = {
-    x: (a.x + b.x) / 2 - (b.y - a.y) * 0.15,
-    y: (a.y + b.y) / 2 + (b.x - a.x) * 0.15,
-  };
-  const at = (t: number) => ({
-    x: (1 - t) ** 2 * a.x + 2 * (1 - t) * t * c.x + t ** 2 * b.x,
-    y: (1 - t) ** 2 * a.y + 2 * (1 - t) * t * c.y + t ** 2 * b.y,
-  });
+  const hub = wheelPoint(normal);
   // Roughly a label's box, so a line starts and stops at its edge.
   const clear = (p: { x: number; y: number }, n: { x: number; y: number }) =>
     ((p.x - n.x) / 10) ** 2 + ((p.y - n.y) / 4.5) ** 2 >= 1;
-  const points = Array.from({ length: 41 }, (_, i) => at(i / 40)).filter(
-    (p) => clear(p, a) && clear(p, b),
-  );
+  const curve = (bow: number) => {
+    const c = {
+      x: (a.x + b.x) / 2 - (b.y - a.y) * bow,
+      y: (a.y + b.y) / 2 + (b.x - a.x) * bow,
+    };
+    return Array.from({ length: 41 }, (_, i) => {
+      const t = i / 40;
+      return {
+        x: (1 - t) ** 2 * a.x + 2 * (1 - t) * t * c.x + t ** 2 * b.x,
+        y: (1 - t) ** 2 * a.y + 2 * (1 - t) * t * c.y + t ** 2 * b.y,
+      };
+    });
+  };
+  // Bowed to the right of travel, so a mutual pair draws two curves, not one line.
+  // One that would run under the hub's label bows left instead, and twice as far
+  // so it cannot land on its partner.
+  const path =
+    [0.15, -0.3].map(curve).find((ps) => ps.every((p) => clear(p, hub))) ??
+    curve(0.15);
+  const points = path.filter((p) => clear(p, a) && clear(p, b));
   const tip = points[points.length - 1];
   const prev = points[points.length - 2];
   const len = Math.hypot(tip.x - prev.x, tip.y - prev.y);
@@ -589,7 +617,7 @@ function ElementWheel({
             );
           })}
         </svg>
-        {WHEEL.map((element) => {
+        {[...WHEEL, normal].map((element) => {
           const { x, y } = wheelPoint(element);
           const selected = element === picked;
           const related = strong.includes(element) || weak.includes(element);
@@ -627,8 +655,9 @@ function ElementWheel({
         aria-live="polite"
         className="mt-2 text-center text-[12px] leading-snug text-muted"
       >
-        {title(picked)} is strong against {strong.map(title).join(" and ")}, and
-        weak to {weak.map(title).join(" and ")}.
+        {strong.length === 0
+          ? `${title(picked)} is neither strong against nor weak to anything.`
+          : `${title(picked)} is strong against ${strong.map(title).join(" and ")}, and weak to ${weak.map(title).join(" and ")}.`}
       </figcaption>
       <div
         aria-hidden="true"
@@ -813,6 +842,7 @@ function CreatureSheet({
                   <p className="text-[12px] leading-snug text-muted">
                     {move.text}
                   </p>
+                  <Elements elements={[move.element]} className="mt-1" />
                 </div>
                 <p className="shrink-0 text-right text-[12px] leading-snug text-muted">
                   Power {move.power}

@@ -1,5 +1,14 @@
 import type { Creature, Line, Pixel } from "@/lib/types";
-import { dive, peck } from "../common";
+import { ice, water } from "../elements";
+import {
+  coldPlunge,
+  dive,
+  iceBreak,
+  morningSwim,
+  peck,
+  rimeBeak,
+  shiverOff,
+} from "../moves";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -7,7 +16,7 @@ const forms: Creature[] = [
     id: "frostnib",
     name: "Frostnib",
     blurb: "Takes a cold swim every day, and says it feels great afterwards.",
-    elements: ["ice", "water"],
+    elements: [ice, water],
     colors: { o: OUTLINE, w: SHINE, b: "#3d5a80", l: "#eef4fa", d: "#7fc8f8" },
     sprite: [
       "....oooo....",
@@ -46,7 +55,7 @@ const forms: Creature[] = [
     name: "Rimebill",
     blurb:
       "Grew out of a Frostnib. Still swims every morning, even when it has to break the ice first.",
-    elements: ["ice", "water"],
+    elements: [ice, water],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -93,43 +102,13 @@ const line: Line = {
   forms,
   evolvesAt: [16],
   moves: [
-    {
-      level: 1,
-      name: "Cold Plunge",
-      power: 25,
-      accuracy: 100,
-      text: "Jumps in first and never complains.",
-    },
-    peck,
-    {
-      level: 7,
-      name: "Shiver Off",
-      power: 35,
-      accuracy: 95,
-      text: "Shakes the cold off and says it feels great.",
-    },
-    dive,
-    {
-      level: 13,
-      name: "Ice Break",
-      power: 45,
-      accuracy: 95,
-      text: "Cracks the ice when the pond freezes over, and swims anyway.",
-    },
-    {
-      level: 20,
-      name: "Rime Beak",
-      power: 60,
-      accuracy: 90,
-      text: "Cuts through any excuse that has frozen solid.",
-    },
-    {
-      level: 31,
-      name: "Morning Swim",
-      power: 80,
-      accuracy: 90,
-      text: "Has not missed one in a year, ice or no ice.",
-    },
+    [1, coldPlunge],
+    [1, peck],
+    [7, shiverOff],
+    [10, dive],
+    [13, iceBreak],
+    [20, rimeBeak],
+    [31, morningSwim],
   ],
 };
 

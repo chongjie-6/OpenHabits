@@ -4,6 +4,8 @@
  * on a day the user did not experience.
  */
 
+import type * as Elements from "@/data/creatures/elements";
+
 /** 'YYYY-MM-DD' in the user's local timezone. */
 export type DayKey = string;
 
@@ -147,18 +149,7 @@ export type Fact = {
  * art: `.` is empty, every other character is a key of `colors`.
  */
 /** Not `Element`, which would shadow the DOM's. The matchups are `STRONG_AGAINST`. */
-export type CreatureElement =
-  | "grass"
-  | "fire"
-  | "water"
-  | "wind"
-  | "earth"
-  | "ice"
-  | "light"
-  | "dark"
-  | "metal"
-  | "might"
-  | "spirit";
+export type CreatureElement = (typeof Elements)[keyof typeof Elements];
 
 export type Creature = {
   id: string;
@@ -177,23 +168,26 @@ export type Creature = {
 };
 
 /**
- * Learned at `level`. `power` is its damage and `accuracy` the percent chance
- * it lands, though nothing battles yet (§5.5).
+ * `power` is its damage and `accuracy` the percent chance it lands, though
+ * nothing battles yet (§5.5). The line that learns it says at what level.
  */
 export type Move = {
   name: string;
-  level: number;
+  element: CreatureElement;
   power: number;
   accuracy: number;
   text: string;
 };
 
-/** Base form first, evolving at each of `evolvesAt` in turn. `id` is the base form's. */
+/**
+ * Base form first, evolving at each of `evolvesAt` in turn. `id` is the base form's.
+ * `moves` is in level order.
+ */
 export type Line = {
   id: string;
   forms: Creature[];
   evolvesAt: number[];
-  moves: Move[];
+  moves: [level: number, move: Move][];
 };
 
 /** `[x, y, width, height]` in sprite pixels. */

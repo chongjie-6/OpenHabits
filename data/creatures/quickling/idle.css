@@ -1,0 +1,233 @@
+/* Quickling: a dead leaf drifts down, its ear pricks up, and the leaf flutters off as a butterfly. */
+[data-creature="quickling"] [data-fx="leaf"] {
+  animation: idle-quickling-leaf 7s step-end infinite;
+}
+[data-creature="quickling"] [data-part="earR"] {
+  animation: idle-quickling-ear 7s step-end infinite;
+}
+[data-creature="quickling"] [data-fx="wingsOpen"] {
+  animation: idle-quickling-open 7s step-end infinite;
+}
+[data-creature="quickling"] [data-fx="wingsShut"] {
+  animation: idle-quickling-shut 7s step-end infinite;
+}
+[data-creature="quickling"] [data-part="tail"] {
+  animation: idle-quickling-tail 7s step-end infinite;
+}
+@keyframes idle-quickling-leaf {
+  10% {
+    opacity: 1;
+  }
+  14% {
+    transform: translateY(1px);
+  }
+  18% {
+    transform: translate(-1px, 2px);
+  }
+  22% {
+    transform: translateY(3px);
+  }
+  26% {
+    transform: translate(-1px, 4px);
+  }
+  30% {
+    opacity: 0;
+    transform: none;
+  }
+}
+@keyframes idle-quickling-ear {
+  24% {
+    transform: translateY(-1px);
+  }
+  34% {
+    transform: none;
+  }
+}
+@keyframes idle-quickling-open {
+  30% {
+    opacity: 1;
+    transform: none;
+  }
+  34%,
+  42% {
+    opacity: 0;
+  }
+  38% {
+    opacity: 1;
+    transform: translate(1px, -2px);
+  }
+  46% {
+    opacity: 1;
+    transform: translate(1px, -4px);
+  }
+  50% {
+    opacity: 0;
+    transform: none;
+  }
+}
+@keyframes idle-quickling-shut {
+  34% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+  38%,
+  46% {
+    opacity: 0;
+  }
+  42% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+  54% {
+    opacity: 0;
+    transform: none;
+  }
+}
+@keyframes idle-quickling-tail {
+  60% {
+    transform: translateY(-1px);
+  }
+  66% {
+    transform: none;
+  }
+}
+
+/* Neverfox: an excuse creeps up on it twice and is sent back to zero both times, its ring of a tail flashing gold; it never arrives. */
+[data-creature="neverfox"] [data-fx="excuse"] {
+  animation: idle-neverfox-excuse 7s step-end infinite;
+}
+[data-creature="neverfox"] [data-fx="zero"] {
+  animation: idle-neverfox-zero 7s step-end infinite;
+}
+[data-creature="neverfox"] [data-part="tail"] [data-px="b"] {
+  animation: idle-neverfox-ring 7s step-end infinite;
+}
+[data-creature="neverfox"] [data-part="earR"] {
+  animation: idle-neverfox-ear 7s step-end infinite;
+}
+[data-creature="neverfox"] [data-part="tail"] {
+  animation: idle-neverfox-tail 7s step-end infinite;
+}
+@keyframes idle-neverfox-excuse {
+  10% {
+    opacity: 1;
+  }
+  14%,
+  30% {
+    transform: translate(-1px, 1px);
+  }
+  18%,
+  34% {
+    transform: translate(-2px, 2px);
+  }
+  22%,
+  38% {
+    transform: none;
+  }
+  46% {
+    opacity: 0;
+  }
+}
+@keyframes idle-neverfox-zero {
+  22%,
+  38% {
+    opacity: 1;
+  }
+  26%,
+  42% {
+    opacity: 0;
+  }
+}
+@keyframes idle-neverfox-ring {
+  22%,
+  38% {
+    fill: var(--g);
+  }
+  26%,
+  42% {
+    fill: var(--b);
+  }
+}
+@keyframes idle-neverfox-ear {
+  18%,
+  34% {
+    transform: translateY(-1px);
+  }
+  22%,
+  38% {
+    transform: none;
+  }
+}
+@keyframes idle-neverfox-tail {
+  56% {
+    transform: translateY(-1px);
+  }
+  62% {
+    transform: none;
+  }
+}
+
+/* Tapped, it strikes the family's pose (tangling/idle.css) instead of hopping, and holds it. */
+[data-creature="quickling"] [data-poked],
+[data-creature="neverfox"] [data-poked] {
+  animation: idle-tangling-strike 1.4s step-end;
+}
+[data-creature="quickling"] [data-poked] [data-part="earR"] {
+  animation: idle-quickling-pose-ear 1.4s step-end;
+}
+[data-creature="quickling"] [data-poked] [data-part="tail"] {
+  animation: idle-quickling-pose-tail 1.4s step-end;
+}
+@keyframes idle-quickling-pose-ear {
+  12% {
+    transform: translateY(-1px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-quickling-pose-tail {
+  12% {
+    transform: translateY(-2px);
+  }
+  92% {
+    transform: none;
+  }
+}
+[data-creature="neverfox"] [data-poked] [data-part="earR"] {
+  animation: idle-neverfox-pose-ear 1.4s step-end;
+}
+[data-creature="neverfox"] [data-poked] [data-part="tail"] {
+  animation: idle-neverfox-pose-tail 1.4s step-end;
+}
+[data-creature="neverfox"] [data-poked] [data-fx="zero"] {
+  animation: idle-neverfox-pose-zero 1.4s step-end;
+}
+@keyframes idle-neverfox-pose-ear {
+  12% {
+    transform: translateY(-1px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-neverfox-pose-tail {
+  12% {
+    transform: translateY(-2px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-neverfox-pose-zero {
+  12% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0;
+  }
+}

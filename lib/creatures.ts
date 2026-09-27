@@ -10,6 +10,7 @@ import {
   LINES,
   STARTERS,
 } from "@/data/creatures";
+import { normal } from "@/data/creatures/elements";
 import type { Skin } from "./skin";
 import type { Creature, CreatureElement, DayKey, Line, Move } from "./types";
 
@@ -58,14 +59,13 @@ export function creatureLevel(exp: number): number {
   return Math.min(MAX_LEVEL, Math.floor(Math.sqrt(exp / 6)) + 1);
 }
 
+type Charted = Exclude<CreatureElement, typeof normal>;
+
 /**
- * Each element is strong against two and weak to two, so none is safe to stack.
- * The starters' three close the loop fire > grass > water > fire.
+ * Each element but normal is strong against two and weak to two, so none is safe
+ * to stack; normal is on neither side. The starters close the loop fire > grass > water > fire.
  */
-export const STRONG_AGAINST: Record<
-  CreatureElement,
-  [CreatureElement, CreatureElement]
-> = {
+export const STRONG_AGAINST: Record<Charted, [Charted, Charted]> = {
   fire: ["grass", "ice"],
   water: ["fire", "earth"],
   grass: ["water", "earth"],
@@ -84,10 +84,10 @@ export function matchups(elements: CreatureElement[]): {
   strong: CreatureElement[];
   weak: CreatureElement[];
 } {
-  const all = Object.keys(STRONG_AGAINST) as CreatureElement[];
+  const all = Object.keys(STRONG_AGAINST) as Charted[];
   return {
     strong: all.filter((e) =>
-      elements.some((own) => STRONG_AGAINST[own].includes(e)),
+      elements.some((own) => own !== normal && STRONG_AGAINST[own].includes(e)),
     ),
     weak: all.filter((e) =>
       STRONG_AGAINST[e].some((target) => elements.includes(target)),
@@ -101,7 +101,7 @@ export function stageAt(line: Line, level: number): number {
 }
 
 export function movesAt(line: Line, level: number): Move[] {
-  return line.moves.filter((move) => level >= move.level);
+  return line.moves.filter(([at]) => level >= at).map(([, move]) => move);
 }
 
 /** Every line that can be owned, in dex order: Cogling's at #000, then `LINES`. */

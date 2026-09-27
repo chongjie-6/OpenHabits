@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { charge, scratch } from "../common";
+import { dark, might } from "../elements";
+import {
+  blackThorn,
+  charge,
+  growBack,
+  hardened,
+  quillVolley,
+  scratch,
+  spineSnap,
+} from "../moves";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const colors = {
@@ -19,7 +28,7 @@ const forms: Creature[] = [
     name: "Spurling",
     blurb:
       "Breaks its spines on everything. Each one grows back a little harder.",
-    elements: ["might"],
+    elements: [might],
     colors,
     sprite: [
       "............",
@@ -50,7 +59,7 @@ const forms: Creature[] = [
     name: "Quillrend",
     blurb:
       "Throws its spines at every problem. By morning they have grown back tougher.",
-    elements: ["might"],
+    elements: [might],
     colors: { ...colors, b: "#4e5167" },
     sprite: [
       "................",
@@ -80,7 +89,7 @@ const forms: Creature[] = [
     name: "Wrathorn",
     blurb:
       "Every spine it ever broke grew back black. It still throws itself at every day.",
-    elements: ["might", "dark"],
+    elements: [might, dark],
     colors: { ...colors, b: "#474a5f" },
     sprite: [
       "k...kok...k.........",
@@ -139,43 +148,13 @@ const line: Line = {
   forms,
   evolvesAt: [17, 35],
   moves: [
-    {
-      level: 1,
-      name: "Spine Snap",
-      power: 25,
-      accuracy: 100,
-      text: "Breaks a spine on the day's first problem.",
-    },
-    scratch,
-    {
-      level: 7,
-      name: "Grow Back",
-      power: 35,
-      accuracy: 95,
-      text: "Regrows overnight, a little harder than before.",
-    },
-    charge,
-    {
-      level: 18,
-      name: "Quill Volley",
-      power: 55,
-      accuracy: 95,
-      text: "Throws every spine it has at the problem in front of it.",
-    },
-    {
-      level: 27,
-      name: "Hardened",
-      power: 70,
-      accuracy: 90,
-      text: "Nothing breaks it the same way twice.",
-    },
-    {
-      level: 37,
-      name: "Black Thorn",
-      power: 90,
-      accuracy: 85,
-      text: "Throws itself at the day with every spine it ever lost.",
-    },
+    [1, spineSnap],
+    [1, scratch],
+    [7, growBack],
+    [10, charge],
+    [18, quillVolley],
+    [27, hardened],
+    [37, blackThorn],
   ],
 };
 

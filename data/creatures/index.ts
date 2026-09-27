@@ -22,6 +22,13 @@ import stonkey from "./stonkey";
 import spurling from "./spurling";
 import gainlet from "./gainlet";
 import tangling from "./tangling";
+import jabbit from "./jabbit";
+import mendle from "./mendle";
+import quickling from "./quickling";
+import threadle from "./threadle";
+import whorlet from "./whorlet";
+import burblet from "./burblet";
+import pelter from "./pelter";
 import cogling from "./cogling";
 
 /** Found in settings rather than by good days, so outside `LINES` and its order. */
@@ -41,7 +48,14 @@ export const LINES: Line[] = [
   stonkey,
   spurling,
   gainlet,
-  ...tangling,
+  tangling,
+  jabbit,
+  mendle,
+  quickling,
+  threadle,
+  whorlet,
+  burblet,
+  pelter,
 ];
 
 export const CREATURES: Creature[] = LINES.flatMap((line) => line.forms);

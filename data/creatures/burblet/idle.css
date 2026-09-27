@@ -1,0 +1,150 @@
+/* Burblet: fans its gills, blows a bubble with one small dark thing inside, and watches it float off and pop. */
+[data-creature="burblet"] [data-part="gillL"] {
+  animation: idle-burblet-gills 7s step-end infinite;
+}
+[data-creature="burblet"] [data-part="gillR"] {
+  animation: idle-burblet-gills 7s step-end infinite;
+  animation-delay: 0.14s;
+}
+[data-creature="burblet"] [data-fx="bubble"] {
+  animation: idle-burblet-bubble 7s step-end infinite;
+}
+[data-creature="burblet"] [data-fx="pop"] {
+  animation: idle-burblet-pop 7s step-end infinite;
+}
+@keyframes idle-burblet-gills {
+  10%,
+  18% {
+    transform: translateY(-1px);
+  }
+  14%,
+  22% {
+    transform: none;
+  }
+}
+@keyframes idle-burblet-bubble {
+  36% {
+    opacity: 1;
+  }
+  40% {
+    transform: translateY(-1px);
+  }
+  44% {
+    transform: translateY(-2px);
+  }
+  48% {
+    transform: translateY(-3px);
+  }
+  52% {
+    opacity: 0;
+    transform: none;
+  }
+}
+@keyframes idle-burblet-pop {
+  52% {
+    opacity: 1;
+  }
+  56% {
+    opacity: 0;
+  }
+}
+
+/* Burblivion: fans its gills, its bubble flickers in and out of being around it, and it wonders who it is. */
+[data-creature="burblivion"] [data-part="gillL"] {
+  animation: idle-burblivion-gills 8s step-end infinite;
+}
+[data-creature="burblivion"] [data-part="gillR"] {
+  animation: idle-burblivion-gills 8s step-end infinite;
+  animation-delay: 0.14s;
+}
+[data-creature="burblivion"] [data-px="u"] {
+  animation: idle-burblivion-bubble 8s step-end infinite;
+}
+[data-creature="burblivion"] [data-fx="who"] {
+  animation: idle-burblivion-who 8s step-end infinite;
+}
+@keyframes idle-burblivion-gills {
+  8%,
+  16% {
+    transform: translateY(-1px);
+  }
+  12%,
+  20% {
+    transform: none;
+  }
+}
+@keyframes idle-burblivion-bubble {
+  28%,
+  36%,
+  44% {
+    opacity: 0.3;
+  }
+  32%,
+  40% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 0;
+  }
+  56% {
+    opacity: 1;
+  }
+}
+@keyframes idle-burblivion-who {
+  60% {
+    opacity: 1;
+  }
+  76% {
+    opacity: 0;
+  }
+}
+
+/* Tapped, it strikes the family's pose (tangling/idle.css) instead of hopping, and holds it. */
+[data-creature="burblet"] [data-poked],
+[data-creature="burblivion"] [data-poked] {
+  animation: idle-tangling-strike 1.4s step-end;
+}
+[data-creature="burblet"] [data-poked] [data-part="gillL"] {
+  animation: idle-burblet-pose-l 1.4s step-end;
+}
+[data-creature="burblet"] [data-poked] [data-part="gillR"] {
+  animation: idle-burblet-pose-r 1.4s step-end;
+}
+@keyframes idle-burblet-pose-l {
+  12% {
+    transform: translateY(-2px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-burblet-pose-r {
+  12% {
+    transform: translateY(1px);
+  }
+  92% {
+    transform: none;
+  }
+}
+[data-creature="burblivion"] [data-poked] [data-part^="gill"] {
+  animation: idle-burblivion-pose 1.4s step-end;
+}
+[data-creature="burblivion"] [data-poked] [data-fx="who"] {
+  animation: idle-burblivion-pose-who 1.4s step-end;
+}
+@keyframes idle-burblivion-pose {
+  12% {
+    transform: translateY(-2px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-burblivion-pose-who {
+  12% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0;
+  }
+}

@@ -1,5 +1,24 @@
 import type { Creature, Line } from "@/lib/types";
-import { bump, charge, grind, roll, swat } from "../common";
+import { metal } from "../elements";
+import {
+  bump,
+  charge,
+  clunk,
+  columnByColumn,
+  deepGreen,
+  fillIn,
+  fineTune,
+  grind,
+  justSo,
+  loadbearing,
+  notch,
+  putBack,
+  roll,
+  squareUp,
+  stack,
+  swat,
+  yearAtAGlance,
+} from "../moves";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const BRASS = { b: "#d0a24c", l: "#f0d48a", d: "#a07430" };
@@ -16,7 +35,7 @@ const forms: Creature[] = [
     name: "Cogling",
     blurb:
       "Lives behind the settings. Turns a notch one way, a notch the other, and clicks when everything is just so.",
-    elements: ["metal"],
+    elements: [metal],
     colors: { o: OUTLINE, w: SHINE, ...BRASS },
     sprite: [
       ".....oooo.....",
@@ -45,7 +64,7 @@ const forms: Creature[] = [
     name: "Blockog",
     blurb:
       "Cogling, rebuilt in blocks. Comes apart at the seams to check every tile is square, then clunks back together.",
-    elements: ["metal"],
+    elements: [metal],
     colors: { o: OUTLINE, w: SHINE, ...BRASS },
     sprite: [
       ".....oooo.....",
@@ -78,7 +97,7 @@ const forms: Creature[] = [
     blurb:
       "Cogling, reset to a grid. Every cell is a day, and it fills them in column by column, like a year.",
     // `p` to `u` are the cells it fills, in order; the idle loop reaches them by key.
-    elements: ["metal"],
+    elements: [metal],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -121,36 +140,12 @@ const lines: Line[] = [
     forms: [cogling],
     evolvesAt: [],
     moves: [
-      {
-        level: 1,
-        name: "Notch",
-        power: 25,
-        accuracy: 100,
-        text: "A notch one way, a notch the other.",
-      },
-      grind,
-      {
-        level: 10,
-        name: "Just So",
-        power: 40,
-        accuracy: 95,
-        text: "Clicks once everything is where you left it.",
-      },
-      roll,
-      {
-        level: 24,
-        name: "Put Back",
-        power: 65,
-        accuracy: 90,
-        text: "Returns whatever was nudged out of place.",
-      },
-      {
-        level: 40,
-        name: "Fine Tune",
-        power: 95,
-        accuracy: 85,
-        text: "Turns the smallest thing until it clicks.",
-      },
+      [1, notch],
+      [1, grind],
+      [10, justSo],
+      [10, roll],
+      [24, putBack],
+      [40, fineTune],
     ],
   },
   {
@@ -158,36 +153,12 @@ const lines: Line[] = [
     forms: [blockog],
     evolvesAt: [],
     moves: [
-      {
-        level: 1,
-        name: "Clunk",
-        power: 25,
-        accuracy: 100,
-        text: "Snaps back together after checking its seams.",
-      },
-      bump,
-      {
-        level: 10,
-        name: "Square Up",
-        power: 40,
-        accuracy: 95,
-        text: "Makes sure every tile is square.",
-      },
-      charge,
-      {
-        level: 24,
-        name: "Stack",
-        power: 65,
-        accuracy: 90,
-        text: "Sets each day squarely on the last.",
-      },
-      {
-        level: 40,
-        name: "Load-Bearing",
-        power: 95,
-        accuracy: 85,
-        text: "Nothing it has built comes loose.",
-      },
+      [1, clunk],
+      [1, bump],
+      [10, squareUp],
+      [10, charge],
+      [24, stack],
+      [40, loadbearing],
     ],
   },
   {
@@ -195,36 +166,12 @@ const lines: Line[] = [
     forms: [latticog],
     evolvesAt: [],
     moves: [
-      {
-        level: 1,
-        name: "Fill In",
-        power: 25,
-        accuracy: 100,
-        text: "Fills in one cell of the day.",
-      },
-      grind,
-      {
-        level: 10,
-        name: "Column by Column",
-        power: 40,
-        accuracy: 95,
-        text: "Works down a week, then starts the next.",
-      },
-      swat,
-      {
-        level: 24,
-        name: "Deep Green",
-        power: 65,
-        accuracy: 90,
-        text: "A full cell turns the brightest green it has.",
-      },
-      {
-        level: 40,
-        name: "Year at a Glance",
-        power: 95,
-        accuracy: 85,
-        text: "Has filled enough cells to see the whole year.",
-      },
+      [1, fillIn],
+      [1, grind],
+      [10, columnByColumn],
+      [10, swat],
+      [24, deepGreen],
+      [40, yearAtAGlance],
     ],
   },
 ];

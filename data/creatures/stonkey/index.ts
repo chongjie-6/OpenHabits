@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { pounce, scratch } from "../common";
+import { earth, might, wind } from "../elements";
+import {
+  cloudLeap,
+  measureUp,
+  peekOut,
+  pounce,
+  scratch,
+  staffGrow,
+  thousandSunrises,
+} from "../moves";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const FUR = { o: OUTLINE, w: SHINE, e: OUTLINE, b: "#d4974f", l: "#f8ddb0" };
@@ -11,7 +20,7 @@ const forms: Creature[] = [
     name: "Stonkey",
     blurb:
       "Sat inside a mountain stone for a thousand sunrises. Still lifts the lid to check before coming out.",
-    elements: ["earth"],
+    elements: [earth],
     colors: { ...FUR, k: "#aca59c", h: "#dcd6cc" },
     sprite: [
       "....oooo....",
@@ -37,7 +46,7 @@ const forms: Creature[] = [
     name: "Staffling",
     blurb:
       "Its staff grows a little longer every day it trains. It likes to check.",
-    elements: ["might"],
+    elements: [might],
     colors: { ...FUR, ...GEAR },
     sprite: [
       "..............o.",
@@ -67,7 +76,7 @@ const forms: Creature[] = [
     name: "Cloudsage",
     blurb:
       "One somersault carries it a hundred thousand li. It still practises one every morning.",
-    elements: ["might", "wind"],
+    elements: [might, wind],
     colors: { ...FUR, ...GEAR, c: "#f7f4ff", s: "#c6bde6" },
     sprite: [
       "..rrr......rrr......",
@@ -103,43 +112,13 @@ const line: Line = {
   forms,
   evolvesAt: [15, 32],
   moves: [
-    {
-      level: 1,
-      name: "Peek Out",
-      power: 25,
-      accuracy: 100,
-      text: "Lifts the lid to check before coming out.",
-    },
-    scratch,
-    {
-      level: 6,
-      name: "Thousand Sunrises",
-      power: 35,
-      accuracy: 100,
-      text: "Waits it out. It has done this before.",
-    },
-    pounce,
-    {
-      level: 16,
-      name: "Staff Grow",
-      power: 50,
-      accuracy: 95,
-      text: "Its staff gets a little longer every day it trains.",
-    },
-    {
-      level: 25,
-      name: "Measure Up",
-      power: 70,
-      accuracy: 90,
-      text: "Checks the staff against yesterday's. It is longer.",
-    },
-    {
-      level: 34,
-      name: "Cloud Leap",
-      power: 85,
-      accuracy: 85,
-      text: "One somersault, a hundred thousand li, and back by breakfast.",
-    },
+    [1, peekOut],
+    [1, scratch],
+    [6, thousandSunrises],
+    [10, pounce],
+    [16, staffGrow],
+    [25, measureUp],
+    [34, cloudLeap],
   ],
 };
 

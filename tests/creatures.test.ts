@@ -23,10 +23,9 @@ import {
   STRONG_AGAINST,
   swapSeats,
 } from "@/lib/creatures";
-import * as COMMON_MOVES from "@/data/creatures/common";
+import { COMMON_MOVES } from "@/data/creatures/moves";
 
 const DEX = [...COGLINGS, ...CREATURES];
-const COMMON = Object.values(COMMON_MOVES);
 
 describe("creatureLevel", () => {
   it("starts at level 1 with no exp", () => {
@@ -76,11 +75,11 @@ describe("stageAt and movesAt", () => {
   });
 
   it("knows a move from its level on", () => {
-    const [opener] = sproutle.moves;
-    const next = sproutle.moves.find((move) => move.level > 1)!;
+    const [[, opener]] = sproutle.moves;
+    const [level, next] = sproutle.moves.find(([at]) => at > 1)!;
     expect(movesAt(sproutle, 1)).toContain(opener);
-    expect(movesAt(sproutle, next.level - 1)).not.toContain(next);
-    expect(movesAt(sproutle, next.level)).toContain(next);
+    expect(movesAt(sproutle, level - 1)).not.toContain(next);
+    expect(movesAt(sproutle, level)).toContain(next);
   });
 });
 
@@ -126,41 +125,43 @@ describe("the lines", () => {
   // `claimNews` reads what was learned off the end of `movesAt`, so order matters.
   it("learn a first move at level 1 and the rest in level order", () => {
     for (const { id, moves } of ALL_LINES) {
-      expect(moves[0]?.level, id).toBe(1);
-      moves.slice(1).forEach((move, i) => {
-        expect(move.level, `${id} ${move.name}`).toBeGreaterThanOrEqual(
-          moves[i].level,
-        );
-        expect(move.level, `${id} ${move.name}`).toBeLessThanOrEqual(MAX_LEVEL);
+      expect(moves[0]?.[0], id).toBe(1);
+      moves.slice(1).forEach(([level, move], i) => {
+        expect(level, `${id} ${move.name}`).toBeGreaterThanOrEqual(moves[i][0]);
+        expect(level, `${id} ${move.name}`).toBeLessThanOrEqual(MAX_LEVEL);
       });
     }
   });
 
-  it("never share a move name, apart from the common ones", () => {
-    const own = ALL_LINES.flatMap((line) =>
-      line.moves.filter((move) => !COMMON.includes(move)),
+  // Shared by reference, so a name repeats only where one move is reused.
+  it("know each move once, and no two moves by one name", () => {
+    const known = new Set(
+      ALL_LINES.flatMap((line) => line.moves.map(([, move]) => move)),
     );
-    const names = [...COMMON, ...own].map((move) => move.name);
+    const names = [...known].map((move) => move.name);
     expect(new Set(names).size).toBe(names.length);
     for (const { id, moves } of ALL_LINES)
-      expect(new Set(moves).size, id).toBe(moves.length);
+      expect(new Set(moves.map(([, move]) => move)).size, id).toBe(
+        moves.length,
+      );
   });
 
   it("know a common move, and hit harder with every move of their own", () => {
-    const strongest = Math.max(...COMMON.map((move) => move.power));
+    const strongest = Math.max(...COMMON_MOVES.map((move) => move.power));
     for (const { id, moves } of ALL_LINES) {
+      const known = moves.map(([, move]) => move);
       expect(
-        moves.some((move) => COMMON.includes(move)),
+        known.some((move) => COMMON_MOVES.includes(move)),
         id,
       ).toBe(true);
-      for (const move of moves.filter((m) => !COMMON.includes(m)))
+      for (const move of known.filter((m) => !COMMON_MOVES.includes(m)))
         expect(move.power, `${id} ${move.name}`).toBeGreaterThan(strongest);
     }
   });
 
   it("land some of the time and never more than always", () => {
     for (const { id, moves } of ALL_LINES)
-      for (const move of moves) {
+      for (const [, move] of moves) {
         expect(move.accuracy, `${id} ${move.name}`).toBeGreaterThan(0);
         expect(move.accuracy, `${id} ${move.name}`).toBeLessThanOrEqual(100);
       }
@@ -242,16 +243,16 @@ describe("claimNews", () => {
   });
 
   it("names a move learned, and leaves a find to its own dialog", () => {
-    const leafCount = LINES[0].moves.find((move) => move.level > 1)!;
-    const before = state(expForLevel(leafCount.level) - 1);
+    const [level, leafCount] = LINES[0].moves.find(([at]) => at > 1)!;
+    const before = state(expForLevel(level) - 1);
     const after = {
-      ...state(expForLevel(leafCount.level), ["emberpup"]),
+      ...state(expForLevel(level), ["emberpup"]),
       gained: 1,
       found: ["emberpup"],
     };
     expect(claimNews(before, after)).toEqual([
       "+1 exp",
-      `Sproutle reached Lv ${leafCount.level}`,
+      `Sproutle reached Lv ${level}`,
       `Sproutle learned ${leafCount.name}`,
     ]);
   });
@@ -312,9 +313,14 @@ describe("elements", () => {
     const [grass, fire, water] = STARTERS.map(
       (id) => LINES.find((line) => line.id === id)!.forms[0].elements[0],
     );
-    expect(STRONG_AGAINST[fire]).toContain(grass);
-    expect(STRONG_AGAINST[grass]).toContain(water);
-    expect(STRONG_AGAINST[water]).toContain(fire);
+    expect(matchups([fire]).strong).toContain(grass);
+    expect(matchups([grass]).strong).toContain(water);
+    expect(matchups([water]).strong).toContain(fire);
+  });
+
+  it("leave normal off the chart, beating nothing and beaten by nothing", () => {
+    expect(matchups(["normal"])).toEqual({ strong: [], weak: [] });
+    expect(matchups(["normal", "fire"])).toEqual(matchups(["fire"]));
   });
 
   it("combine a dual form's matchups without repeating one", () => {

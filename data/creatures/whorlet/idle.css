@@ -1,0 +1,105 @@
+/* Whorlet: its shell turns a quarter every two seconds and never stops; once a lap, its eyes duck in as it goes round. */
+[data-creature="whorlet"] [data-part="shell"] {
+  transform-origin: center;
+  animation: idle-whorlet-turn 8s step-end infinite;
+}
+[data-creature="whorlet"] [data-part="stalks"] {
+  animation: idle-whorlet-stalks 8s step-end infinite;
+}
+@keyframes idle-whorlet-turn {
+  25% {
+    transform: rotate(90deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+}
+@keyframes idle-whorlet-stalks {
+  75% {
+    transform: translateY(1px);
+  }
+  81% {
+    transform: none;
+  }
+}
+
+/* Whorlinity: rides its shell like a wheel, a quarter-turn every half-second, forever; once a loop it bows its stalks in thanks. */
+[data-creature="whorlinity"] [data-part="shell"] {
+  transform-origin: center;
+  animation: idle-whorlinity-turn 2s step-end infinite;
+}
+[data-creature="whorlinity"] [data-part="stalks"] {
+  animation: idle-whorlinity-bow 7s step-end infinite;
+}
+@keyframes idle-whorlinity-turn {
+  25% {
+    transform: rotate(90deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+}
+@keyframes idle-whorlinity-bow {
+  50% {
+    transform: translate(1px, 1px);
+  }
+  58% {
+    transform: none;
+  }
+}
+
+/* Tapped, it strikes the family's pose (tangling/idle.css) instead of hopping, and holds it. */
+[data-creature="whorlet"] [data-poked],
+[data-creature="whorlinity"] [data-poked] {
+  animation: idle-tangling-strike 1.4s step-end;
+}
+[data-creature="whorlet"] [data-poked] [data-part="stalks"] {
+  animation: idle-whorlet-pose 1.4s step-end;
+}
+[data-creature="whorlet"] [data-poked] [data-part="shell"] {
+  animation: idle-whorlet-pose-shell 1.4s step-end;
+}
+@keyframes idle-whorlet-pose {
+  12% {
+    transform: translateX(-1px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-whorlet-pose-shell {
+  12% {
+    transform: rotate(90deg);
+  }
+  92% {
+    transform: none;
+  }
+}
+[data-creature="whorlinity"] [data-poked] [data-part="stalks"] {
+  animation: idle-whorlinity-pose 1.4s step-end;
+}
+[data-creature="whorlinity"] [data-poked] [data-part="shell"] {
+  animation: idle-whorlinity-pose-shell 1.4s step-end;
+}
+@keyframes idle-whorlinity-pose {
+  12% {
+    transform: translateY(-1px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-whorlinity-pose-shell {
+  12% {
+    transform: rotate(180deg);
+  }
+  92% {
+    transform: none;
+  }
+}

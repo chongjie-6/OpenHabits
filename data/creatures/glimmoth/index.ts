@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { bump, dive } from "../common";
+import { light } from "../elements";
+import {
+  bump,
+  dive,
+  glimmer,
+  lanternHold,
+  mothToIt,
+  neverOut,
+  nightLight,
+} from "../moves";
 import { OUTLINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -8,7 +17,7 @@ const forms: Creature[] = [
     name: "Glimmoth",
     blurb:
       "Only comes out after a day you finished. Nobody knows how it knows.",
-    elements: ["light"],
+    elements: [light],
     colors: { o: OUTLINE, w: "#f7e27a", b: "#9b7fd4", l: "#4a3a6b" },
     sprite: [
       "............",
@@ -42,7 +51,7 @@ const forms: Creature[] = [
     name: "Lanthorn",
     blurb:
       "Grew out of a Glimmoth. Keeps every finished day in its lantern, so it never goes out.",
-    elements: ["light"],
+    elements: [light],
     colors: {
       o: OUTLINE,
       w: "#f7e27a",
@@ -88,43 +97,13 @@ const line: Line = {
   forms,
   evolvesAt: [18],
   moves: [
-    {
-      level: 1,
-      name: "Glimmer",
-      power: 25,
-      accuracy: 100,
-      text: "Lights up after a finished day, and only then.",
-    },
-    bump,
-    {
-      level: 7,
-      name: "Moth to It",
-      power: 35,
-      accuracy: 95,
-      text: "Finds the one lamp still on and keeps it company.",
-    },
-    dive,
-    {
-      level: 14,
-      name: "Lantern Hold",
-      power: 50,
-      accuracy: 95,
-      text: "Stores a finished day in its lantern for later.",
-    },
-    {
-      level: 19,
-      name: "Night Light",
-      power: 55,
-      accuracy: 90,
-      text: "Lights the way back for a day that nearly got away.",
-    },
-    {
-      level: 30,
-      name: "Never Out",
-      power: 75,
-      accuracy: 90,
-      text: "Has kept so many finished days that it cannot go dark.",
-    },
+    [1, glimmer],
+    [1, bump],
+    [7, mothToIt],
+    [10, dive],
+    [14, lanternHold],
+    [19, nightLight],
+    [30, neverOut],
   ],
 };
 

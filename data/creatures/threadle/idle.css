@@ -1,0 +1,158 @@
+/* Threadle: a loop of thread works loose, it wriggles, squeezes its eyes shut and pulls itself tight again. */
+[data-creature="threadle"] > g {
+  animation: idle-threadle-wriggle 7s step-end infinite;
+}
+[data-creature="threadle"] [data-fx="loose"] {
+  animation: idle-threadle-loose 7s step-end infinite;
+}
+[data-creature="threadle"] [data-px="w"] {
+  animation: idle-threadle-squeeze 7s step-end infinite;
+}
+[data-creature="threadle"] [data-part="tail"] {
+  animation: idle-threadle-tail 7s step-end infinite;
+}
+@keyframes idle-threadle-wriggle {
+  24%,
+  32% {
+    transform: translateX(-1px);
+  }
+  28% {
+    transform: translateX(1px);
+  }
+  36% {
+    transform: none;
+  }
+}
+@keyframes idle-threadle-loose {
+  20% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 0;
+  }
+}
+@keyframes idle-threadle-squeeze {
+  40% {
+    fill: var(--o);
+  }
+  52% {
+    fill: var(--w);
+  }
+}
+@keyframes idle-threadle-tail {
+  56% {
+    transform: translateY(-1px);
+  }
+  60% {
+    transform: none;
+  }
+}
+
+/* Tapestrel: strings a net between its wings, catches the sun as it falls, and squeezes its eyes shut winding the day back in. */
+[data-creature="tapestrel"] [data-fx="net"] {
+  animation: idle-tapestrel-net 7s step-end infinite;
+}
+[data-creature="tapestrel"] [data-fx="sun"] {
+  animation: idle-tapestrel-sun 7s step-end infinite;
+}
+[data-creature="tapestrel"] [data-px="w"] {
+  animation: idle-tapestrel-squeeze 7s step-end infinite;
+}
+[data-creature="tapestrel"] [data-part="tail"] {
+  animation: idle-tapestrel-tail 7s step-end infinite;
+}
+@keyframes idle-tapestrel-net {
+  16% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 0;
+  }
+}
+@keyframes idle-tapestrel-sun {
+  22% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+  25% {
+    transform: translateY(-3px);
+  }
+  28% {
+    transform: translateY(-2px);
+  }
+  31% {
+    transform: translateY(-1px);
+  }
+  34% {
+    transform: none;
+  }
+  52% {
+    opacity: 0;
+  }
+}
+@keyframes idle-tapestrel-squeeze {
+  52% {
+    fill: var(--o);
+  }
+  60% {
+    fill: var(--w);
+  }
+}
+@keyframes idle-tapestrel-tail {
+  60% {
+    transform: translateY(-1px);
+  }
+  64% {
+    transform: none;
+  }
+}
+
+/* Tapped, it strikes the family's pose (tangling/idle.css) instead of hopping, and holds it. */
+[data-creature="threadle"] [data-poked],
+[data-creature="tapestrel"] [data-poked] {
+  animation: idle-tangling-strike 1.4s step-end;
+}
+[data-creature="threadle"] [data-poked] [data-fx="string"] {
+  animation: idle-threadle-pose 1.4s step-end;
+}
+[data-creature="threadle"] [data-poked] [data-part="tail"] {
+  animation: idle-threadle-pose-tail 1.4s step-end;
+}
+@keyframes idle-threadle-pose {
+  12% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0;
+  }
+}
+@keyframes idle-threadle-pose-tail {
+  12% {
+    transform: translateY(-1px);
+  }
+  92% {
+    transform: none;
+  }
+}
+[data-creature="tapestrel"] [data-poked] [data-fx="net"] {
+  animation: idle-tapestrel-pose 1.4s step-end;
+}
+[data-creature="tapestrel"] [data-poked] [data-part="tail"] {
+  animation: idle-tapestrel-pose-tail 1.4s step-end;
+}
+@keyframes idle-tapestrel-pose {
+  12% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0;
+  }
+}
+@keyframes idle-tapestrel-pose-tail {
+  12% {
+    transform: translateY(-1px);
+  }
+  92% {
+    transform: none;
+  }
+}

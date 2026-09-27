@@ -1,0 +1,137 @@
+/* Pelter: darkens, and brings down two hard volleys of rain that land with a splash. */
+[data-creature="pelter"] [data-px="b"] {
+  animation: idle-pelter-darken 6s step-end infinite;
+}
+[data-creature="pelter"] [data-fx^="drop"] {
+  animation: idle-pelter-drop 6s step-end infinite;
+}
+[data-creature="pelter"] [data-fx="dropB"] {
+  animation-delay: 0.12s;
+}
+[data-creature="pelter"] [data-fx="dropC"] {
+  animation-delay: 0.24s;
+}
+[data-creature="pelter"] [data-fx="splash"] {
+  animation: idle-pelter-splash 6s step-end infinite;
+}
+@keyframes idle-pelter-darken {
+  24% {
+    fill: var(--s);
+  }
+  62% {
+    fill: var(--b);
+  }
+}
+@keyframes idle-pelter-drop {
+  30%,
+  50% {
+    opacity: 1;
+  }
+  32%,
+  52% {
+    transform: translateY(1px);
+  }
+  34%,
+  54% {
+    transform: translateY(2px);
+  }
+  36%,
+  56% {
+    opacity: 0;
+    transform: none;
+  }
+}
+@keyframes idle-pelter-splash {
+  37%,
+  57% {
+    opacity: 1;
+  }
+  41%,
+  61% {
+    opacity: 0;
+  }
+}
+
+/* Pelterra: darkens, and drops rain on three exact spots, each pressing a mark into the puddle that stays. */
+[data-creature="pelterra"] [data-px="b"] {
+  animation: idle-pelterra-darken 6s step-end infinite;
+}
+[data-creature="pelterra"] [data-fx^="drop"] {
+  animation: idle-pelterra-drop 6s step-end infinite;
+}
+[data-creature="pelterra"] [data-fx^="mark"] {
+  animation: idle-pelterra-mark 6s step-end infinite;
+}
+[data-creature="pelterra"] [data-fx="dropB"],
+[data-creature="pelterra"] [data-fx="markB"] {
+  animation-delay: 0.3s;
+}
+[data-creature="pelterra"] [data-fx="dropC"],
+[data-creature="pelterra"] [data-fx="markC"] {
+  animation-delay: 0.6s;
+}
+@keyframes idle-pelterra-darken {
+  20% {
+    fill: var(--s);
+  }
+  76% {
+    fill: var(--b);
+  }
+}
+@keyframes idle-pelterra-drop {
+  28% {
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(1px);
+  }
+  32% {
+    transform: translateY(2px);
+  }
+  34% {
+    transform: translateY(3px);
+  }
+  36% {
+    transform: translateY(4px);
+  }
+  38% {
+    opacity: 0;
+    transform: none;
+  }
+}
+@keyframes idle-pelterra-mark {
+  38% {
+    opacity: 1;
+  }
+  76% {
+    opacity: 0;
+  }
+}
+
+/* Tapped, it strikes the family's pose (tangling/idle.css) instead of hopping, and holds it. */
+[data-creature="pelter"] [data-poked],
+[data-creature="pelterra"] [data-poked] {
+  animation: idle-tangling-strike 1.4s step-end;
+}
+[data-creature="pelter"] [data-poked] [data-fx^="drop"] {
+  animation: idle-pelter-pose 1.4s step-end;
+}
+@keyframes idle-pelter-pose {
+  12% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0;
+  }
+}
+[data-creature="pelterra"] [data-poked] [data-fx^="mark"] {
+  animation: idle-pelterra-pose 1.4s step-end;
+}
+@keyframes idle-pelterra-pose {
+  12% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0;
+  }
+}

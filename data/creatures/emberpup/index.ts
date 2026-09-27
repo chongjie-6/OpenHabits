@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { pounce, scratch } from "../common";
+import { fire } from "../elements";
+import {
+  dawnRoar,
+  hearthGuard,
+  kindle,
+  pounce,
+  scratch,
+  steadyFlame,
+  warmTail,
+} from "../moves";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const forms: Creature[] = [
@@ -7,7 +16,7 @@ const forms: Creature[] = [
     id: "emberpup",
     name: "Emberpup",
     blurb: "Its tail glows warmer the longer its streak runs.",
-    elements: ["fire"],
+    elements: [fire],
     colors: { o: OUTLINE, w: SHINE, b: "#f08a4b", l: "#ffd8a8" },
     sprite: [
       ".o........o.",
@@ -32,7 +41,7 @@ const forms: Creature[] = [
     id: "hearthound",
     name: "Hearthound",
     blurb: "Its flame gutters some days. Never two in a row.",
-    elements: ["fire"],
+    elements: [fire],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -69,7 +78,7 @@ const forms: Creature[] = [
     id: "blazemane",
     name: "Blazemane",
     blurb: "Roars at dawn, every day. Some say the sun waits for it.",
-    elements: ["fire"],
+    elements: [fire],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -129,43 +138,13 @@ const line: Line = {
   forms,
   evolvesAt: [14, 30],
   moves: [
-    {
-      level: 1,
-      name: "Warm Tail",
-      power: 25,
-      accuracy: 100,
-      text: "Wags a tail that glows one shade warmer for every day of the streak.",
-    },
-    scratch,
-    {
-      level: 6,
-      name: "Kindle",
-      power: 35,
-      accuracy: 100,
-      text: "Breathes on a cold start until it catches.",
-    },
-    pounce,
-    {
-      level: 15,
-      name: "Steady Flame",
-      power: 50,
-      accuracy: 95,
-      text: "Gutters some days, and never two in a row.",
-    },
-    {
-      level: 24,
-      name: "Hearth Guard",
-      power: 65,
-      accuracy: 90,
-      text: "Curls round the fire so the streak lasts the night.",
-    },
-    {
-      level: 33,
-      name: "Dawn Roar",
-      power: 80,
-      accuracy: 85,
-      text: "Roars the sun up. It has not been late once.",
-    },
+    [1, warmTail],
+    [1, scratch],
+    [6, kindle],
+    [10, pounce],
+    [15, steadyFlame],
+    [24, hearthGuard],
+    [33, dawnRoar],
   ],
 };
 

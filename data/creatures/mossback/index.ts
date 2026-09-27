@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { nip, roll } from "../common";
+import { earth, grass } from "../elements";
+import {
+  keepStill,
+  mossCoat,
+  nip,
+  oldGrowth,
+  roll,
+  shellGarden,
+  slowMarch,
+} from "../moves";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -8,7 +17,7 @@ const forms: Creature[] = [
     name: "Mossback",
     blurb:
       "Slow, and never late. Moss grows on its shell because it keeps still.",
-    elements: ["earth"],
+    elements: [earth],
     colors: { o: OUTLINE, w: SHINE, b: "#c9b27c", l: "#5f8f4e" },
     sprite: [
       "............",
@@ -45,7 +54,7 @@ const forms: Creature[] = [
     name: "Elderback",
     blurb:
       "Grew out of a Mossback. Kept still so long that its shell turned into a garden.",
-    elements: ["earth", "grass"],
+    elements: [earth, grass],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -93,43 +102,13 @@ const line: Line = {
   forms,
   evolvesAt: [20],
   moves: [
-    {
-      level: 1,
-      name: "Keep Still",
-      power: 25,
-      accuracy: 100,
-      text: "Stays exactly where it said it would be.",
-    },
-    nip,
-    {
-      level: 8,
-      name: "Moss Coat",
-      power: 40,
-      accuracy: 95,
-      text: "Grows a coat of moss by not fidgeting.",
-    },
-    roll,
-    {
-      level: 16,
-      name: "Slow March",
-      power: 50,
-      accuracy: 95,
-      text: "Arrives late to nothing, ever.",
-    },
-    {
-      level: 22,
-      name: "Shell Garden",
-      power: 60,
-      accuracy: 90,
-      text: "Lets a small garden take root on its back.",
-    },
-    {
-      level: 34,
-      name: "Old Growth",
-      power: 85,
-      accuracy: 85,
-      text: "Keeps still for a season and blooms for the next.",
-    },
+    [1, keepStill],
+    [1, nip],
+    [8, mossCoat],
+    [10, roll],
+    [16, slowMarch],
+    [22, shellGarden],
+    [34, oldGrowth],
   ],
 };
 

@@ -2,6 +2,7 @@ import type { Pixel } from "@/lib/types";
 
 export const OUTLINE = "#2a2433";
 export const SHINE = "#ffffff";
+export const STAR = "#f2c14e";
 
 /** Effect pixels drawn like a sprite, with the top-left pixel at `[x, y]`. */
 export function pixelsAt(x: number, y: number, rows: string[]): Pixel[] {

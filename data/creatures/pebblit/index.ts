@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { bump, roll } from "../common";
+import { earth } from "../elements";
+import {
+  balanceAct,
+  bump,
+  cairnKeep,
+  doItTwice,
+  roll,
+  skipStone,
+  stackUp,
+} from "../moves";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -7,7 +16,7 @@ const forms: Creature[] = [
     id: "pebblit",
     name: "Pebblit",
     blurb: "Made of every small thing it ever did twice.",
-    elements: ["earth"],
+    elements: [earth],
     colors: { o: OUTLINE, w: SHINE, b: "#9a9aa6", l: "#c8c8d2" },
     sprite: [
       "............",
@@ -38,7 +47,7 @@ const forms: Creature[] = [
     name: "Cobblet",
     blurb:
       "Balances a pebble on its head. When it drops it, it picks it up and tries again.",
-    elements: ["earth"],
+    elements: [earth],
     colors: { o: OUTLINE, w: SHINE, b: "#9a9aa6", l: "#c8c8d2", m: "#8fae6a" },
     sprite: [
       "......oo......",
@@ -69,7 +78,7 @@ const forms: Creature[] = [
     name: "Cairnhold",
     blurb:
       "Every stone is a week that held. Travellers add one on top, and it has never let one fall.",
-    elements: ["earth"],
+    elements: [earth],
     colors: { o: OUTLINE, w: SHINE, b: "#9a9aa6", l: "#c8c8d2", m: "#8fae6a" },
     sprite: [
       "................",
@@ -106,43 +115,13 @@ const line: Line = {
   forms,
   evolvesAt: [16, 34],
   moves: [
-    {
-      level: 1,
-      name: "Do It Twice",
-      power: 25,
-      accuracy: 100,
-      text: "Does everything twice, just to be sure.",
-    },
-    bump,
-    {
-      level: 8,
-      name: "Skip Stone",
-      power: 40,
-      accuracy: 95,
-      text: "Bounces across a bad day without sinking.",
-    },
-    roll,
-    {
-      level: 17,
-      name: "Balance Act",
-      power: 55,
-      accuracy: 95,
-      text: "Keeps a pebble on its head. Drops it. Tries again.",
-    },
-    {
-      level: 26,
-      name: "Stack Up",
-      power: 70,
-      accuracy: 90,
-      text: "Adds one more stone. The pile has never fallen.",
-    },
-    {
-      level: 36,
-      name: "Cairn Keep",
-      power: 85,
-      accuracy: 85,
-      text: "Holds every stone a traveller ever left on it.",
-    },
+    [1, doItTwice],
+    [1, bump],
+    [8, skipStone],
+    [10, roll],
+    [17, balanceAct],
+    [26, stackUp],
+    [36, cairnKeep],
   ],
 };
 

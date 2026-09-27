@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { dive, peck } from "../common";
+import { wind } from "../elements";
+import {
+  dive,
+  firstBreeze,
+  homeBeforeDark,
+  makeWeather,
+  peck,
+  tailwind,
+  updraft,
+} from "../moves";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -7,7 +16,7 @@ const forms: Creature[] = [
     id: "gustling",
     name: "Gustling",
     blurb: "Rides the first breeze of the day and is home before dark.",
-    elements: ["wind"],
+    elements: [wind],
     colors: { o: OUTLINE, w: SHINE, b: "#e8eef2", l: "#f2c14e", g: "#a7c4d8" },
     sprite: [
       "............",
@@ -43,7 +52,7 @@ const forms: Creature[] = [
     name: "Galecrest",
     blurb:
       "Grew out of a Gustling. Stopped waiting for the breeze, and now makes its own.",
-    elements: ["wind"],
+    elements: [wind],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -92,43 +101,13 @@ const line: Line = {
   forms,
   evolvesAt: [14],
   moves: [
-    {
-      level: 1,
-      name: "First Breeze",
-      power: 25,
-      accuracy: 100,
-      text: "Catches the day's first wind before anyone is up.",
-    },
-    peck,
-    {
-      level: 7,
-      name: "Tailwind",
-      power: 35,
-      accuracy: 95,
-      text: "Pushes you the last few steps home.",
-    },
-    dive,
-    {
-      level: 15,
-      name: "Updraft",
-      power: 50,
-      accuracy: 95,
-      text: "Rises on whatever the day throws at it.",
-    },
-    {
-      level: 24,
-      name: "Make Weather",
-      power: 65,
-      accuracy: 90,
-      text: "Stops waiting for a breeze and starts one.",
-    },
-    {
-      level: 35,
-      name: "Home Before Dark",
-      power: 85,
-      accuracy: 85,
-      text: "However far it goes, it is back by nightfall.",
-    },
+    [1, firstBreeze],
+    [1, peck],
+    [7, tailwind],
+    [10, dive],
+    [15, updraft],
+    [24, makeWeather],
+    [35, homeBeforeDark],
   ],
 };
 

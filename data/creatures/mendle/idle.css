@@ -1,0 +1,180 @@
+/* Mendle: cracks, pats itself back together with both hands, and glints like nothing happened. */
+[data-creature="mendle"] [data-fx="crack"] {
+  animation: idle-mendle-crack 7s step-end infinite;
+}
+[data-creature="mendle"] [data-part="handL"] {
+  animation: idle-mendle-hand-l 7s step-end infinite;
+}
+[data-creature="mendle"] [data-part="handR"] {
+  animation: idle-mendle-hand-r 7s step-end infinite;
+}
+[data-creature="mendle"] [data-fx="glint"] {
+  animation: idle-mendle-glint 7s step-end infinite;
+}
+@keyframes idle-mendle-crack {
+  20% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 0;
+  }
+}
+@keyframes idle-mendle-hand-l {
+  34%,
+  42% {
+    transform: translateX(1px);
+  }
+  38%,
+  46% {
+    transform: none;
+  }
+}
+@keyframes idle-mendle-hand-r {
+  34%,
+  42% {
+    transform: translateX(-1px);
+  }
+  38%,
+  46% {
+    transform: none;
+  }
+}
+@keyframes idle-mendle-glint {
+  48% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 0.5;
+  }
+  56% {
+    opacity: 0;
+  }
+}
+
+/* Mendazzle: a chip breaks off and flies, a hand beckons, and the chip homes straight back into place with a glint. */
+[data-creature="mendazzle"] [data-fx="crack"] {
+  animation: idle-mendazzle-crack 7s step-end infinite;
+}
+[data-creature="mendazzle"] [data-fx="chip"] {
+  animation: idle-mendazzle-chip 7s step-end infinite;
+}
+[data-creature="mendazzle"] [data-part="handL"] {
+  animation: idle-mendazzle-hand 7s step-end infinite;
+}
+[data-creature="mendazzle"] [data-fx="glint"] {
+  animation: idle-mendazzle-glint 7s step-end infinite;
+}
+@keyframes idle-mendazzle-crack {
+  20% {
+    opacity: 1;
+  }
+  44% {
+    opacity: 0;
+  }
+}
+@keyframes idle-mendazzle-chip {
+  16% {
+    opacity: 1;
+  }
+  20% {
+    transform: translateX(-2px);
+  }
+  24% {
+    transform: translate(-4px, -1px);
+  }
+  36% {
+    transform: translateX(-2px);
+  }
+  40% {
+    transform: none;
+  }
+  44% {
+    opacity: 0;
+  }
+}
+@keyframes idle-mendazzle-hand {
+  30% {
+    transform: translateY(-1px);
+  }
+  34% {
+    transform: none;
+  }
+  38% {
+    transform: translateY(-1px);
+  }
+  42% {
+    transform: none;
+  }
+}
+@keyframes idle-mendazzle-glint {
+  44% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 0.5;
+  }
+  52% {
+    opacity: 0;
+  }
+}
+
+/* Tapped, it strikes the family's pose (tangling/idle.css) instead of hopping, and holds it. */
+[data-creature="mendle"] [data-poked],
+[data-creature="mendazzle"] [data-poked] {
+  animation: idle-tangling-strike 1.4s step-end;
+}
+[data-creature="mendle"] [data-poked] [data-part="handR"] {
+  animation: idle-mendle-pose-r 1.4s step-end;
+}
+[data-creature="mendle"] [data-poked] [data-part="handL"] {
+  animation: idle-mendle-pose-l 1.4s step-end;
+}
+@keyframes idle-mendle-pose-r {
+  12% {
+    transform: translate(-1px, -4px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-mendle-pose-l {
+  12% {
+    transform: translate(-1px, 1px);
+  }
+  92% {
+    transform: none;
+  }
+}
+[data-creature="mendazzle"] [data-poked] [data-part="handL"] {
+  animation: idle-mendazzle-pose-l 1.4s step-end;
+}
+[data-creature="mendazzle"] [data-poked] [data-part="handR"] {
+  animation: idle-mendazzle-pose-r 1.4s step-end;
+}
+[data-creature="mendazzle"] [data-poked] [data-fx="glint"] {
+  animation: idle-mendazzle-pose-glint 1.4s step-end;
+}
+@keyframes idle-mendazzle-pose-l {
+  12% {
+    transform: translate(1px, -3px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-mendazzle-pose-r {
+  12% {
+    transform: translate(-1px, -3px);
+  }
+  92% {
+    transform: none;
+  }
+}
+@keyframes idle-mendazzle-pose-glint {
+  12% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 0;
+  }
+}

@@ -1,5 +1,14 @@
 import type { Creature, Line, Pixel } from "@/lib/types";
-import { roll, spritz } from "../common";
+import { water } from "../elements";
+import {
+  keepEveryDrop,
+  oneDrop,
+  puddleUp,
+  rippleOut,
+  roll,
+  spritz,
+  stillWater,
+} from "../moves";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const forms: Creature[] = [
@@ -7,7 +16,7 @@ const forms: Creature[] = [
     id: "drizzlet",
     name: "Drizzlet",
     blurb: "Falls as one drop a day. Given a year, it becomes a lake.",
-    elements: ["water"],
+    elements: [water],
     colors: { o: OUTLINE, w: SHINE, b: "#5aa9e6", l: "#bfe3ff" },
     sprite: [
       ".....oo.....",
@@ -35,7 +44,7 @@ const forms: Creature[] = [
     id: "ripplet",
     name: "Ripplet",
     blurb: "Keeps every drop it catches. Each ripple goes a little further.",
-    elements: ["water"],
+    elements: [water],
     colors: { o: OUTLINE, w: SHINE, b: "#5aa9e6", l: "#bfe3ff", p: "#3d8fd1" },
     sprite: [
       ".......oo.......",
@@ -76,7 +85,7 @@ const forms: Creature[] = [
     id: "stillmere",
     name: "Stillmere",
     blurb: "Started as one drop a day. Now fish live in it.",
-    elements: ["water"],
+    elements: [water],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -123,43 +132,13 @@ const line: Line = {
   forms,
   evolvesAt: [13, 29],
   moves: [
-    {
-      level: 1,
-      name: "One Drop",
-      power: 25,
-      accuracy: 100,
-      text: "Falls exactly once a day, and makes it count.",
-    },
-    spritz,
-    {
-      level: 6,
-      name: "Puddle Up",
-      power: 35,
-      accuracy: 100,
-      text: "Gathers yesterday's drops into something you can stand in.",
-    },
-    roll,
-    {
-      level: 14,
-      name: "Ripple Out",
-      power: 50,
-      accuracy: 95,
-      text: "Each ripple goes a little further than the last.",
-    },
-    {
-      level: 21,
-      name: "Keep Every Drop",
-      power: 60,
-      accuracy: 90,
-      text: "Nothing it catches is ever spilled.",
-    },
-    {
-      level: 31,
-      name: "Still Water",
-      power: 80,
-      accuracy: 90,
-      text: "Goes so calm that fish move in.",
-    },
+    [1, oneDrop],
+    [1, spritz],
+    [6, puddleUp],
+    [10, roll],
+    [14, rippleOut],
+    [21, keepEveryDrop],
+    [31, stillWater],
   ],
 };
 

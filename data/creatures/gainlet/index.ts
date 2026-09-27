@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { pounce, spritz } from "../common";
+import { metal, might, water } from "../elements";
+import {
+  legDay,
+  oneMoreRep,
+  pounce,
+  puddleFlex,
+  repCroak,
+  sevendaySplit,
+  spritz,
+} from "../moves";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const SKIN = {
@@ -19,7 +28,7 @@ const forms: Creature[] = [
     name: "Gainlet",
     blurb:
       "Flexes at every puddle it passes. Nothing there yet. It flexes anyway.",
-    elements: ["water", "might"],
+    elements: [water, might],
     colors: SKIN,
     sprite: [
       ".oo...oo....",
@@ -44,7 +53,7 @@ const forms: Creature[] = [
     id: "repcroak",
     name: "Repcroak",
     blurb: "Croaks once for every rep. Has never lost count, or stopped early.",
-    elements: ["water", "might"],
+    elements: [water, might],
     colors: { ...SKIN, ...IRON },
     sprite: [
       "..ooo..ooo.o...o",
@@ -73,7 +82,7 @@ const forms: Creature[] = [
     id: "croaklossus",
     name: "Croaklossus",
     blurb: "Never skips leg day. Never skips the other six, either.",
-    elements: ["might", "metal"],
+    elements: [might, metal],
     colors: { ...SKIN, ...IRON, n: "#8a5a34", y: "#f2c14e" },
     sprite: [
       "oooo............oooo",
@@ -116,43 +125,13 @@ const line: Line = {
   forms,
   evolvesAt: [18, 36],
   moves: [
-    {
-      level: 1,
-      name: "Puddle Flex",
-      power: 25,
-      accuracy: 100,
-      text: "Flexes at its reflection. Nothing there yet.",
-    },
-    spritz,
-    {
-      level: 6,
-      name: "One More Rep",
-      power: 35,
-      accuracy: 100,
-      text: "Always finds one more in the tank.",
-    },
-    pounce,
-    {
-      level: 19,
-      name: "Rep Croak",
-      power: 55,
-      accuracy: 90,
-      text: "Croaks once per rep. Has never lost count.",
-    },
-    {
-      level: 28,
-      name: "Leg Day",
-      power: 75,
-      accuracy: 90,
-      text: "Never skips it.",
-    },
-    {
-      level: 38,
-      name: "Seven-Day Split",
-      power: 90,
-      accuracy: 85,
-      text: "Never skips the other six either.",
-    },
+    [1, puddleFlex],
+    [1, spritz],
+    [6, oneMoreRep],
+    [10, pounce],
+    [19, repCroak],
+    [28, legDay],
+    [38, sevendaySplit],
   ],
 };
 

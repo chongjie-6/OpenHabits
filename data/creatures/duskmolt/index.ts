@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { dive, nip } from "../common";
+import { dark, light } from "../elements";
+import {
+  dawnbreak,
+  dive,
+  duskFlutter,
+  firstLight,
+  goldBeneath,
+  nip,
+  shedScale,
+} from "../moves";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -7,7 +16,7 @@ const forms: Creature[] = [
     id: "duskmolt",
     name: "Duskmolt",
     blurb: "Sheds one dark scale for every good day. Underneath, it is gold.",
-    elements: ["dark"],
+    elements: [dark],
     colors: { o: OUTLINE, b: "#54466b", m: "#8a74ab", l: "#f0c75e" },
     sprite: [
       "o..............o",
@@ -45,7 +54,7 @@ const forms: Creature[] = [
     name: "Dawnmolt",
     blurb:
       "Grew out of a Duskmolt. Its last dark scale fell, and now it sheds light instead.",
-    elements: ["light"],
+    elements: [light],
     colors: { o: OUTLINE, w: SHINE, b: "#d6cfe6", m: "#f0c75e", l: "#fff3c4" },
     sprite: [
       "o.....m....m.....o",
@@ -88,43 +97,13 @@ const line: Line = {
   forms,
   evolvesAt: [22],
   moves: [
-    {
-      level: 1,
-      name: "Shed Scale",
-      power: 25,
-      accuracy: 100,
-      text: "Drops one dark scale for a good day.",
-    },
-    nip,
-    {
-      level: 8,
-      name: "Gold Beneath",
-      power: 40,
-      accuracy: 95,
-      text: "Shows a glint of what it is turning into.",
-    },
-    dive,
-    {
-      level: 15,
-      name: "Dusk Flutter",
-      power: 50,
-      accuracy: 95,
-      text: "Flies out when everything else is heading home.",
-    },
-    {
-      level: 23,
-      name: "First Light",
-      power: 65,
-      accuracy: 90,
-      text: "Sheds its last dark scale and gives off light instead.",
-    },
-    {
-      level: 34,
-      name: "Dawnbreak",
-      power: 85,
-      accuracy: 85,
-      text: "Makes morning come a little earlier for everyone.",
-    },
+    [1, shedScale],
+    [1, nip],
+    [8, goldBeneath],
+    [10, dive],
+    [15, duskFlutter],
+    [23, firstLight],
+    [34, dawnbreak],
   ],
 };
 

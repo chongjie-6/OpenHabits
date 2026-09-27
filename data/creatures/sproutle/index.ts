@@ -1,5 +1,14 @@
 import type { Creature, Line } from "@/lib/types";
-import { bump, swat } from "../common";
+import { grass } from "../elements";
+import {
+  bump,
+  deepRoots,
+  harvestGift,
+  leafCount,
+  morningDew,
+  selfwater,
+  swat,
+} from "../moves";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const forms: Creature[] = [
@@ -7,7 +16,7 @@ const forms: Creature[] = [
     id: "sproutle",
     name: "Sproutle",
     blurb: "Grows one leaf for every morning it is watered. Never skips one.",
-    elements: ["grass"],
+    elements: [grass],
     colors: { o: OUTLINE, w: SHINE, b: "#7cc26b", l: "#3f9b4a", d: "#5aa9e6" },
     sprite: [
       "......ll....",
@@ -32,7 +41,7 @@ const forms: Creature[] = [
     id: "bloomkin",
     name: "Bloomkin",
     blurb: "Waters itself now. Nobody has to remind it.",
-    elements: ["grass"],
+    elements: [grass],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -73,7 +82,7 @@ const forms: Creature[] = [
     id: "bountree",
     name: "Bountree",
     blurb: "Each fruit is a morning it showed up. It gives every one away.",
-    elements: ["grass"],
+    elements: [grass],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -116,43 +125,13 @@ const line: Line = {
   forms,
   evolvesAt: [12, 28],
   moves: [
-    {
-      level: 1,
-      name: "Morning Dew",
-      power: 25,
-      accuracy: 100,
-      text: "Catches the first drop of the day on its leaf and keeps it.",
-    },
-    bump,
-    {
-      level: 7,
-      name: "Leaf Count",
-      power: 35,
-      accuracy: 95,
-      text: "Counts its leaves out loud. There is always one more than yesterday.",
-    },
-    swat,
-    {
-      level: 14,
-      name: "Self-Water",
-      power: 50,
-      accuracy: 95,
-      text: "Tips its own bloom over its roots. Nobody had to remind it.",
-    },
-    {
-      level: 22,
-      name: "Deep Roots",
-      power: 60,
-      accuracy: 90,
-      text: "Holds fast through a bad week. The roots were growing the whole time.",
-    },
-    {
-      level: 32,
-      name: "Harvest Gift",
-      power: 80,
-      accuracy: 85,
-      text: "Drops a ripe fruit for whoever showed up today.",
-    },
+    [1, morningDew],
+    [1, bump],
+    [7, leafCount],
+    [10, swat],
+    [14, selfwater],
+    [22, deepRoots],
+    [32, harvestGift],
   ],
 };
 
