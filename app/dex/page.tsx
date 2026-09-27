@@ -24,6 +24,7 @@ import {
   QUALIFYING_RATE,
   stageAt,
   STARTERS,
+  STRONG_AGAINST,
   swapSeats,
   type CreatureState,
 } from "@/lib/creatures";
@@ -59,12 +60,23 @@ export default function DexPage() {
   const owned = useCreatures();
   const [open, setOpen] = useState<string | null>(null);
   const [filling, setFilling] = useState(false);
+  const [charting, setCharting] = useState(false);
 
   if (!hydrated) return <Skeleton />;
 
   return (
     <section className="space-y-6">
-      <h1 className="display-type text-[15px]">Creatures</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="display-type text-[15px]">Creatures</h1>
+        <button
+          type="button"
+          onClick={() => setCharting(true)}
+          className="h-8 rounded-control border border-border px-3 text-[12px] font-medium text-muted transition-colors hover:text-foreground"
+        >
+          Element chart
+        </button>
+      </div>
+      <ChartSheet open={charting} onClose={() => setCharting(false)} />
 
       {!signedIn ? (
         <p className="text-[13px] leading-relaxed text-muted">
@@ -410,12 +422,247 @@ function Dex({ owned }: { owned: CreatureState | null }) {
   );
 }
 
-/** Spans, not a list, so it can sit inside a button. */
+function ChartSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const elements = Object.keys(STRONG_AGAINST) as CreatureElement[];
+  const [picked, setPicked] = useState<CreatureElement>("fire");
+
+  return (
+    <Sheet open={open} onClose={onClose} title="Element chart">
+      <p className="text-[12px] text-muted">
+        Each element is strong against two and weak to two.
+      </p>
+      <ElementWheel picked={picked} onPick={setPicked} />
+      <table className="mt-3 w-full text-left text-[12px]">
+        <thead className="text-[11px] text-muted">
+          <tr>
+            <th scope="col" className="pb-2 pr-2 font-medium">
+              Element
+            </th>
+            <th scope="col" className="pb-2 pr-2 font-medium">
+              Strong against
+            </th>
+            <th scope="col" className="pb-2 font-medium">
+              Weak to
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {elements.map((element) => {
+            const { strong, weak } = matchups([element]);
+            const quiet = element !== picked;
+            return (
+              <tr
+                key={element}
+                className={`border-t border-border ${quiet ? "" : "bg-surface-2"}`}
+              >
+                <th scope="row" className="py-2 pr-2 font-normal">
+                  <button
+                    type="button"
+                    aria-pressed={!quiet}
+                    onClick={() => setPicked(element)}
+                    className="rounded-full"
+                  >
+                    <Elements elements={[element]} quiet={quiet} />
+                  </button>
+                </th>
+                <td className="py-2 pr-2">
+                  <Elements elements={strong} quiet={quiet} />
+                </td>
+                <td className="py-2">
+                  <Elements elements={weak} quiet={quiet} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Sheet>
+  );
+}
+
+// Searched for: no matchup joins two neighbours, whose arrows would be too short to read.
+const WHEEL: CreatureElement[] = [
+  "fire",
+  "wind",
+  "spirit",
+  "grass",
+  "dark",
+  "metal",
+  "earth",
+  "light",
+  "ice",
+  "water",
+  "might",
+];
+
+/** In the wheel's 0–100 box. */
+function wheelPoint(element: CreatureElement) {
+  const angle =
+    -Math.PI / 2 + (WHEEL.indexOf(element) * 2 * Math.PI) / WHEEL.length;
+  return { x: 50 + 38 * Math.cos(angle), y: 50 + 38 * Math.sin(angle) };
+}
+
+/** A chord from one label to another, as points, ending in an arrowhead. */
+function arrow(from: CreatureElement, to: CreatureElement) {
+  const a = wheelPoint(from);
+  const b = wheelPoint(to);
+  // Bowed to the right of travel, so a mutual pair draws two curves, not one line.
+  const c = {
+    x: (a.x + b.x) / 2 - (b.y - a.y) * 0.15,
+    y: (a.y + b.y) / 2 + (b.x - a.x) * 0.15,
+  };
+  const at = (t: number) => ({
+    x: (1 - t) ** 2 * a.x + 2 * (1 - t) * t * c.x + t ** 2 * b.x,
+    y: (1 - t) ** 2 * a.y + 2 * (1 - t) * t * c.y + t ** 2 * b.y,
+  });
+  // Roughly a label's box, so a line starts and stops at its edge.
+  const clear = (p: { x: number; y: number }, n: { x: number; y: number }) =>
+    ((p.x - n.x) / 10) ** 2 + ((p.y - n.y) / 4.5) ** 2 >= 1;
+  const points = Array.from({ length: 41 }, (_, i) => at(i / 40)).filter(
+    (p) => clear(p, a) && clear(p, b),
+  );
+  const tip = points[points.length - 1];
+  const prev = points[points.length - 2];
+  const len = Math.hypot(tip.x - prev.x, tip.y - prev.y);
+  const [dx, dy] = [(tip.x - prev.x) / len, (tip.y - prev.y) / len];
+  const head = [
+    tip,
+    { x: tip.x - dx * 2.4 - dy * 1.2, y: tip.y - dy * 2.4 + dx * 1.2 },
+    { x: tip.x - dx * 2.4 + dy * 1.2, y: tip.y - dy * 2.4 - dx * 1.2 },
+  ];
+  const svg = (ps: { x: number; y: number }[]) =>
+    ps.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
+  return { line: svg(points), head: svg(head) };
+}
+
+const title = (element: CreatureElement) =>
+  element[0].toUpperCase() + element.slice(1);
+
+function ElementWheel({
+  picked,
+  onPick,
+}: {
+  picked: CreatureElement;
+  onPick: (element: CreatureElement) => void;
+}) {
+  const { strong, weak } = matchups([picked]);
+  const edges = [
+    ...strong.map((to) => ({ from: picked, to, role: "strong" })),
+    ...weak.map((from) => ({ from, to: picked, role: "weak" })),
+  ];
+
+  return (
+    <figure className="mt-3">
+      <div className="relative mx-auto aspect-square w-full max-w-[320px]">
+        <svg
+          viewBox="0 0 100 100"
+          aria-hidden="true"
+          className="absolute inset-0 size-full"
+        >
+          {edges.map(({ from, to, role }) => {
+            const { line, head } = arrow(from, to);
+            const weakTo = role === "weak";
+            return (
+              <g
+                key={`${from}-${to}`}
+                className={
+                  weakTo
+                    ? "stroke-muted fill-muted"
+                    : "stroke-foreground fill-foreground"
+                }
+              >
+                <polyline
+                  points={line}
+                  fill="none"
+                  strokeWidth={0.6}
+                  strokeDasharray={weakTo ? "1.6 1.2" : undefined}
+                  strokeLinecap="round"
+                />
+                <polygon points={head} stroke="none" />
+              </g>
+            );
+          })}
+        </svg>
+        {WHEEL.map((element) => {
+          const { x, y } = wheelPoint(element);
+          const selected = element === picked;
+          const related = strong.includes(element) || weak.includes(element);
+          return (
+            <button
+              key={element}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onPick(element)}
+              style={{ left: `${x}%`, top: `${y}%` }}
+              className={`absolute inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full border bg-surface px-2 py-1 text-[11px] leading-none transition-colors ${
+                selected
+                  ? "border-foreground font-medium text-foreground"
+                  : related
+                    ? "border-border text-foreground"
+                    : "border-transparent text-muted"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full"
+                style={{
+                  background:
+                    selected || related
+                      ? ELEMENT_COLORS[element]
+                      : "var(--muted)",
+                }}
+              />
+              {title(element)}
+            </button>
+          );
+        })}
+      </div>
+      <figcaption
+        aria-live="polite"
+        className="mt-2 text-center text-[12px] leading-snug text-muted"
+      >
+        {title(picked)} is strong against {strong.map(title).join(" and ")}, and
+        weak to {weak.map(title).join(" and ")}.
+      </figcaption>
+      <div
+        aria-hidden="true"
+        className="mt-2 flex justify-center gap-4 text-[11px] text-muted"
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="20" height="6" className="stroke-foreground">
+            <line x1="0" y1="3" x2="20" y2="3" strokeWidth="1.5" />
+          </svg>
+          Strong against
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="20" height="6" className="stroke-muted">
+            <line
+              x1="0"
+              y1="3"
+              x2="20"
+              y2="3"
+              strokeWidth="1.5"
+              strokeDasharray="4 3"
+            />
+          </svg>
+          Weak to
+        </span>
+      </div>
+    </figure>
+  );
+}
+
+/**
+ * Spans, not a list, so it can sit inside a button. `quiet` recedes by losing its
+ * border and colour, never by opacity: `--muted` text has no contrast to spare.
+ */
 function Elements({
   elements,
+  quiet = false,
   className = "",
 }: {
   elements: CreatureElement[];
+  quiet?: boolean;
   className?: string;
 }) {
   return (
@@ -423,12 +670,16 @@ function Elements({
       {elements.map((element) => (
         <span
           key={element}
-          className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] capitalize leading-none text-muted"
+          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] capitalize leading-none text-muted ${
+            quiet ? "border-transparent" : "border-border"
+          }`}
         >
           <span
             aria-hidden="true"
             className="size-1.5 rounded-full"
-            style={{ background: ELEMENT_COLORS[element] }}
+            style={{
+              background: quiet ? "var(--muted)" : ELEMENT_COLORS[element],
+            }}
           />
           {element}
         </span>
