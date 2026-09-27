@@ -211,7 +211,7 @@ function Party({
               <button
                 type="button"
                 onClick={() => onOpen(creature.line)}
-                className="surface-card flex w-full flex-col items-center bg-surface p-3 text-center"
+                className="surface-card flex h-full w-full flex-col items-center justify-end bg-surface p-3 text-center"
               >
                 <Sprite creature={formOf(creature)} still scale={3} />
                 <Nameplate creature={creature} compact />
@@ -260,7 +260,7 @@ function Box({
             <button
               type="button"
               onClick={() => onOpen(creature.line)}
-              className="surface-card flex w-full flex-col items-center bg-surface p-2 text-center"
+              className="surface-card flex h-full w-full flex-col items-center justify-end bg-surface p-2 text-center"
             >
               <Sprite creature={formOf(creature)} still scale={3} />
               <Nameplate creature={creature} compact />
@@ -588,7 +588,7 @@ function CreatureSheet({
                       type="button"
                       disabled={busy}
                       onClick={() => swapWith(other.line)}
-                      className="surface-card flex w-full flex-col items-center bg-surface p-2 text-center disabled:opacity-50"
+                      className="surface-card flex h-full w-full flex-col items-center justify-end bg-surface p-2 text-center disabled:opacity-50"
                     >
                       <Sprite creature={formOf(other)} still scale={3} />
                       <Nameplate creature={other} compact />
@@ -646,7 +646,7 @@ function SeatSheet({
                 onClick={async () => {
                   if (await seat([...partyOf(state), creature.line])) close();
                 }}
-                className="surface-card flex w-full flex-col items-center bg-surface p-2 text-center disabled:opacity-50"
+                className="surface-card flex h-full w-full flex-col items-center justify-end bg-surface p-2 text-center disabled:opacity-50"
               >
                 <Sprite creature={formOf(creature)} still scale={3} />
                 <Nameplate creature={creature} compact />
