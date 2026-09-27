@@ -18,6 +18,7 @@ const forms: Creature[] = [
     name: "Gainlet",
     blurb:
       "Flexes at every puddle it passes. Nothing there yet. It flexes anyway.",
+    elements: ["water", "might"],
     colors: SKIN,
     sprite: [
       ".oo...oo....",
@@ -42,6 +43,7 @@ const forms: Creature[] = [
     id: "repcroak",
     name: "Repcroak",
     blurb: "Croaks once for every rep. Has never lost count, or stopped early.",
+    elements: ["water", "might"],
     colors: { ...SKIN, ...IRON },
     sprite: [
       "..ooo..ooo.o...o",
@@ -70,6 +72,7 @@ const forms: Creature[] = [
     id: "croaklossus",
     name: "Croaklossus",
     blurb: "Never skips leg day. Never skips the other six, either.",
+    elements: ["might", "metal"],
     colors: { ...SKIN, ...IRON, n: "#8a5a34", y: "#f2c14e" },
     sprite: [
       "oooo............oooo",

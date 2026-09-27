@@ -6,6 +6,7 @@ const forms: Creature[] = [
     id: "gustling",
     name: "Gustling",
     blurb: "Rides the first breeze of the day and is home before dark.",
+    elements: ["wind"],
     colors: { o: OUTLINE, w: SHINE, b: "#e8eef2", l: "#f2c14e", g: "#a7c4d8" },
     sprite: [
       "............",
@@ -41,6 +42,7 @@ const forms: Creature[] = [
     name: "Galecrest",
     blurb:
       "Grew out of a Gustling. Stopped waiting for the breeze, and now makes its own.",
+    elements: ["wind"],
     colors: {
       o: OUTLINE,
       w: SHINE,

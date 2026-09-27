@@ -7,6 +7,7 @@ const forms: Creature[] = [
     name: "Glimmoth",
     blurb:
       "Only comes out after a day you finished. Nobody knows how it knows.",
+    elements: ["light"],
     colors: { o: OUTLINE, w: "#f7e27a", b: "#9b7fd4", l: "#4a3a6b" },
     sprite: [
       "............",
@@ -40,6 +41,7 @@ const forms: Creature[] = [
     name: "Lanthorn",
     blurb:
       "Grew out of a Glimmoth. Keeps every finished day in its lantern, so it never goes out.",
+    elements: ["light"],
     colors: {
       o: OUTLINE,
       w: "#f7e27a",

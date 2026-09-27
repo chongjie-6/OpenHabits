@@ -7,6 +7,7 @@ const forms: Creature[] = [
     name: "Mossback",
     blurb:
       "Slow, and never late. Moss grows on its shell because it keeps still.",
+    elements: ["earth"],
     colors: { o: OUTLINE, w: SHINE, b: "#c9b27c", l: "#5f8f4e" },
     sprite: [
       "............",
@@ -43,6 +44,7 @@ const forms: Creature[] = [
     name: "Elderback",
     blurb:
       "Grew out of a Mossback. Kept still so long that its shell turned into a garden.",
+    elements: ["earth", "grass"],
     colors: {
       o: OUTLINE,
       w: SHINE,

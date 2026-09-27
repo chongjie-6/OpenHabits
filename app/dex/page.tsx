@@ -17,6 +17,7 @@ import {
   lineOf,
   LINES,
   LOWEST_PAYING_RATE,
+  matchups,
   movesAt,
   PARTY_SIZE,
   payout,
@@ -30,7 +31,23 @@ import { firstDayOf, statFor } from "@/lib/history";
 import { chooseStarter, setParty, useCreatures } from "@/lib/party";
 import { useSignedIn } from "@/lib/session";
 import { useOpenHabits } from "@/lib/store";
+import type { CreatureElement } from "@/lib/types";
 import { useToday } from "@/lib/use-today";
+
+// Decorative: the name beside each dot carries the meaning, so these need no contrast.
+const ELEMENT_COLORS: Record<CreatureElement, string> = {
+  grass: "#5fb85a",
+  fire: "#f08a4b",
+  water: "#3d8fd1",
+  wind: "#a7c4d8",
+  earth: "#b08a5a",
+  ice: "#8fdcef",
+  light: "#f2c14e",
+  dark: "#54466b",
+  metal: "#9aa0ae",
+  might: "#d8453a",
+  spirit: "#a883d4",
+};
 
 const SCALE = 6;
 const STAGE =
@@ -138,6 +155,7 @@ function StarterPicker() {
                 <span className="mt-2 text-[13px] font-medium">
                   {base.name}
                 </span>
+                <Elements elements={base.elements} className="mt-1" />
               </button>
             </li>
           );
@@ -378,14 +396,44 @@ function Dex({ owned }: { owned: CreatureState | null }) {
               {known ? creature.name : "???"}
             </p>
             {known && (
-              <p className="mt-1 text-[11px] leading-snug text-muted">
-                {creature.blurb}
-              </p>
+              <>
+                <Elements elements={creature.elements} className="mt-1" />
+                <p className="mt-1 text-[11px] leading-snug text-muted">
+                  {creature.blurb}
+                </p>
+              </>
             )}
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Spans, not a list, so it can sit inside a button. */
+function Elements({
+  elements,
+  className = "",
+}: {
+  elements: CreatureElement[];
+  className?: string;
+}) {
+  return (
+    <span className={`flex flex-wrap gap-1 ${className}`}>
+      {elements.map((element) => (
+        <span
+          key={element}
+          className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] capitalize leading-none text-muted"
+        >
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full"
+            style={{ background: ELEMENT_COLORS[element] }}
+          />
+          {element}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -454,6 +502,7 @@ function CreatureSheet({
   const level = creatureLevel(creature.exp);
   const known = movesAt(line, level);
   const next = line.moves[known.length];
+  const { strong, weak } = matchups(form.elements);
   const evolvesAt = line.evolvesAt.find((at) => at > level);
   const toEvolve = expToEvolve(line, creature.exp);
   const inParty = creature.slot !== null;
@@ -488,6 +537,23 @@ function CreatureSheet({
               </p>
             )}
           </div>
+        </div>
+
+        <div>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+            Elements
+          </h3>
+          <Elements elements={form.elements} className="mt-2" />
+          <dl className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5 text-[12px] text-muted">
+            <dt>Strong against</dt>
+            <dd>
+              <Elements elements={strong} />
+            </dd>
+            <dt>Weak to</dt>
+            <dd>
+              <Elements elements={weak} />
+            </dd>
+          </dl>
         </div>
 
         <div>

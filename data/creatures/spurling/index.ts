@@ -18,6 +18,7 @@ const forms: Creature[] = [
     name: "Spurling",
     blurb:
       "Breaks its spines on everything. Each one grows back a little harder.",
+    elements: ["might"],
     colors,
     sprite: [
       "............",
@@ -48,6 +49,7 @@ const forms: Creature[] = [
     name: "Quillrend",
     blurb:
       "Throws its spines at every problem. By morning they have grown back tougher.",
+    elements: ["might"],
     colors: { ...colors, b: "#4e5167" },
     sprite: [
       "................",
@@ -77,6 +79,7 @@ const forms: Creature[] = [
     name: "Wrathorn",
     blurb:
       "Every spine it ever broke grew back black. It still throws itself at every day.",
+    elements: ["might", "dark"],
     colors: { ...colors, b: "#474a5f" },
     sprite: [
       "k...kok...k.........",

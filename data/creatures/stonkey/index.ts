@@ -10,6 +10,7 @@ const forms: Creature[] = [
     name: "Stonkey",
     blurb:
       "Sat inside a mountain stone for a thousand sunrises. Still lifts the lid to check before coming out.",
+    elements: ["earth"],
     colors: { ...FUR, k: "#aca59c", h: "#dcd6cc" },
     sprite: [
       "....oooo....",
@@ -35,6 +36,7 @@ const forms: Creature[] = [
     name: "Staffling",
     blurb:
       "Its staff grows a little longer every day it trains. It likes to check.",
+    elements: ["might"],
     colors: { ...FUR, ...GEAR },
     sprite: [
       "..............o.",
@@ -64,6 +66,7 @@ const forms: Creature[] = [
     name: "Cloudsage",
     blurb:
       "One somersault carries it a hundred thousand li. It still practises one every morning.",
+    elements: ["might", "wind"],
     colors: { ...FUR, ...GEAR, c: "#f7f4ff", s: "#c6bde6" },
     sprite: [
       "..rrr......rrr......",

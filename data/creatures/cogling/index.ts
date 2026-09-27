@@ -15,6 +15,7 @@ const forms: Creature[] = [
     name: "Cogling",
     blurb:
       "Lives behind the settings. Turns a notch one way, a notch the other, and clicks when everything is just so.",
+    elements: ["metal"],
     colors: { o: OUTLINE, w: SHINE, ...BRASS },
     sprite: [
       ".....oooo.....",
@@ -43,6 +44,7 @@ const forms: Creature[] = [
     name: "Blockog",
     blurb:
       "Cogling, rebuilt in blocks. Comes apart at the seams to check every tile is square, then clunks back together.",
+    elements: ["metal"],
     colors: { o: OUTLINE, w: SHINE, ...BRASS },
     sprite: [
       ".....oooo.....",
@@ -75,6 +77,7 @@ const forms: Creature[] = [
     blurb:
       "Cogling, reset to a grid. Every cell is a day, and it fills them in column by column, like a year.",
     // `p` to `u` are the cells it fills, in order; the idle loop reaches them by key.
+    elements: ["metal"],
     colors: {
       o: OUTLINE,
       w: SHINE,

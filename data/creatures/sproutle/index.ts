@@ -6,6 +6,7 @@ const forms: Creature[] = [
     id: "sproutle",
     name: "Sproutle",
     blurb: "Grows one leaf for every morning it is watered. Never skips one.",
+    elements: ["grass"],
     colors: { o: OUTLINE, w: SHINE, b: "#7cc26b", l: "#3f9b4a", d: "#5aa9e6" },
     sprite: [
       "......ll....",
@@ -30,6 +31,7 @@ const forms: Creature[] = [
     id: "bloomkin",
     name: "Bloomkin",
     blurb: "Waters itself now. Nobody has to remind it.",
+    elements: ["grass"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -70,6 +72,7 @@ const forms: Creature[] = [
     id: "bountree",
     name: "Bountree",
     blurb: "Each fruit is a morning it showed up. It gives every one away.",
+    elements: ["grass"],
     colors: {
       o: OUTLINE,
       w: SHINE,

@@ -6,6 +6,7 @@ const forms: Creature[] = [
     id: "drizzlet",
     name: "Drizzlet",
     blurb: "Falls as one drop a day. Given a year, it becomes a lake.",
+    elements: ["water"],
     colors: { o: OUTLINE, w: SHINE, b: "#5aa9e6", l: "#bfe3ff" },
     sprite: [
       ".....oo.....",
@@ -33,6 +34,7 @@ const forms: Creature[] = [
     id: "ripplet",
     name: "Ripplet",
     blurb: "Keeps every drop it catches. Each ripple goes a little further.",
+    elements: ["water"],
     colors: { o: OUTLINE, w: SHINE, b: "#5aa9e6", l: "#bfe3ff", p: "#3d8fd1" },
     sprite: [
       ".......oo.......",
@@ -73,6 +75,7 @@ const forms: Creature[] = [
     id: "stillmere",
     name: "Stillmere",
     blurb: "Started as one drop a day. Now fish live in it.",
+    elements: ["water"],
     colors: {
       o: OUTLINE,
       w: SHINE,

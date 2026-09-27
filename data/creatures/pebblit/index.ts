@@ -6,6 +6,7 @@ const forms: Creature[] = [
     id: "pebblit",
     name: "Pebblit",
     blurb: "Made of every small thing it ever did twice.",
+    elements: ["earth"],
     colors: { o: OUTLINE, w: SHINE, b: "#9a9aa6", l: "#c8c8d2" },
     sprite: [
       "............",
@@ -36,6 +37,7 @@ const forms: Creature[] = [
     name: "Cobblet",
     blurb:
       "Balances a pebble on its head. When it drops it, it picks it up and tries again.",
+    elements: ["earth"],
     colors: { o: OUTLINE, w: SHINE, b: "#9a9aa6", l: "#c8c8d2", m: "#8fae6a" },
     sprite: [
       "......oo......",
@@ -66,6 +68,7 @@ const forms: Creature[] = [
     name: "Cairnhold",
     blurb:
       "Every stone is a week that held. Travellers add one on top, and it has never let one fall.",
+    elements: ["earth"],
     colors: { o: OUTLINE, w: SHINE, b: "#9a9aa6", l: "#c8c8d2", m: "#8fae6a" },
     sprite: [
       "................",

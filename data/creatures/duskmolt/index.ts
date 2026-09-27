@@ -6,6 +6,7 @@ const forms: Creature[] = [
     id: "duskmolt",
     name: "Duskmolt",
     blurb: "Sheds one dark scale for every good day. Underneath, it is gold.",
+    elements: ["dark"],
     colors: { o: OUTLINE, b: "#54466b", m: "#8a74ab", l: "#f0c75e" },
     sprite: [
       "o..............o",
@@ -43,6 +44,7 @@ const forms: Creature[] = [
     name: "Dawnmolt",
     blurb:
       "Grew out of a Duskmolt. Its last dark scale fell, and now it sheds light instead.",
+    elements: ["light"],
     colors: { o: OUTLINE, w: SHINE, b: "#d6cfe6", m: "#f0c75e", l: "#fff3c4" },
     sprite: [
       "o.....m....m.....o",

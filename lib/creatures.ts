@@ -11,7 +11,7 @@ import {
   STARTERS,
 } from "@/data/creatures";
 import type { Skin } from "./skin";
-import type { Creature, DayKey, Line, Move } from "./types";
+import type { Creature, CreatureElement, DayKey, Line, Move } from "./types";
 
 /** A day at this rate or better is a good day, and good days find creatures. */
 export const QUALIFYING_RATE = 0.8;
@@ -56,6 +56,43 @@ export function expForLevel(level: number): number {
 
 export function creatureLevel(exp: number): number {
   return Math.min(MAX_LEVEL, Math.floor(Math.sqrt(exp / 6)) + 1);
+}
+
+/**
+ * Each element is strong against two and weak to two, so none is safe to stack.
+ * The starters' three close the loop fire > grass > water > fire.
+ */
+export const STRONG_AGAINST: Record<
+  CreatureElement,
+  [CreatureElement, CreatureElement]
+> = {
+  fire: ["grass", "ice"],
+  water: ["fire", "earth"],
+  grass: ["water", "earth"],
+  earth: ["fire", "wind"],
+  ice: ["grass", "wind"],
+  wind: ["water", "light"],
+  metal: ["ice", "spirit"],
+  might: ["metal", "dark"],
+  light: ["dark", "spirit"],
+  dark: ["light", "might"],
+  spirit: ["might", "metal"],
+};
+
+/** What any of a form's elements beats, and what beats any of them. */
+export function matchups(elements: CreatureElement[]): {
+  strong: CreatureElement[];
+  weak: CreatureElement[];
+} {
+  const all = Object.keys(STRONG_AGAINST) as CreatureElement[];
+  return {
+    strong: all.filter((e) =>
+      elements.some((own) => STRONG_AGAINST[own].includes(e)),
+    ),
+    weak: all.filter((e) =>
+      STRONG_AGAINST[e].some((target) => elements.includes(target)),
+    ),
+  };
 }
 
 /** Index into `line.forms`. */

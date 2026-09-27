@@ -146,10 +146,26 @@ export type Fact = {
  * A collectable found by finishing a good week (§5.5). `sprite` rows are pixel
  * art: `.` is empty, every other character is a key of `colors`.
  */
+/** Not `Element`, which would shadow the DOM's. The matchups are `STRONG_AGAINST`. */
+export type CreatureElement =
+  | "grass"
+  | "fire"
+  | "water"
+  | "wind"
+  | "earth"
+  | "ice"
+  | "light"
+  | "dark"
+  | "metal"
+  | "might"
+  | "spirit";
+
 export type Creature = {
   id: string;
   name: string;
   blurb: string;
+  /** Per form, so a line can change element as it evolves. */
+  elements: [CreatureElement] | [CreatureElement, CreatureElement];
   colors: Record<string, string>;
   sprite: string[];
   /**

@@ -6,6 +6,7 @@ const forms: Creature[] = [
     id: "emberpup",
     name: "Emberpup",
     blurb: "Its tail glows warmer the longer its streak runs.",
+    elements: ["fire"],
     colors: { o: OUTLINE, w: SHINE, b: "#f08a4b", l: "#ffd8a8" },
     sprite: [
       ".o........o.",
@@ -30,6 +31,7 @@ const forms: Creature[] = [
     id: "hearthound",
     name: "Hearthound",
     blurb: "Its flame gutters some days. Never two in a row.",
+    elements: ["fire"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -66,6 +68,7 @@ const forms: Creature[] = [
     id: "blazemane",
     name: "Blazemane",
     blurb: "Roars at dawn, every day. Some say the sun waits for it.",
+    elements: ["fire"],
     colors: {
       o: OUTLINE,
       w: SHINE,

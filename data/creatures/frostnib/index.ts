@@ -6,6 +6,7 @@ const forms: Creature[] = [
     id: "frostnib",
     name: "Frostnib",
     blurb: "Takes a cold swim every day, and says it feels great afterwards.",
+    elements: ["ice", "water"],
     colors: { o: OUTLINE, w: SHINE, b: "#3d5a80", l: "#eef4fa", d: "#7fc8f8" },
     sprite: [
       "....oooo....",
@@ -44,6 +45,7 @@ const forms: Creature[] = [
     name: "Rimebill",
     blurb:
       "Grew out of a Frostnib. Still swims every morning, even when it has to break the ice first.",
+    elements: ["ice", "water"],
     colors: {
       o: OUTLINE,
       w: SHINE,

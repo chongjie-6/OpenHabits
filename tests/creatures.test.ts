@@ -13,12 +13,14 @@ import {
   findCogling,
   isFound,
   LINES,
+  matchups,
   MAX_LEVEL,
   movesAt,
   noticeEvolutions,
   payout,
   stageAt,
   STARTERS,
+  STRONG_AGAINST,
   swapSeats,
 } from "@/lib/creatures";
 
@@ -261,6 +263,46 @@ describe("the dex", () => {
         }
       }
     }
+  });
+});
+
+describe("elements", () => {
+  it("are each strong against two others and weak to two", () => {
+    const weakTo = new Map<string, number>();
+    for (const [element, targets] of Object.entries(STRONG_AGAINST)) {
+      expect(new Set(targets).size, element).toBe(2);
+      expect(targets, element).not.toContain(element);
+      for (const target of targets)
+        weakTo.set(target, (weakTo.get(target) ?? 0) + 1);
+    }
+    for (const element of Object.keys(STRONG_AGAINST))
+      expect(weakTo.get(element), element).toBe(2);
+  });
+
+  it("put the starters in a loop", () => {
+    const [grass, fire, water] = STARTERS.map(
+      (id) => LINES.find((line) => line.id === id)!.forms[0].elements[0],
+    );
+    expect(STRONG_AGAINST[fire]).toContain(grass);
+    expect(STRONG_AGAINST[grass]).toContain(water);
+    expect(STRONG_AGAINST[water]).toContain(fire);
+  });
+
+  it("combine a dual form's matchups without repeating one", () => {
+    expect(matchups(["fire"])).toEqual({
+      strong: ["grass", "ice"],
+      weak: ["water", "earth"],
+    });
+    // Water beats fire and fire melts ice, so a dual form can be both.
+    expect(matchups(["ice", "water"])).toEqual({
+      strong: ["fire", "grass", "earth", "wind"],
+      weak: ["fire", "grass", "wind", "metal"],
+    });
+  });
+
+  it("never give a form the same element twice", () => {
+    for (const { id, elements } of DEX)
+      expect(new Set(elements).size, id).toBe(elements.length);
   });
 });
 

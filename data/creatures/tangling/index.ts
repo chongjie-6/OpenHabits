@@ -14,6 +14,7 @@ const forms: Creature[] = [
     name: "Tangling",
     blurb:
       "Your next line is 'I'll do it tomorrow.' Its thorny vine has already found today's.",
+    elements: ["spirit", "grass"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -51,6 +52,7 @@ const forms: Creature[] = [
     name: "Tanglare",
     blurb:
       "Runs a ripple of sunlight down its vines into every excuse they catch. 'Oh my god!' it cries, every single time.",
+    elements: ["spirit", "light"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -93,6 +95,7 @@ const forms: Creature[] = [
     name: "Jabbit",
     blurb:
       "Says only 'good grief.' Then it lands a hundred jabs before you can blink.",
+    elements: ["spirit", "might"],
     colors: { o: OUTLINE, w: SHINE, g: STAR, b: "#4d5db3", l: "#b9c4f3" },
     sprite: [
       "..oo....oo......",
@@ -125,6 +128,7 @@ const forms: Creature[] = [
     name: "Stillhare",
     blurb:
       "For a few seconds, only it can move. When time begins to move again, the habit is already done.",
+    elements: ["spirit", "might"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -174,6 +178,7 @@ const forms: Creature[] = [
     name: "Mendle",
     blurb:
       "Mends whatever broke yesterday, missed days included. The one thing it can't mend is itself.",
+    elements: ["spirit", "earth"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -218,6 +223,7 @@ const forms: Creature[] = [
     name: "Mendazzle",
     blurb:
       "Every broken piece it finds flies straight back to where it belongs. Say what you like, just not about its hair.",
+    elements: ["spirit", "earth"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -262,6 +268,7 @@ const forms: Creature[] = [
     name: "Quickling",
     blurb:
       "Has a dream: that no dull leaf stays a leaf. Most of them become butterflies.",
+    elements: ["spirit", "grass"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -306,6 +313,7 @@ const forms: Creature[] = [
     name: "Neverfox",
     blurb:
       "Any excuse sent its way goes back to zero and never arrives. Useless, useless, useless.",
+    elements: ["spirit", "dark"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -349,6 +357,7 @@ const forms: Creature[] = [
     name: "Threadle",
     blurb:
       "Comes a little unravelled on hard days. Ties itself back tighter, and walks free.",
+    elements: ["spirit", "might"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -394,6 +403,7 @@ const forms: Creature[] = [
     name: "Tapestrel",
     blurb:
       "Unwinds into a net and catches the whole day in it. Then it winds back up, free to do as it pleases.",
+    elements: ["spirit", "might"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -442,6 +452,7 @@ const forms: Creature[] = [
     name: "Whorlet",
     blurb:
       "Its shell is a golden spiral, each turn a little wider than the last. It never stops turning.",
+    elements: ["spirit", "wind"],
     colors: {
       o: OUTLINE,
       g: STAR,
@@ -475,6 +486,7 @@ const forms: Creature[] = [
     name: "Whorlinity",
     blurb:
       "Its spin reached infinity and never stops. Whatever it sets turning keeps turning, and it never forgets to say thank you.",
+    elements: ["spirit", "wind"],
     colors: {
       o: OUTLINE,
       g: STAR,
@@ -511,6 +523,7 @@ const forms: Creature[] = [
     id: "burblet",
     name: "Burblet",
     blurb: "Plunders one bad habit a day in a bubble, and lets it float away.",
+    elements: ["spirit", "water"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -556,6 +569,7 @@ const forms: Creature[] = [
     name: "Burblivion",
     blurb:
       "Blows a bubble spun so thin it isn't really there, so nothing can stop it. It still wonders who it is.",
+    elements: ["spirit", "water"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -597,6 +611,7 @@ const forms: Creature[] = [
     name: "Pelter",
     blurb:
       "The youngest of Tangling's family. Rains like it's November, hard enough to press a habit into place.",
+    elements: ["spirit", "water"],
     colors: {
       o: OUTLINE,
       w: SHINE,
@@ -652,6 +667,7 @@ const forms: Creature[] = [
     name: "Pelterra",
     blurb:
       "It's all about the mechanism: every drop lands exactly where it means to, and what it presses stays pressed.",
+    elements: ["spirit", "water"],
     colors: {
       o: OUTLINE,
       w: SHINE,
