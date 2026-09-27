@@ -758,8 +758,6 @@ function CreatureSheet({
   const form = formFor(line, creature.exp);
   const level = creatureLevel(creature.exp);
   const known = movesAt(line, level);
-  const next = line.moves[known.length];
-  const { strong, weak } = matchups(form.elements);
   const evolvesAt = line.evolvesAt.find((at) => at > level);
   const toEvolve = expToEvolve(line, creature.exp);
   const inParty = creature.slot !== null;
@@ -801,16 +799,6 @@ function CreatureSheet({
             Elements
           </h3>
           <Elements elements={form.elements} className="mt-2" />
-          <dl className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5 text-[12px] text-muted">
-            <dt>Strong against</dt>
-            <dd>
-              <Elements elements={strong} />
-            </dd>
-            <dt>Weak to</dt>
-            <dd>
-              <Elements elements={weak} />
-            </dd>
-          </dl>
         </div>
 
         <div>
@@ -833,22 +821,15 @@ function CreatureSheet({
                 </p>
               </li>
             ))}
-            {next && (
-              <li className="text-[12px] text-muted">
-                Learns {next.name} at Lv {next.level}.
-              </li>
-            )}
           </ul>
         </div>
 
         <div className="space-y-3">
-          <p className="text-[12px] text-muted">
-            {creature.slot === 0
-              ? "Your buddy. It earns exp with the party."
-              : inParty
-                ? `In the party, seat ${creature.slot! + 1} of ${PARTY_SIZE}. It earns exp.`
-                : "Resting. It earns nothing until it joins the party."}
-          </p>
+          {creature.slot === 0 && (
+            <p className="text-[12px] text-muted">
+              Your buddy. It earns exp with the party.
+            </p>
+          )}
 
           <div className="flex flex-wrap gap-2">
             {inParty && creature.slot !== 0 && (
