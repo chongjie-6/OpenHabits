@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { dive, peck } from "../common";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -94,22 +95,38 @@ const line: Line = {
     {
       level: 1,
       name: "First Breeze",
+      power: 25,
+      accuracy: 100,
       text: "Catches the day's first wind before anyone is up.",
     },
-    { level: 7, name: "Tailwind", text: "Pushes you the last few steps home." },
+    peck,
+    {
+      level: 7,
+      name: "Tailwind",
+      power: 35,
+      accuracy: 95,
+      text: "Pushes you the last few steps home.",
+    },
+    dive,
     {
       level: 15,
       name: "Updraft",
+      power: 50,
+      accuracy: 95,
       text: "Rises on whatever the day throws at it.",
     },
     {
       level: 24,
       name: "Make Weather",
+      power: 65,
+      accuracy: 90,
       text: "Stops waiting for a breeze and starts one.",
     },
     {
       level: 35,
       name: "Home Before Dark",
+      power: 85,
+      accuracy: 85,
       text: "However far it goes, it is back by nightfall.",
     },
   ],

@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { pounce, scratch } from "../common";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const forms: Creature[] = [
@@ -131,26 +132,38 @@ const line: Line = {
     {
       level: 1,
       name: "Warm Tail",
+      power: 25,
+      accuracy: 100,
       text: "Wags a tail that glows one shade warmer for every day of the streak.",
     },
+    scratch,
     {
       level: 6,
       name: "Kindle",
+      power: 35,
+      accuracy: 100,
       text: "Breathes on a cold start until it catches.",
     },
+    pounce,
     {
       level: 15,
       name: "Steady Flame",
+      power: 50,
+      accuracy: 95,
       text: "Gutters some days, and never two in a row.",
     },
     {
       level: 24,
       name: "Hearth Guard",
+      power: 65,
+      accuracy: 90,
       text: "Curls round the fire so the streak lasts the night.",
     },
     {
       level: 33,
       name: "Dawn Roar",
+      power: 80,
+      accuracy: 85,
       text: "Roars the sun up. It has not been late once.",
     },
   ],

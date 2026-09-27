@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { bump, swat } from "../common";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const forms: Creature[] = [
@@ -118,26 +119,38 @@ const line: Line = {
     {
       level: 1,
       name: "Morning Dew",
+      power: 25,
+      accuracy: 100,
       text: "Catches the first drop of the day on its leaf and keeps it.",
     },
+    bump,
     {
       level: 7,
       name: "Leaf Count",
+      power: 35,
+      accuracy: 95,
       text: "Counts its leaves out loud. There is always one more than yesterday.",
     },
+    swat,
     {
       level: 14,
       name: "Self-Water",
+      power: 50,
+      accuracy: 95,
       text: "Tips its own bloom over its roots. Nobody had to remind it.",
     },
     {
       level: 22,
       name: "Deep Roots",
+      power: 60,
+      accuracy: 90,
       text: "Holds fast through a bad week. The roots were growing the whole time.",
     },
     {
       level: 32,
       name: "Harvest Gift",
+      power: 80,
+      accuracy: 85,
       text: "Drops a ripe fruit for whoever showed up today.",
     },
   ],

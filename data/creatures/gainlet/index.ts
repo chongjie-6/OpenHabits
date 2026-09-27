@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { pounce, spritz } from "../common";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const SKIN = {
@@ -118,22 +119,38 @@ const line: Line = {
     {
       level: 1,
       name: "Puddle Flex",
+      power: 25,
+      accuracy: 100,
       text: "Flexes at its reflection. Nothing there yet.",
     },
+    spritz,
     {
       level: 6,
       name: "One More Rep",
+      power: 35,
+      accuracy: 100,
       text: "Always finds one more in the tank.",
     },
+    pounce,
     {
       level: 19,
       name: "Rep Croak",
+      power: 55,
+      accuracy: 90,
       text: "Croaks once per rep. Has never lost count.",
     },
-    { level: 28, name: "Leg Day", text: "Never skips it." },
+    {
+      level: 28,
+      name: "Leg Day",
+      power: 75,
+      accuracy: 90,
+      text: "Never skips it.",
+    },
     {
       level: 38,
       name: "Seven-Day Split",
+      power: 90,
+      accuracy: 85,
       text: "Never skips the other six either.",
     },
   ],

@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { bump, roll } from "../common";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -108,26 +109,38 @@ const line: Line = {
     {
       level: 1,
       name: "Do It Twice",
+      power: 25,
+      accuracy: 100,
       text: "Does everything twice, just to be sure.",
     },
+    bump,
     {
       level: 8,
       name: "Skip Stone",
+      power: 40,
+      accuracy: 95,
       text: "Bounces across a bad day without sinking.",
     },
+    roll,
     {
       level: 17,
       name: "Balance Act",
+      power: 55,
+      accuracy: 95,
       text: "Keeps a pebble on its head. Drops it. Tries again.",
     },
     {
       level: 26,
       name: "Stack Up",
+      power: 70,
+      accuracy: 90,
       text: "Adds one more stone. The pile has never fallen.",
     },
     {
       level: 36,
       name: "Cairn Keep",
+      power: 85,
+      accuracy: 85,
       text: "Holds every stone a traveller ever left on it.",
     },
   ],

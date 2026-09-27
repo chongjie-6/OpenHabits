@@ -176,8 +176,17 @@ export type Creature = {
   rig?: { parts?: Record<string, PixelBox>; fx?: Record<string, Pixel[]> };
 };
 
-/** Learned at `level` and shown on the creature's sheet; nothing uses one (§5.5). */
-export type Move = { name: string; level: number; text: string };
+/**
+ * Learned at `level`. `power` is its damage and `accuracy` the percent chance
+ * it lands, though nothing battles yet (§5.5).
+ */
+export type Move = {
+  name: string;
+  level: number;
+  power: number;
+  accuracy: number;
+  text: string;
+};
 
 /** Base form first, evolving at each of `evolvesAt` in turn. `id` is the base form's. */
 export type Line = {

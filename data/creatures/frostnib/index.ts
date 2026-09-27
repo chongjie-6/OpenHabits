@@ -1,4 +1,5 @@
 import type { Creature, Line, Pixel } from "@/lib/types";
+import { dive, peck } from "../common";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -95,26 +96,38 @@ const line: Line = {
     {
       level: 1,
       name: "Cold Plunge",
+      power: 25,
+      accuracy: 100,
       text: "Jumps in first and never complains.",
     },
+    peck,
     {
       level: 7,
       name: "Shiver Off",
+      power: 35,
+      accuracy: 95,
       text: "Shakes the cold off and says it feels great.",
     },
+    dive,
     {
       level: 13,
       name: "Ice Break",
+      power: 45,
+      accuracy: 95,
       text: "Cracks the ice when the pond freezes over, and swims anyway.",
     },
     {
       level: 20,
       name: "Rime Beak",
+      power: 60,
+      accuracy: 90,
       text: "Cuts through any excuse that has frozen solid.",
     },
     {
       level: 31,
       name: "Morning Swim",
+      power: 80,
+      accuracy: 90,
       text: "Has not missed one in a year, ice or no ice.",
     },
   ],

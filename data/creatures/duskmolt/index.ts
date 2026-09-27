@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { dive, nip } from "../common";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -90,26 +91,38 @@ const line: Line = {
     {
       level: 1,
       name: "Shed Scale",
+      power: 25,
+      accuracy: 100,
       text: "Drops one dark scale for a good day.",
     },
+    nip,
     {
       level: 8,
       name: "Gold Beneath",
+      power: 40,
+      accuracy: 95,
       text: "Shows a glint of what it is turning into.",
     },
+    dive,
     {
       level: 15,
       name: "Dusk Flutter",
+      power: 50,
+      accuracy: 95,
       text: "Flies out when everything else is heading home.",
     },
     {
       level: 23,
       name: "First Light",
+      power: 65,
+      accuracy: 90,
       text: "Sheds its last dark scale and gives off light instead.",
     },
     {
       level: 34,
       name: "Dawnbreak",
+      power: 85,
+      accuracy: 85,
       text: "Makes morning come a little earlier for everyone.",
     },
   ],

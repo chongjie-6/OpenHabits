@@ -1,4 +1,5 @@
 import type { Creature, Line, Pixel } from "@/lib/types";
+import { roll, spritz } from "../common";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const forms: Creature[] = [
@@ -125,24 +126,40 @@ const line: Line = {
     {
       level: 1,
       name: "One Drop",
+      power: 25,
+      accuracy: 100,
       text: "Falls exactly once a day, and makes it count.",
     },
+    spritz,
     {
       level: 6,
       name: "Puddle Up",
+      power: 35,
+      accuracy: 100,
       text: "Gathers yesterday's drops into something you can stand in.",
     },
+    roll,
     {
       level: 14,
       name: "Ripple Out",
+      power: 50,
+      accuracy: 95,
       text: "Each ripple goes a little further than the last.",
     },
     {
       level: 21,
       name: "Keep Every Drop",
+      power: 60,
+      accuracy: 90,
       text: "Nothing it catches is ever spilled.",
     },
-    { level: 31, name: "Still Water", text: "Goes so calm that fish move in." },
+    {
+      level: 31,
+      name: "Still Water",
+      power: 80,
+      accuracy: 90,
+      text: "Goes so calm that fish move in.",
+    },
   ],
 };
 

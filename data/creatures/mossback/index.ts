@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { nip, roll } from "../common";
 import { OUTLINE, SHINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -95,22 +96,38 @@ const line: Line = {
     {
       level: 1,
       name: "Keep Still",
+      power: 25,
+      accuracy: 100,
       text: "Stays exactly where it said it would be.",
     },
+    nip,
     {
       level: 8,
       name: "Moss Coat",
+      power: 40,
+      accuracy: 95,
       text: "Grows a coat of moss by not fidgeting.",
     },
-    { level: 16, name: "Slow March", text: "Arrives late to nothing, ever." },
+    roll,
+    {
+      level: 16,
+      name: "Slow March",
+      power: 50,
+      accuracy: 95,
+      text: "Arrives late to nothing, ever.",
+    },
     {
       level: 22,
       name: "Shell Garden",
+      power: 60,
+      accuracy: 90,
       text: "Lets a small garden take root on its back.",
     },
     {
       level: 34,
       name: "Old Growth",
+      power: 85,
+      accuracy: 85,
       text: "Keeps still for a season and blooms for the next.",
     },
   ],

@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { pounce, scratch } from "../common";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const FUR = { o: OUTLINE, w: SHINE, e: OUTLINE, b: "#d4974f", l: "#f8ddb0" };
@@ -105,26 +106,38 @@ const line: Line = {
     {
       level: 1,
       name: "Peek Out",
+      power: 25,
+      accuracy: 100,
       text: "Lifts the lid to check before coming out.",
     },
+    scratch,
     {
       level: 6,
       name: "Thousand Sunrises",
+      power: 35,
+      accuracy: 100,
       text: "Waits it out. It has done this before.",
     },
+    pounce,
     {
       level: 16,
       name: "Staff Grow",
+      power: 50,
+      accuracy: 95,
       text: "Its staff gets a little longer every day it trains.",
     },
     {
       level: 25,
       name: "Measure Up",
+      power: 70,
+      accuracy: 90,
       text: "Checks the staff against yesterday's. It is longer.",
     },
     {
       level: 34,
       name: "Cloud Leap",
+      power: 85,
+      accuracy: 85,
       text: "One somersault, a hundred thousand li, and back by breakfast.",
     },
   ],

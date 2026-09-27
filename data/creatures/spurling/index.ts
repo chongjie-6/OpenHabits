@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { charge, scratch } from "../common";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const colors = {
@@ -141,26 +142,38 @@ const line: Line = {
     {
       level: 1,
       name: "Spine Snap",
+      power: 25,
+      accuracy: 100,
       text: "Breaks a spine on the day's first problem.",
     },
+    scratch,
     {
       level: 7,
       name: "Grow Back",
+      power: 35,
+      accuracy: 95,
       text: "Regrows overnight, a little harder than before.",
     },
+    charge,
     {
       level: 18,
       name: "Quill Volley",
+      power: 55,
+      accuracy: 95,
       text: "Throws every spine it has at the problem in front of it.",
     },
     {
       level: 27,
       name: "Hardened",
+      power: 70,
+      accuracy: 90,
       text: "Nothing breaks it the same way twice.",
     },
     {
       level: 37,
       name: "Black Thorn",
+      power: 90,
+      accuracy: 85,
       text: "Throws itself at the day with every spine it ever lost.",
     },
   ],

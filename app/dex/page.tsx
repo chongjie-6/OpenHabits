@@ -819,10 +819,17 @@ function CreatureSheet({
           </h3>
           <ul className="mt-2 space-y-2">
             {known.map((move) => (
-              <li key={move.name}>
-                <p className="text-[13px] font-medium">{move.name}</p>
-                <p className="text-[12px] leading-snug text-muted">
-                  {move.text}
+              <li key={move.name} className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium">{move.name}</p>
+                  <p className="text-[12px] leading-snug text-muted">
+                    {move.text}
+                  </p>
+                </div>
+                <p className="shrink-0 text-right text-[12px] leading-snug text-muted">
+                  Power {move.power}
+                  <br />
+                  Accuracy {move.accuracy}%
                 </p>
               </li>
             ))}

@@ -1,4 +1,5 @@
 import type { Creature, Line } from "@/lib/types";
+import { bump, dive } from "../common";
 import { OUTLINE } from "../pixels";
 
 const forms: Creature[] = [
@@ -90,26 +91,38 @@ const line: Line = {
     {
       level: 1,
       name: "Glimmer",
+      power: 25,
+      accuracy: 100,
       text: "Lights up after a finished day, and only then.",
     },
+    bump,
     {
       level: 7,
       name: "Moth to It",
+      power: 35,
+      accuracy: 95,
       text: "Finds the one lamp still on and keeps it company.",
     },
+    dive,
     {
       level: 14,
       name: "Lantern Hold",
+      power: 50,
+      accuracy: 95,
       text: "Stores a finished day in its lantern for later.",
     },
     {
       level: 19,
       name: "Night Light",
+      power: 55,
+      accuracy: 90,
       text: "Lights the way back for a day that nearly got away.",
     },
     {
       level: 30,
       name: "Never Out",
+      power: 75,
+      accuracy: 90,
       text: "Has kept so many finished days that it cannot go dark.",
     },
   ],
