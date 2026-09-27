@@ -39,8 +39,10 @@ export type News = { id: number; lines: string[] };
 let state: CreatureState | null = null;
 let seen: Record<string, number> = {};
 let evolutions: Evolution[] = [];
+/** Lines just found, played once any evolution ahead of them has. */
+let finds: string[] = [];
 let news: News | null = null;
-/** Held while an evolution plays, which would otherwise cover it. */
+/** Held while an evolution or a find plays, which would otherwise cover it. */
 let heldNews: string[] = [];
 let newsTimer: ReturnType<typeof setTimeout> | null = null;
 let nextNewsId = 1;
@@ -81,6 +83,7 @@ function forget(): void {
   state = null;
   seen = {};
   evolutions = [];
+  finds = [];
   heldNews = [];
   dismissNews();
   emit();
@@ -100,11 +103,12 @@ function readCache(): void {
   }
 }
 
-function adopt(next: CreatureState): void {
+function adopt(next: CreatureState, found: string[] = []): void {
   const noticed = noticeEvolutions(seen, next.creatures);
   state = next;
   seen = noticed.seen;
   evolutions = [...evolutions, ...noticed.evolutions];
+  finds = [...finds, ...found];
 
   const key = cacheKey();
   try {
@@ -117,7 +121,7 @@ function adopt(next: CreatureState): void {
 
 function tell(lines: string[]): void {
   if (lines.length === 0) return;
-  if (evolutions.length > 0) {
+  if (evolutions.length > 0 || finds.length > 0) {
     heldNews = [...heldNews, ...lines];
     return;
   }
@@ -138,15 +142,24 @@ export function dismissNews(): void {
   emit();
 }
 
+function shown(): void {
+  emit();
+  if (evolutions.length > 0 || finds.length > 0 || heldNews.length === 0)
+    return;
+  const lines = heldNews;
+  heldNews = [];
+  tell(lines);
+}
+
 /** The head of the queue has played; show the next, if there is one. */
 export function evolutionShown(): void {
   evolutions = evolutions.slice(1);
-  emit();
-  if (evolutions.length === 0 && heldNews.length > 0) {
-    const lines = heldNews;
-    heldNews = [];
-    tell(lines);
-  }
+  shown();
+}
+
+export function findShown(): void {
+  finds = finds.slice(1);
+  shown();
 }
 
 /** The request's answer, or the message to show when it was refused. */
@@ -191,7 +204,14 @@ export async function claimCoglings(): Promise<void> {
   );
   if (lines.length === 0) return;
   const result = await post<CreatureState>({ action: "find", lines });
-  if (typeof result !== "string") adopt(result);
+  if (typeof result === "string") return;
+  // Settings and app start can both ask at once; only the first answer finds.
+  const had = new Set(state?.creatures.map((c) => c.line));
+  const now = new Set(result.creatures.map((c) => c.line));
+  adopt(
+    result,
+    lines.filter((id) => now.has(id) && !had.has(id)),
+  );
 }
 
 let claiming = false;
@@ -206,7 +226,7 @@ async function claim(day: DayKey): Promise<void> {
     const before = state;
     const result = await post<ClaimResult>({ action: "claim", day });
     if (typeof result === "string") return;
-    adopt(result);
+    adopt(result, result.found);
     tell(claimNews(before, result));
   } finally {
     claiming = false;
@@ -254,6 +274,15 @@ export function useEvolution(): Evolution | null {
   return useSyncExternalStore(
     subscribe,
     () => evolutions[0] ?? null,
+    () => null,
+  );
+}
+
+/** Waits for the evolutions, since a find arrives by the claim that caused them. */
+export function useFind(): string | null {
+  return useSyncExternalStore(
+    subscribe,
+    () => (evolutions.length === 0 ? (finds[0] ?? null) : null),
     () => null,
   );
 }

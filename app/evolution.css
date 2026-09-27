@@ -5,13 +5,15 @@
  * and theme, because a white silhouette is the whole effect.
  */
 
-[data-slot="evolution"] {
+[data-slot="evolution"],
+[data-slot="find"] {
   background: #16121c;
   color: #ffffff;
   border-radius: 1rem;
 }
 
-[data-slot="evolution"]::backdrop {
+[data-slot="evolution"]::backdrop,
+[data-slot="find"]::backdrop {
   background: rgb(0 0 0 / 0.75);
 }
 

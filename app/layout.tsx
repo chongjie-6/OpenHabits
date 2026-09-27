@@ -10,6 +10,7 @@ import {
 import { BottomNav, Hydrator } from "@/components/AppChrome";
 import { CreatureNews } from "@/components/CreatureNews";
 import { Evolution } from "@/components/Evolution";
+import { Find } from "@/components/Find";
 import { UndoBar } from "@/components/UndoBar";
 import { siteURL } from "@/lib/site-url";
 import { THEME_SCRIPT } from "@/lib/theme";
@@ -131,6 +132,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <UndoBar />
         <CreatureNews />
         <Evolution />
+        <Find />
       </body>
     </html>
   );

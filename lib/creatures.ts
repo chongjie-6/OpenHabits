@@ -156,12 +156,15 @@ export function noticeEvolutions(
   return { seen: next, evolutions };
 }
 
-/** One line per thing worth saying about a claim, in the order it happened. */
+/**
+ * One line per thing worth saying about a claim, in the order it happened.
+ * Finds are left out: `components/Find.tsx` announces each one.
+ */
 export function claimNews(
   before: CreatureState | null,
   after: ClaimResult,
 ): string[] {
-  if (after.gained === 0 && after.found.length === 0) return [];
+  if (after.gained === 0) return [];
   const news = after.gained > 0 ? [`+${after.gained} exp`] : [];
 
   for (const was of before?.creatures ?? []) {
@@ -174,11 +177,6 @@ export function claimNews(
     if (to > from) news.push(`${name} reached Lv ${to}`);
     for (const move of movesAt(line, to).slice(movesAt(line, from).length))
       news.push(`${name} learned ${move.name}`);
-  }
-
-  for (const id of after.found) {
-    const line = lineOf(id);
-    if (line) news.push(`You found ${line.forms[0].name}!`);
   }
   return news;
 }

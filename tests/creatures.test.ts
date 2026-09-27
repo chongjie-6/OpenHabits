@@ -210,7 +210,7 @@ describe("claimNews", () => {
     expect(claimNews(before, after)).toContain("Bloomkin reached Lv 12");
   });
 
-  it("names a move learned and a creature found", () => {
+  it("names a move learned, and leaves a find to its own dialog", () => {
     const leafCount = LINES[0].moves[1];
     const before = state(expForLevel(leafCount.level) - 1);
     const after = {
@@ -222,7 +222,6 @@ describe("claimNews", () => {
       "+1 exp",
       `Sproutle reached Lv ${leafCount.level}`,
       `Sproutle learned ${leafCount.name}`,
-      "You found Emberpup!",
     ]);
   });
 });
