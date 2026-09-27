@@ -71,7 +71,7 @@ export default function DexPage() {
         <button
           type="button"
           onClick={() => setCharting(true)}
-          className="h-8 rounded-control border border-border px-3 text-[12px] font-medium text-muted transition-colors hover:text-foreground"
+          className="display-type h-8 rounded-control border border-border px-3 text-[12px] text-muted transition-colors hover:text-foreground"
         >
           Element chart
         </button>
@@ -432,16 +432,16 @@ function ChartSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
         Each element is strong against two and weak to two.
       </p>
       <ElementWheel picked={picked} onPick={setPicked} />
-      <table className="mt-3 w-full text-left text-[12px]">
+      <table className="mt-3 w-full border-separate border-spacing-y-1 text-left text-[12px]">
         <thead className="text-[11px] text-muted">
           <tr>
-            <th scope="col" className="pb-2 pr-2 font-medium">
+            <th scope="col" className="w-px pb-1 pl-2 pr-2 font-medium">
               Element
             </th>
-            <th scope="col" className="pb-2 pr-2 font-medium">
+            <th scope="col" colSpan={2} className="pb-1 pl-3 pr-2 font-medium">
               Strong against
             </th>
-            <th scope="col" className="pb-2 font-medium">
+            <th scope="col" colSpan={2} className="pb-1 pl-3 font-medium">
               Weak to
             </th>
           </tr>
@@ -453,24 +453,30 @@ function ChartSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
             return (
               <tr
                 key={element}
-                className={`border-t border-border ${quiet ? "" : "bg-surface-2"}`}
+                onClick={() => setPicked(element)}
+                className={`cursor-pointer *:border-y *:border-border *:transition-colors *:first:rounded-l-control *:first:border-l *:first:pl-2 *:last:rounded-r-control *:last:border-r ${
+                  quiet ? "hover:*:bg-surface-2" : "*:bg-surface-2"
+                }`}
               >
                 <th scope="row" className="py-2 pr-2 font-normal">
+                  {/* The row takes the click; this is its keyboard and screen-reader handle. */}
                   <button
                     type="button"
                     aria-pressed={!quiet}
-                    onClick={() => setPicked(element)}
                     className="rounded-full"
                   >
                     <Elements elements={[element]} quiet={quiet} />
                   </button>
                 </th>
-                <td className="py-2 pr-2">
-                  <Elements elements={strong} quiet={quiet} />
-                </td>
-                <td className="py-2">
-                  <Elements elements={weak} quiet={quiet} />
-                </td>
+                {/* The first of each pair hugs its chip, so the spare width falls between the two groups. */}
+                {[...strong, ...weak].map((other, i) => (
+                  <td
+                    key={i}
+                    className={`py-2 pr-2 ${i % 2 === 0 ? "w-px border-l pl-3" : ""}`}
+                  >
+                    <Elements elements={[other]} quiet={quiet} />
+                  </td>
+                ))}
               </tr>
             );
           })}
