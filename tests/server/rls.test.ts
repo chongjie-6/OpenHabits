@@ -345,10 +345,12 @@ describe("the paths that run in production", () => {
     await claimDay(db, ALICE, "2026-09-01", Date.parse("2026-09-01T12:00:00Z"));
     await pglite.exec(`reset role`);
     const exp = await rows(
-      `select user_id, exp from creatures order by user_id`,
+      `select user_id, exp from creatures order by user_id, exp desc`,
     );
+    // Alice's second row is the line her first good day found.
     expect(exp).toEqual([
       { user_id: "alice", exp: 60 },
+      { user_id: "alice", exp: 0 },
       { user_id: "bob", exp: 10 },
     ]);
   });

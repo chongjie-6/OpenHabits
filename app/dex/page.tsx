@@ -9,9 +9,9 @@ import {
   COGLINGS,
   creatureLevel,
   CREATURES,
-  DISCOVERY_DAYS,
   expToEvolve,
   formFor,
+  goodDaysToFind,
   isFound,
   lineOf,
   LINES,
@@ -281,7 +281,11 @@ function Progress({ state }: { state: CreatureState }) {
     stat && stat.scheduled > 0 ? stat.completed / stat.scheduled : null;
   const worth = stat ? payout(stat.completed, stat.scheduled) : 0;
   const paid = state.lastDay?.day === today ? state.lastDay.expPaid : 0;
-  const toward = state.goodDays % DISCOVERY_DAYS;
+  const find = state.creatures.length;
+  const since = goodDaysToFind(find - 1);
+  const needed = goodDaysToFind(find) - since;
+  // Clamped: finds earned before the starter arrive only on the next claim.
+  const toward = Math.min(needed, Math.max(0, state.goodDays - since));
   const everyone = state.creatures.length === LINES.length;
 
   return (
@@ -305,7 +309,7 @@ function Progress({ state }: { state: CreatureState }) {
         <>You have found every creature.</>
       ) : (
         <>
-          {toward} of {DISCOVERY_DAYS} days at{" "}
+          {toward} of {needed} {needed === 1 ? "day" : "days"} at{" "}
           {Math.round(QUALIFYING_RATE * 100)}% toward the next creature.
         </>
       )}

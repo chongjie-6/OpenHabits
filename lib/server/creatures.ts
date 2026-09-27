@@ -2,20 +2,24 @@ import "server-only";
 
 /**
  * Creature progression, server side (§13.18). The only writer of `creatures`
- * and `creature_days`: a client asks to claim a day, choose a starter or seat a
- * party, and never sends an amount, a level or a find. The day it claims is read
- * from the server's own copy of the synced habits, not from anything it says.
+ * and `creature_days`: a client asks to claim a day, choose a starter, seat a
+ * party or bring in Cogling's line, and never sends an amount or a level. The
+ * day it claims is read from the server's own copy of the synced habits.
  */
 
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import {
-  DISCOVERY_DAYS,
+  ALL_LINES,
   expForLevel,
+  foundByDays,
+  goodDaysToFind,
+  isCoglingLine,
   isGoodDay,
   type ClaimResult,
   type CreatureState,
   LINES,
   MAX_LEVEL,
+  type OwnedCreature,
   PARTY_SIZE,
   payout,
   STARTERS,
@@ -40,7 +44,8 @@ export class CreatureRefusal extends Error {
 export type CreatureCommand =
   | { action: "claim"; day: DayKey }
   | { action: "choose"; line: string }
-  | { action: "party"; lines: string[] };
+  | { action: "party"; lines: string[] }
+  | { action: "find"; lines: string[] };
 
 /** Shape only: whether a line is owned, or a starter, is the rules' to say. */
 export function parseCommand(body: unknown): CreatureCommand | null {
@@ -58,10 +63,11 @@ export function parseCommand(body: unknown): CreatureCommand | null {
         ? { action: "choose", line: command.line }
         : null;
     case "party":
+    case "find":
       return Array.isArray(command.lines) &&
-        command.lines.length <= LINES.length &&
+        command.lines.length <= ALL_LINES.length &&
         command.lines.every(isLineId)
-        ? { action: "party", lines: command.lines }
+        ? { action: command.action, lines: command.lines }
         : null;
     default:
       return null;
@@ -234,6 +240,36 @@ export async function setParty(
   });
 }
 
+/**
+ * Cogling's line is found by opening settings, which no server can witness, so
+ * the device's word is taken: anyone can open settings, so it gives away
+ * nothing. Only once a starter is owned, and a line already owned is skipped.
+ */
+export async function findCoglings(
+  db: Db,
+  user: SyncUser,
+  lines: string[],
+): Promise<CreatureState> {
+  if (lines.length === 0 || !lines.every(isCoglingLine)) {
+    throw new CreatureRefusal("Only Cogling's line is found in settings.");
+  }
+
+  return write(db, user, async (tx) => {
+    const { creatures: owned } = await stateOf(tx, user.id);
+    if (owned.length === 0) {
+      throw new CreatureRefusal("Choose a starter first.");
+    }
+    const ownedLines = new Set(owned.map((c) => c.line));
+    await welcome(
+      tx,
+      user.id,
+      owned,
+      [...new Set(lines)].filter((line) => !ownedLines.has(line)),
+    );
+    return stateOf(tx, user.id);
+  });
+}
+
 /** Under sync's lock, so a claim reads a whole sync and two claims cannot both pay. */
 function write<T>(
   db: Db,
@@ -252,31 +288,41 @@ function rate(completed: number, scheduled: number): number {
 }
 
 /**
- * Grants every find the good days have earned: one line per `DISCOVERY_DAYS`,
- * next in `LINES` order, and none until a starter is owned. A find takes the
- * first free seat, or the box.
+ * Grants every find the good days have earned, by `goodDaysToFind`, next in
+ * `LINES` order, and none until a starter is owned.
  */
 async function discover(tx: Tx, userId: string): Promise<string[]> {
   const { creatures: owned, goodDays } = await stateOf(tx, userId);
   if (owned.length === 0) return [];
 
-  const due = 1 + Math.floor(goodDays / DISCOVERY_DAYS) - owned.length;
+  const found = foundByDays(owned);
+  let due = 0;
+  while (goodDaysToFind(found + due) <= goodDays) due++;
   const ownedLines = new Set(owned.map((c) => c.line));
-  const next = LINES.filter((line) => !ownedLines.has(line.id)).slice(
-    0,
-    Math.max(0, due),
-  );
+  const next = LINES.filter((line) => !ownedLines.has(line.id))
+    .slice(0, due)
+    .map((line) => line.id);
 
+  await welcome(tx, userId, owned, next);
+  return next;
+}
+
+/** Each newcomer takes the first free seat, or the box. */
+async function welcome(
+  tx: Tx,
+  userId: string,
+  owned: OwnedCreature[],
+  lines: string[],
+): Promise<void> {
   const seated = new Set(owned.map((c) => c.slot));
-  for (const line of next) {
+  for (const line of lines) {
     const slot =
       Array.from({ length: PARTY_SIZE }, (_, i) => i).find(
         (i) => !seated.has(i),
       ) ?? null;
     seated.add(slot);
-    await tx.insert(creatures).values({ userId, line: line.id, slot });
+    await tx.insert(creatures).values({ userId, line, slot });
   }
-  return next.map((line) => line.id);
 }
 
 async function stateOf(tx: Tx, userId: string): Promise<CreatureState> {
@@ -289,7 +335,7 @@ async function stateOf(tx: Tx, userId: string): Promise<CreatureState> {
       .orderBy(desc(creatureDays.day)),
   ]);
 
-  const order = (line: string) => LINES.findIndex((l) => l.id === line);
+  const order = (line: string) => ALL_LINES.findIndex((l) => l.id === line);
   const latest = days[0];
 
   return {

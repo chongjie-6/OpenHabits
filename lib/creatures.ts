@@ -3,7 +3,13 @@
  * number is stated once. Only exp is stored; level, form and moves derive from it.
  */
 
-import { COGLINGS, CREATURES, LINES, STARTERS } from "@/data/creatures";
+import {
+  COGLING_LINES,
+  COGLINGS,
+  CREATURES,
+  LINES,
+  STARTERS,
+} from "@/data/creatures";
 import type { Skin } from "./skin";
 import type { Creature, DayKey, Line, Move } from "./types";
 
@@ -14,8 +20,13 @@ export function isGoodDay(completed: number, scheduled: number): boolean {
   return scheduled > 0 && completed / scheduled >= QUALIFYING_RATE;
 }
 
-/** Every this many good days finds the next line. */
-export const DISCOVERY_DAYS = 7;
+/**
+ * Good days needed in all for the `find`th line after the starter. Each find
+ * takes one good day more than the one before: the first is quick, the last rare.
+ */
+export function goodDaysToFind(find: number): number {
+  return (find * (find + 1)) / 2;
+}
 
 /** Slot 0 is the buddy. Only the party earns. */
 export const PARTY_SIZE = 5;
@@ -56,8 +67,20 @@ export function movesAt(line: Line, level: number): Move[] {
   return line.moves.filter((move) => level >= move.level);
 }
 
+/** Every line that can be owned, in dex order: Cogling's at #000, then `LINES`. */
+export const ALL_LINES = [...COGLING_LINES, ...LINES];
+
 export function lineOf(id: string): Line | undefined {
-  return LINES.find((line) => line.id === id);
+  return ALL_LINES.find((line) => line.id === id);
+}
+
+export function isCoglingLine(id: string): boolean {
+  return COGLING_LINES.some((line) => line.id === id);
+}
+
+/** Owned lines that good days found, which is what the next find counts from. */
+export function foundByDays(creatures: OwnedCreature[]): number {
+  return creatures.filter((c) => !isCoglingLine(c.line)).length;
 }
 
 export function formFor(line: Line, exp: number): Creature {
@@ -84,7 +107,7 @@ export function swapSeats(
   );
 }
 
-export { COGLINGS, CREATURES, LINES, STARTERS };
+export { COGLING_LINES, COGLINGS, CREATURES, LINES, STARTERS };
 
 /** What `/api/creatures` answers with. Written only by the server (§13.18). */
 export type OwnedCreature = { line: string; exp: number; slot: number | null };
@@ -168,8 +191,9 @@ const FORM_FOR_SKIN: Partial<Record<Skin, string>> = {
 const foundKey = (id: string) => `openhabits:found:${id}`;
 
 /**
- * Cogling's line is found by acts, not a history, so it is stored, on this device
- * only: settings open at all finds Cogling, and open in a skin finds that form.
+ * Cogling's line is found by acts, not a history, so the device records it:
+ * settings open at all finds Cogling, and open in a skin finds that form.
+ * Signed in, `lib/party.ts` then hands the finds to the account.
  */
 export function findCogling(skin: Skin): void {
   for (const id of ["cogling", FORM_FOR_SKIN[skin]]) {

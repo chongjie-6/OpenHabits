@@ -14,7 +14,8 @@ All notable changes to OpenHabits are listed here. The format follows
   Creatures resting outside the party earn nothing.
 - Each line evolves at levels of its own and learns moves as it grows, with an
   evolution sequence the first time each device sees it happen.
-- Every seven days at 80% or better finds the next creature.
+- Days at 80% or better find new creatures: the first after one such day, and
+  each after that takes one day more than the last, so the late ones are rare.
 - Your buddy sits on Today, under the habits it grows on.
 - Swap creatures in and out of the party: a resting creature swaps in for the
   party member you pick, a party member swaps out for anyone resting, and an

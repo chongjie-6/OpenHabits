@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
-import { DISCOVERY_DAYS, expForLevel, LINES, MAX_LEVEL } from "@/lib/creatures";
+import { expForLevel, goodDaysToFind, LINES, MAX_LEVEL } from "@/lib/creatures";
 import { addDays } from "@/lib/dates";
 import type { SyncUser } from "@/lib/server/auth-types";
 import {
@@ -154,7 +154,7 @@ describe("claimDay", () => {
     await chooseStarter(db, ALICE, "sproutle");
     const result = await claim(ALICE, DAY, 8);
     expect(result.gained).toBe(35);
-    expect(await expOf(ALICE)).toEqual({ sproutle: 35 });
+    expect((await expOf(ALICE)).sproutle).toBe(35);
   });
 
   it("pays only the difference when the day improves, and nothing again", async () => {
@@ -162,14 +162,14 @@ describe("claimDay", () => {
     await claim(ALICE, DAY, 6);
     expect((await claim(ALICE, DAY, 10)).gained).toBe(30);
     expect((await claim(ALICE, DAY, 10)).gained).toBe(0);
-    expect(await expOf(ALICE)).toEqual({ sproutle: 50 });
+    expect((await expOf(ALICE)).sproutle).toBe(50);
   });
 
   it("takes nothing back when the day gets worse", async () => {
     await chooseStarter(db, ALICE, "sproutle");
     await claim(ALICE, DAY, 10);
     expect((await claim(ALICE, DAY, 0)).gained).toBe(0);
-    expect(await expOf(ALICE)).toEqual({ sproutle: 50 });
+    expect((await expOf(ALICE)).sproutle).toBe(50);
   });
 
   it("stops a creature's exp at the top level", async () => {
@@ -179,13 +179,13 @@ describe("claimDay", () => {
       tx.update(schema.creatures).set({ exp: cap - 10 }),
     );
     expect((await claim(ALICE, DAY, 10)).gained).toBe(50);
-    expect(await expOf(ALICE)).toEqual({ sproutle: cap });
+    expect((await expOf(ALICE)).sproutle).toBe(cap);
   });
 
   it("pays the party and not the box", async () => {
     await chooseStarter(db, ALICE, "sproutle");
     let day = DAY;
-    for (let i = 0; i < DISCOVERY_DAYS; i++) {
+    for (let i = 0; i < goodDaysToFind(1); i++) {
       await claim(ALICE, day, 10);
       day = addDays(day, 1);
     }
@@ -197,17 +197,15 @@ describe("claimDay", () => {
     expect(after.sproutle).toBe(before.sproutle);
   });
 
-  it("finds the next unowned line on every seventh good day", async () => {
+  it("finds each unowned line one good day later than the last", async () => {
     await chooseStarter(db, ALICE, "emberpup");
-    let day = DAY;
-    for (let i = 0; i < DISCOVERY_DAYS - 1; i++) {
-      expect((await claim(ALICE, day, 8)).found).toEqual([]);
-      day = addDays(day, 1);
-    }
-    const result = await claim(ALICE, day, 8);
-    expect(result.found).toEqual(["sproutle"]);
-    expect(result.creatures.find((c) => c.line === "sproutle")?.slot).toBe(1);
-    expect(result.goodDays).toBe(DISCOVERY_DAYS);
+    const first = await claim(ALICE, DAY, 8);
+    expect(first.found).toEqual(["sproutle"]);
+    expect(first.creatures.find((c) => c.line === "sproutle")?.slot).toBe(1);
+    expect((await claim(ALICE, addDays(DAY, 1), 8)).found).toEqual([]);
+    const third = await claim(ALICE, addDays(DAY, 2), 8);
+    expect(third.found).toEqual(["drizzlet"]);
+    expect(third.goodDays).toBe(goodDaysToFind(2));
   });
 
   it("does not count a day under the qualifying rate as good", async () => {
@@ -218,18 +216,21 @@ describe("claimDay", () => {
 
   it("finds nothing before a starter, and catches up once there is one", async () => {
     let day = DAY;
-    for (let i = 0; i < DISCOVERY_DAYS; i++) {
+    for (let i = 0; i < goodDaysToFind(2); i++) {
       expect((await claim(ALICE, day, 10)).found).toEqual([]);
       day = addDays(day, 1);
     }
     await chooseStarter(db, ALICE, "sproutle");
-    expect((await claim(ALICE, day, 10)).found).toEqual(["emberpup"]);
+    expect((await claim(ALICE, day, 10)).found).toEqual([
+      "emberpup",
+      "drizzlet",
+    ]);
   });
 
   it("puts a find in the box once the party is full", async () => {
     await chooseStarter(db, ALICE, "sproutle");
     let day = DAY;
-    for (let i = 0; i < DISCOVERY_DAYS * 5; i++) {
+    for (let i = 0; i < goodDaysToFind(5); i++) {
       await claim(ALICE, day, 10);
       day = addDays(day, 1);
     }
@@ -252,7 +253,7 @@ describe("setParty", () => {
   async function twoOwned() {
     await chooseStarter(db, ALICE, "sproutle");
     let day = DAY;
-    for (let i = 0; i < DISCOVERY_DAYS; i++) {
+    for (let i = 0; i < goodDaysToFind(1); i++) {
       await claim(ALICE, day, 10);
       day = addDays(day, 1);
     }
