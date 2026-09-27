@@ -22,8 +22,11 @@ import stonkey from "./stonkey";
 import spurling from "./spurling";
 import gainlet from "./gainlet";
 import tangling from "./tangling";
+import cogling from "./cogling";
 
-export { default as COGLINGS } from "./cogling";
+/** Found in settings rather than by good days, so outside `LINES` and its order. */
+export const COGLING_LINES: Line[] = cogling;
+export const COGLINGS: Creature[] = cogling.flatMap((line) => line.forms);
 
 export const LINES: Line[] = [
   sproutle,

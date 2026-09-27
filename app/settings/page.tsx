@@ -9,6 +9,7 @@ import { habitColor } from "@/lib/colors";
 import { findCogling } from "@/lib/creatures";
 import { HAPTIC_DONE, vibrate } from "@/lib/haptics";
 import { activeTagsFor, deckCountFor, MODE_COPY, tagsFor } from "@/lib/daily";
+import { claimCoglings } from "@/lib/party";
 import { applySkin, SKINS, useSkin, type Skin } from "@/lib/skin";
 import { usePalette } from "@/lib/use-palette";
 import { changeTheme, useTheme } from "@/lib/use-theme";
@@ -39,7 +40,10 @@ export default function SettingsPage() {
   const [pending, setPending] = useState<AnyExportBundle | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
 
-  useEffect(() => findCogling(skin), [skin]);
+  useEffect(() => {
+    findCogling(skin);
+    void claimCoglings();
+  }, [skin]);
 
   function download() {
     const bundle = exportBundle();

@@ -21,6 +21,8 @@ All notable changes to OpenHabits are listed here. The format follows
   party member you pick, a party member swaps out for anyone resting, and an
   empty seat can be filled from the box with one tap.
 - A creature at the top level stops gaining exp.
+- Cogling, Blockog and Latticog can join the party too. Signed in, finding one
+  in settings adds it to your account, where it levels like any other creature.
 - Exp and finds are worked out and stored by the server, from your synced
   habits, and only today can be claimed — so creatures need an account.
   Creatures found under the old weekly rule do not carry over.

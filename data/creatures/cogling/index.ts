@@ -1,4 +1,4 @@
-import type { Creature } from "@/lib/types";
+import type { Creature, Line } from "@/lib/types";
 import { OUTLINE, SHINE, pixelsAt } from "../pixels";
 
 const BRASS = { b: "#d0a24c", l: "#f0d48a", d: "#a07430" };
@@ -6,9 +6,10 @@ const EMPTY = "#ebedf0";
 
 /**
  * Outside the weekly order, all three at #000: found by opening settings, and
- * the two forms by opening it in their skin (§5.5).
+ * the two forms by opening it in their skin (§5.5). Each is a line of its own,
+ * since a skin finds it rather than a level.
  */
-const line: Creature[] = [
+const forms: Creature[] = [
   {
     id: "cogling",
     name: "Cogling",
@@ -108,4 +109,90 @@ const line: Creature[] = [
   },
 ];
 
-export default line;
+const [cogling, blockog, latticog] = forms;
+
+const lines: Line[] = [
+  {
+    id: "cogling",
+    forms: [cogling],
+    evolvesAt: [],
+    moves: [
+      {
+        level: 1,
+        name: "Notch",
+        text: "A notch one way, a notch the other.",
+      },
+      {
+        level: 10,
+        name: "Just So",
+        text: "Clicks once everything is where you left it.",
+      },
+      {
+        level: 24,
+        name: "Put Back",
+        text: "Returns whatever was nudged out of place.",
+      },
+      {
+        level: 40,
+        name: "Fine Tune",
+        text: "Turns the smallest thing until it clicks.",
+      },
+    ],
+  },
+  {
+    id: "blockog",
+    forms: [blockog],
+    evolvesAt: [],
+    moves: [
+      {
+        level: 1,
+        name: "Clunk",
+        text: "Snaps back together after checking its seams.",
+      },
+      {
+        level: 10,
+        name: "Square Up",
+        text: "Makes sure every tile is square.",
+      },
+      {
+        level: 24,
+        name: "Stack",
+        text: "Sets each day squarely on the last.",
+      },
+      {
+        level: 40,
+        name: "Load-Bearing",
+        text: "Nothing it has built comes loose.",
+      },
+    ],
+  },
+  {
+    id: "latticog",
+    forms: [latticog],
+    evolvesAt: [],
+    moves: [
+      {
+        level: 1,
+        name: "Fill In",
+        text: "Fills in one cell of the day.",
+      },
+      {
+        level: 10,
+        name: "Column by Column",
+        text: "Works down a week, then starts the next.",
+      },
+      {
+        level: 24,
+        name: "Deep Green",
+        text: "A full cell turns the brightest green it has.",
+      },
+      {
+        level: 40,
+        name: "Year at a Glance",
+        text: "Has filled enough cells to see the whole year.",
+      },
+    ],
+  },
+];
+
+export default lines;

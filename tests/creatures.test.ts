@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
+  ALL_LINES,
   claimNews,
   COGLINGS,
   creatureLevel,
@@ -80,8 +81,8 @@ describe("stageAt and movesAt", () => {
 
 describe("the lines", () => {
   it("are named by their base form", () => {
-    expect(LINES.map((line) => line.forms[0].id)).toEqual(
-      LINES.map((line) => line.id),
+    expect(ALL_LINES.map((line) => line.forms[0].id)).toEqual(
+      ALL_LINES.map((line) => line.id),
     );
   });
 
@@ -108,7 +109,7 @@ describe("the lines", () => {
   });
 
   it("evolve once per later form, at rising levels under the cap", () => {
-    for (const { id, forms, evolvesAt } of LINES) {
+    for (const { id, forms, evolvesAt } of ALL_LINES) {
       expect(evolvesAt.length, id).toBe(forms.length - 1);
       evolvesAt.forEach((level, i) => {
         expect(level, id).toBeGreaterThan(i === 0 ? 1 : evolvesAt[i - 1]);
@@ -118,7 +119,7 @@ describe("the lines", () => {
   });
 
   it("learn a first move at level 1 and the rest at rising levels", () => {
-    for (const { id, moves } of LINES) {
+    for (const { id, moves } of ALL_LINES) {
       expect(moves[0]?.level, id).toBe(1);
       moves.slice(1).forEach((move, i) => {
         expect(move.level, `${id} ${move.name}`).toBeGreaterThan(
@@ -130,7 +131,7 @@ describe("the lines", () => {
   });
 
   it("never share a move name", () => {
-    const names = LINES.flatMap((line) => line.moves.map((m) => m.name));
+    const names = ALL_LINES.flatMap((line) => line.moves.map((m) => m.name));
     expect(new Set(names).size).toBe(names.length);
   });
 });

@@ -9,6 +9,7 @@ import {
   chooseStarter,
   claimDay,
   CreatureRefusal,
+  findCoglings,
   parseCommand,
   readCreatures,
   setParty,
@@ -69,7 +70,9 @@ export async function POST(request: Request): Promise<Response> {
         ? await claimDay(db, user, command.day)
         : command.action === "choose"
           ? await chooseStarter(db, user, command.line)
-          : await setParty(db, user, command.lines);
+          : command.action === "party"
+            ? await setParty(db, user, command.lines)
+            : await findCoglings(db, user, command.lines);
     return Response.json(result, { headers: NO_STORE });
   } catch (cause) {
     if (cause instanceof CreatureRefusal) return error(400, cause.message);

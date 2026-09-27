@@ -11,6 +11,8 @@ import { useOffline } from "next/offline";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   claimNews,
+  COGLING_LINES,
+  isFound,
   noticeEvolutions,
   payout,
   type ClaimResult,
@@ -174,6 +176,22 @@ export async function refreshCreatures(): Promise<void> {
   } catch {
     // Offline: the cached answer stands.
   }
+  await claimCoglings();
+}
+
+/**
+ * Hands the account whatever of Cogling's line this device has found and it
+ * lacks. Waits for a starter, since the server refuses a find before one.
+ */
+export async function claimCoglings(): Promise<void> {
+  if (!state || state.creatures.length === 0) return;
+  const owned = new Set(state.creatures.map((c) => c.line));
+  const lines = COGLING_LINES.map((line) => line.id).filter(
+    (id) => isFound(id) && !owned.has(id),
+  );
+  if (lines.length === 0) return;
+  const result = await post<CreatureState>({ action: "find", lines });
+  if (typeof result !== "string") adopt(result);
 }
 
 let claiming = false;
@@ -200,6 +218,7 @@ export async function chooseStarter(line: string): Promise<string | null> {
   const result = await post<CreatureState>({ action: "choose", line });
   if (typeof result === "string") return result;
   adopt(result);
+  await claimCoglings();
   return null;
 }
 

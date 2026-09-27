@@ -11,6 +11,7 @@ import {
   CREATURES,
   expToEvolve,
   formFor,
+  foundByDays,
   goodDaysToFind,
   isFound,
   lineOf,
@@ -281,12 +282,12 @@ function Progress({ state }: { state: CreatureState }) {
     stat && stat.scheduled > 0 ? stat.completed / stat.scheduled : null;
   const worth = stat ? payout(stat.completed, stat.scheduled) : 0;
   const paid = state.lastDay?.day === today ? state.lastDay.expPaid : 0;
-  const find = state.creatures.length;
+  const find = foundByDays(state.creatures);
   const since = goodDaysToFind(find - 1);
   const needed = goodDaysToFind(find) - since;
   // Clamped: finds earned before the starter arrive only on the next claim.
   const toward = Math.min(needed, Math.max(0, state.goodDays - since));
-  const everyone = state.creatures.length === LINES.length;
+  const everyone = find === LINES.length;
 
   return (
     <p className="text-[13px] leading-relaxed text-muted">
@@ -342,7 +343,7 @@ function Dex({ owned }: { owned: CreatureState | null }) {
     ...COGLINGS.map((creature) => ({
       creature,
       number: 0,
-      known: revealAll || isFound(creature.id),
+      known: revealAll || isFound(creature.id) || reached.has(creature.id),
     })),
     ...CREATURES.map((creature, index) => ({
       creature,

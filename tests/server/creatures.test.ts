@@ -18,6 +18,7 @@ import {
   claimable,
   claimDay,
   CreatureRefusal,
+  findCoglings,
   parseCommand,
   readCreatures,
   setParty,
@@ -287,6 +288,35 @@ describe("setParty", () => {
   });
 });
 
+describe("findCoglings", () => {
+  it("refuses before a starter, and any line outside Cogling's", async () => {
+    await expect(findCoglings(db, ALICE, ["cogling"])).rejects.toThrow(
+      CreatureRefusal,
+    );
+    await chooseStarter(db, ALICE, "sproutle");
+    await expect(findCoglings(db, ALICE, ["emberpup"])).rejects.toThrow(
+      CreatureRefusal,
+    );
+  });
+
+  it("seats each new form, lists them at #000, and skips one already owned", async () => {
+    await chooseStarter(db, ALICE, "sproutle");
+    await findCoglings(db, ALICE, ["latticog"]);
+    const state = await findCoglings(db, ALICE, ["cogling", "latticog"]);
+    expect(state.creatures.map((c) => [c.line, c.slot])).toEqual([
+      ["cogling", 2],
+      ["latticog", 1],
+      ["sproutle", 0],
+    ]);
+  });
+
+  it("does not slow the finds that good days make", async () => {
+    await chooseStarter(db, ALICE, "sproutle");
+    await findCoglings(db, ALICE, ["cogling", "blockog", "latticog"]);
+    expect((await claim(ALICE, DAY, 10)).found).toEqual(["emberpup"]);
+  });
+});
+
 describe("parseCommand", () => {
   it("accepts each action in its shape", () => {
     expect(parseCommand({ action: "claim", day: DAY })).toEqual({
@@ -300,6 +330,10 @@ describe("parseCommand", () => {
     expect(parseCommand({ action: "party", lines: ["a", "b"] })).toEqual({
       action: "party",
       lines: ["a", "b"],
+    });
+    expect(parseCommand({ action: "find", lines: ["cogling"] })).toEqual({
+      action: "find",
+      lines: ["cogling"],
     });
   });
 

@@ -8,7 +8,13 @@
 
 import { createLocalAccountIssuer } from "@better-auth/core/db";
 import { eq } from "drizzle-orm";
-import { expForLevel, LINES, MAX_LEVEL, PARTY_SIZE } from "@/lib/creatures";
+import {
+  COGLING_LINES,
+  expForLevel,
+  LINES,
+  MAX_LEVEL,
+  PARTY_SIZE,
+} from "@/lib/creatures";
 import { addDays, todayKey } from "@/lib/dates";
 import { getAuth } from "@/lib/server/better-auth";
 import { getDb } from "@/lib/server/db";
@@ -79,11 +85,12 @@ await runSync(db, sync, {
 
 // Every line at or past its last form, so the whole dex is seen; the buddy is
 // at the top level, and the rest spread out so some moves are still to learn.
-const rows = LINES.map((line, i) => {
+// Cogling's line comes last, resting.
+const rows = [...LINES, ...COGLING_LINES].map((line, i) => {
   const level =
     i === 0
       ? MAX_LEVEL
-      : Math.min(MAX_LEVEL, line.evolvesAt.at(-1)! + ((i * 5) % 17));
+      : Math.min(MAX_LEVEL, (line.evolvesAt.at(-1) ?? 1) + ((i * 5) % 17));
   return {
     userId: user.id,
     line: line.id,
